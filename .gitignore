@@ -1,6 +1,6 @@
 # Byte-compiled / optimized / DLL files
-venv/
-.env
+# venv/
+# .env
 node_modules/
 *.sqlite3
 __pycache__/
