@@ -1,16 +1,12 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
 import "./App.css";
+import { Routes, Route } from "react-router-dom";
+import SideBar from "./components/SideBar";
 
 function App() {
-  const [count, setCount] = useState(0);
 
   return (
     <>
-      <div>
-        <h1 className="text-3xl font-bold underline">This is the Test Page</h1>
-      </div>
+       <SideBar />
     </>
   );
 }
