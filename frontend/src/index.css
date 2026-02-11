@@ -5,4 +5,17 @@
 :root{
     --sidebar_bg: #2D2F6E;
     --sidebar-active_tab: #4A4FD1;
+    --sidebar_border: #e2e8f0;
+    --toolbar_bg: #ffffff;
+    --toolbar_border: #e2e8f0;
+    --dashboard_bg: #f8fafc;
+}
+
+:root[data-theme='dark']{
+    --sidebar_bg: #1e1f3f;
+    --sidebar-active_tab: #3b3f9a;
+    --sidebar_border: transparent;
+    --toolbar_bg: #6b7280;
+    --toolbar_border: transparent;
+    --dashboard_bg: #0f172a;
 }

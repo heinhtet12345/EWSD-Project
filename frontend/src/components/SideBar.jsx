@@ -53,10 +53,13 @@ export default function SideBar({ role = "staff" }) {
 	return (
 		<aside className="h-screen">
 			<nav
-				className={`h-full flex flex-col border-r shadow-sm text-white transition-all duration-200 ${
+				className={`h-full flex flex-col shadow-sm text-white transition-all duration-200 ${
 					isCollapsed ? "w-16" : "w-[200px]"
 				}`}
-				style={{ backgroundColor: "var(--sidebar_bg)" }}
+				style={{
+					backgroundColor: "var(--sidebar_bg)",
+					borderRight: "1px solid var(--sidebar_border)",
+				}}
 			>
 				<div
 					className={
@@ -120,7 +123,7 @@ export default function SideBar({ role = "staff" }) {
 					})}
 				</ul>
 
-				<div className="border-t p-3">
+				<div className="p-3">
 					<button
 						type="button"
 						className={`group relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white ${

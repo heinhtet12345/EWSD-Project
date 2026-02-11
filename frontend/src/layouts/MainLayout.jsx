@@ -1,12 +1,14 @@
 import { Outlet, useLocation } from "react-router-dom";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
 import SideBar from "../components/SideBar";
+import ToolBar from "../components/ToolBar";
 
 const ROLE_PREFIXES = ["admin", "qa-coordinator", "qa-manager", "staff"];
 
 function getRoleFromPath(pathname) {
   const firstSegment = pathname.split("/").filter(Boolean)[0];
+  if (!firstSegment) {
+    return "staff";
+  }
   return ROLE_PREFIXES.includes(firstSegment) ? firstSegment : null;
 }
 
@@ -17,16 +19,20 @@ export default function MainLayout() {
 
   if (isDashboard) {
     return (
-      <div className="dashboard-layout">
-        <SideBar />
-        <Outlet />
+      <div className="flex min-h-screen">
+        <SideBar role={role} />
+        <div
+          className="flex min-h-screen flex-1 flex-col"
+          style={{ backgroundColor: "var(--dashboard_bg)" }}
+        >
+          <ToolBar />
+          <main className="flex-1 p-6">
+            <Outlet />
+          </main>
+        </div>
       </div>
     );
   }
 
-  return (
-    <>
-      <Outlet />
-    </>
-  );
+  return <Outlet />;
 }
