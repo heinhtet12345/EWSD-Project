@@ -32,7 +32,7 @@ const ROLE_ALIAS: Record<string, Role> = {
   staff: "staff",
 };
 
-const API_PATH = "api/login/";
+const API_PATH = "/api/login/";
 
 function normalizeRole(role?: string | null): Role {
   if (!role) {
@@ -68,7 +68,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await axios.post<AuthResponse>(API_PATH, {
+      const response = await axios.post<AuthResponse & {access: string}>(API_PATH, {
         username: form.username.trim(),
         password: form.password,
       });
@@ -80,6 +80,7 @@ export default function LoginPage() {
         username: payload?.username,
         profileimg: payload?.profile_image,
         role: normalizeRole(payload?.role),
+        token: payload?.access,
       };
 
       localStorage.setItem("authUser", JSON.stringify(user));
