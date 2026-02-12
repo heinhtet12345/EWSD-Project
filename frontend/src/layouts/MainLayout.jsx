@@ -23,7 +23,10 @@ export default function MainLayout() {
         <SideBar role={role} />
         <div
           className="flex min-h-screen flex-1 flex-col"
-          style={{ backgroundColor: "var(--dashboard_bg)" }}
+          style={{
+            backgroundColor: "var(--dashboard_bg)",
+            color: "var(--dashboard_text)",
+          }}
         >
           <ToolBar />
           <main className="flex-1 p-6">

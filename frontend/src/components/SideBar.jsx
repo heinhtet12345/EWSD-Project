@@ -53,7 +53,7 @@ export default function SideBar({ role = "staff" }) {
 	return (
 		<aside className="h-screen">
 			<nav
-				className={`h-full flex flex-col shadow-sm text-white transition-all duration-200 ${
+				className={`h-full flex flex-col shadow-sm text-white transition-[width] duration-200 ${
 					isCollapsed ? "w-16" : "w-[200px]"
 				}`}
 				style={{
@@ -111,7 +111,7 @@ export default function SideBar({ role = "staff" }) {
 										{tab.label}
 									</span>
 									<span
-										className={`absolute left-full ml-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition ${
+										className={`absolute left-full z-20 ml-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg ring-1 ring-white/10 transition ${
 											isCollapsed ? "group-hover:opacity-100" : "hidden"
 										}`}
 									>
@@ -133,7 +133,7 @@ export default function SideBar({ role = "staff" }) {
 						<LogOut className="h-5 w-5 shrink-0" />
 						<span className={isCollapsed ? "hidden" : "inline"}>Logout</span>
 						<span
-							className={`absolute left-full ml-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition ${
+							className={`absolute left-full z-20 ml-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg ring-1 ring-white/10 transition ${
 								isCollapsed ? "group-hover:opacity-100" : "hidden"
 							}`}
 						>

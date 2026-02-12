@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bell, ChevronDown, Moon, Search, Sun, User } from "lucide-react";
 
-export default function ToolBar({ userName = "John Doe" }) {
+export default function ToolBar({ userName = "Bo Nay Toe" }) {
 	const [isDarkMode, setIsDarkMode] = useState(false);
 	const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -35,7 +35,9 @@ export default function ToolBar({ userName = "John Doe" }) {
 				<button
 					type="button"
 					aria-label="Notifications"
-					className="mt-1 rounded-lg p-2 text-slate-600 transition hover:bg-slate-100"
+					className={`mt-1 rounded-lg p-2 transition hover:bg-slate-100 ${
+						isDarkMode ? "text-white hover:text-slate-600" : "text-slate-600"
+					}`}
 				>
 					<Bell className="h-5 w-5" />
 				</button>

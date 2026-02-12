@@ -9,6 +9,7 @@
     --toolbar_bg: #ffffff;
     --toolbar_border: #e2e8f0;
     --dashboard_bg: #f8fafc;
+    --dashboard_text: #0f172a;
 }
 
 :root[data-theme='dark']{
@@ -18,4 +19,5 @@
     --toolbar_bg: #6b7280;
     --toolbar_border: transparent;
     --dashboard_bg: #0f172a;
+    --dashboard_text: #ffffff;
 }
