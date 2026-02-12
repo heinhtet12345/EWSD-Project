@@ -11,9 +11,9 @@ type LoginFormState = {
 };
 
 type AuthResponse = {
-  id?: string;
-  name?: string;
-  profileimg?: string;
+  user_id?: string;
+  username?: string;
+  profile_image?: string;
   role?: string;
   message?: string;
 };
@@ -32,7 +32,7 @@ const ROLE_ALIAS: Record<string, Role> = {
   staff: "staff",
 };
 
-const API_PATH = "/api/login";
+const API_PATH = "/api/login/";
 
 function normalizeRole(role?: string | null): Role {
   if (!role) {
@@ -68,7 +68,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await axios.post<AuthResponse>(API_PATH, {
+      const response = await axios.post<AuthResponse & {access: string}>(API_PATH, {
         username: form.username.trim(),
         password: form.password,
       });
@@ -76,17 +76,29 @@ export default function LoginPage() {
       const payload = response.data;
 
       const user = {
-        id: payload?.id,
-        name: payload?.name,
-        profileimg: payload?.profileimg,
+        id: payload?.user_id,
+        username: payload?.username,
+        profileimg: payload?.profile_image,
         role: normalizeRole(payload?.role),
+        token: payload?.access,
       };
 
       localStorage.setItem("authUser", JSON.stringify(user));
       navigate(ROLE_TO_PATH[user.role], { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        const message = err.response?.data?.message || "Login failed. Please try again.";
+        const data = err.response?.data as
+          | { message?: string; detail?: string; non_field_errors?: string[] }
+          | Record<string, string[] | string>
+          | undefined;
+
+        const message =
+          data?.message ||
+          data?.detail ||
+          data?.non_field_errors?.[0] ||
+          (data ? Object.values(data)[0]?.[0] : undefined) ||
+          "Login failed. Please try again.";
+
         setError(message);
       } else {
         const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
