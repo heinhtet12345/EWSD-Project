@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import axios from "axios";
 import loginBackground from "../assets/login_background.jpg";
 
@@ -49,6 +49,19 @@ export default function LoginPage() {
   const [form, setForm] = useState<LoginFormState>({ username: "", password: "" });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const storedRole = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw) as { role?: string };
+      return normalizeRole(parsed?.role);
+    } catch {
+      return null;
+    }
+  }, []);
 
   const canSubmit = useMemo(() => {
     return form.username.trim().length > 0 && form.password.length > 0;
@@ -109,6 +122,10 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (storedRole) {
+    return <Navigate to={ROLE_TO_PATH[storedRole]} replace />;
+  }
 
   return (
     <div className="relative min-h-screen text-white">
