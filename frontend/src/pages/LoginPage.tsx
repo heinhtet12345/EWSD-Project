@@ -32,6 +32,7 @@ const ROLE_ALIAS: Record<string, Role> = {
   staff: "staff",
 };
 
+
 const API_PATH = "/api/login/";
 
 function normalizeRole(role?: string | null): Role {
