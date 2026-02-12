@@ -2,6 +2,10 @@ import "./App.css";
 import { Route, Routes } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import LoginPage from "./pages/LoginPage";
+import AdminDashboard from "./pages/AdminDashboard";
+import QACoordDashboard from "./pages/QACoordDashboard";
+import QAManagerDashboard from "./pages/QAManagerDashboard";
+import StaffDashboard from "./pages/StaffDashboard";
 import NotFound from "./components/common/404NotFound";
 
 export default function App() {
@@ -9,10 +13,10 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/*" element={<MainLayout />}>
-        <Route path="admin" element={<div>Admin Dashboard</div>} />
-        <Route path="qa-coordinator" element={<div>QA Coordinator Dashboard</div>} />
-        <Route path="qa-manager" element={<div>QA Manager Dashboard</div>} />
-        <Route path="staff" element={<div>Staff Dashboard</div>} />
+        <Route path="admin" element={<AdminDashboard />} />
+        <Route path="qa-coordinator" element={<QACoordDashboard />} />
+        <Route path="qa-manager" element={<QAManagerDashboard />} />
+        <Route path="staff" element={<StaffDashboard />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
