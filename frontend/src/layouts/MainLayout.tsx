@@ -2,22 +2,23 @@ import { Outlet, useLocation } from "react-router-dom";
 import SideBar from "../components/SideBar";
 import ToolBar from "../components/ToolBar";
 
-const ROLE_PREFIXES = ["admin", "qa-coordinator", "qa-manager", "staff"];
+const ROLE_PREFIXES = ["admin", "qa-coordinator", "qa-manager", "staff"] as const;
 
-function getRoleFromPath(pathname) {
+type Role = (typeof ROLE_PREFIXES)[number];
+
+function getRoleFromPath(pathname: string): Role | null {
   const firstSegment = pathname.split("/").filter(Boolean)[0];
   if (!firstSegment) {
     return "staff";
   }
-  return ROLE_PREFIXES.includes(firstSegment) ? firstSegment : null;
+  return ROLE_PREFIXES.includes(firstSegment as Role) ? (firstSegment as Role) : null;
 }
 
 export default function MainLayout() {
   const { pathname } = useLocation();
   const role = getRoleFromPath(pathname);
-  const isDashboard = Boolean(role);
 
-  if (isDashboard) {
+  if (role) {
     return (
       <div className="flex min-h-screen">
         <SideBar role={role} />
