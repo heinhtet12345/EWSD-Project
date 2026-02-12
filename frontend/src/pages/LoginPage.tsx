@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import loginBackground from "../assets/login_background.jpg";
 
 type Role = "admin" | "qa-coordinator" | "qa-manager" | "staff";
@@ -24,14 +25,22 @@ const ROLE_TO_PATH: Record<Role, string> = {
   staff: "/staff",
 };
 
-const API_PATH = "/api/auth/login";
+const ROLE_ALIAS: Record<string, Role> = {
+  admin: "admin",
+  "qa manager": "qa-manager",
+  "qa coordinator": "qa-coordinator",
+  staff: "staff",
+};
+
+const API_PATH = "/api/login";
 
 function normalizeRole(role?: string | null): Role {
   if (!role) {
     return "staff";
   }
-  const normalized = String(role).trim().toLowerCase() as Role;
-  return ROLE_TO_PATH[normalized] ? normalized : "staff";
+
+  const normalized = String(role).trim().toLowerCase();
+  return ROLE_ALIAS[normalized] ?? "staff";
 }
 
 export default function LoginPage() {
@@ -59,23 +68,12 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch(API_PATH, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: form.username.trim(),
-          password: form.password,
-        }),
+      const response = await axios.post<AuthResponse>(API_PATH, {
+        username: form.username.trim(),
+        password: form.password,
       });
 
-      const payload = (await response.json().catch(() => null)) as AuthResponse | null;
-
-      if (!response.ok) {
-        const message = payload?.message || "Login failed. Please try again.";
-        throw new Error(message);
-      }
+      const payload = response.data;
 
       const user = {
         id: payload?.id,
@@ -87,8 +85,13 @@ export default function LoginPage() {
       localStorage.setItem("authUser", JSON.stringify(user));
       navigate(ROLE_TO_PATH[user.role], { replace: true });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
-      setError(message);
+      if (axios.isAxiosError(err)) {
+        const message = err.response?.data?.message || "Login failed. Please try again.";
+        setError(message);
+      } else {
+        const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+        setError(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
