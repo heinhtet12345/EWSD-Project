@@ -79,7 +79,7 @@ export default function LoginPage() {
       const user = {
         id: payload?.user_id,
         username: payload?.username,
-        profileimg: payload?.profile_image,
+        profile_image: payload?.profile_image,
         role: normalizeRole(payload?.role),
         token: payload?.access,
       };

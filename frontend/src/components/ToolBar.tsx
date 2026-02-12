@@ -6,6 +6,7 @@ interface ToolBarProps {
 }
 
 export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
+  const [user, setUser] = useState<{ id?: string | number; name: string; profileimg?: string } | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -13,6 +14,33 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
     const root = document.documentElement;
     root.dataset.theme = isDarkMode ? "dark" : "light";
   }, [isDarkMode]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw) as {
+        id?: string | number;
+        user_id?: string | number;
+        username?: string;
+        profileimg?: string;
+        profile_image?: string;
+      };
+      if (parsed?.username) {
+        setUser({
+          id: parsed.user_id ?? parsed.id,
+          name: parsed.username,
+          profileimg: parsed.profile_image || parsed.profileimg,
+        });
+      }
+    } catch {
+      setUser(null);
+    }
+  }, []);
+
+  const displayName = user?.name || userName;
 
   return (
     <header
@@ -86,10 +114,18 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             onClick={() => setIsUserMenuOpen((value) => !value)}
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-              <User className="h-4 w-4" />
-            </span>
-            <span className="hidden text-sm font-semibold sm:block">{userName}</span>
+            {user?.profileimg ? (
+              <img
+                src={user.profileimg}
+                alt={displayName}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                <User className="h-4 w-4" />
+              </span>
+            )}
+            <span className="hidden text-sm font-semibold sm:block">{displayName}</span>
             <ChevronDown className="h-4 w-4 text-slate-500" />
           </button>
 
