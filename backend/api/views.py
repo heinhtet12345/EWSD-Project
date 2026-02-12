@@ -3,13 +3,18 @@ from rest_framework.response import Response
 from rest_framework import status
 from .serializer import LoginSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import isAuthenticated
+from rest_framework.permissions import IsAuthenticated
 
 class ProtectedView(APIView):
-    permission_classes = [isAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response({"message": "This is a protected view", "user": request.user.username})
+        return Response({"message": "This is a protected view", 
+                        "user": {
+                            "id": request.user.id,
+                            "username": request.user.username,
+                            }
+                        })
 
 class LoginView(APIView):
 
@@ -26,12 +31,18 @@ class LoginView(APIView):
             groups = user.groups.all()
             role = groups[0].name if groups.exists() else None
 
+            profile_image = None
+            if hasattr(user, "profile") and user.profile.profile_image:
+                profile_image = request.build_absolute_uri(
+                    user.profile.profile_image.url
+                )
+
             return Response({
                 "message": "Login successful",
+                "user_id": user.id,
                 "username": user.username,
                 "role": role,
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
+                "profile_image": profile_image,
             })
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

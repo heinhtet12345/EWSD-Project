@@ -153,3 +153,7 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=3),
 }
+
+#profile image
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
