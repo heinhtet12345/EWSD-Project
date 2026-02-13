@@ -14,8 +14,8 @@ export default function App() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/*" element={<MainLayout />}>
         <Route path="admin" element={<AdminDashboard />} />
-        <Route path="qa-coordinator" element={<QACoordDashboard />} />
-        <Route path="qa-manager" element={<QAManagerDashboard />} />
+        <Route path="qa_coordinator" element={<QACoordDashboard />} />
+        <Route path="qa_manager" element={<QAManagerDashboard />} />
         <Route path="staff" element={<StaffDashboard />} />
         <Route path="*" element={<NotFound />} />
       </Route>

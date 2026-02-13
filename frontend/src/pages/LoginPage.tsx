@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import axios from "axios";
 import loginBackground from "../assets/login_background.jpg";
 
-type Role = "admin" | "qa-coordinator" | "qa-manager" | "staff";
+type Role = "admin" | "qa_coordinator" | "qa_manager" | "staff";
 
 type LoginFormState = {
   username: string;
@@ -16,19 +16,20 @@ type AuthResponse = {
   profile_image?: string;
   role?: string;
   message?: string;
+  refresh?: string;
 };
 
 const ROLE_TO_PATH: Record<Role, string> = {
   admin: "/admin",
-  "qa-coordinator": "/qa-coordinator",
-  "qa-manager": "/qa-manager",
+  "qa_coordinator": "/qa_coordinator",
+  "qa_manager": "/qa_manager",
   staff: "/staff",
 };
 
 const ROLE_ALIAS: Record<string, Role> = {
   admin: "admin",
-  "qa manager": "qa-manager",
-  "qa coordinator": "qa-coordinator",
+  "qa_manager": "qa_manager",
+  "qa_coordinator": "qa_coordinator",
   staff: "staff",
 };
 
@@ -67,12 +68,12 @@ export default function LoginPage() {
     return form.username.trim().length > 0 && form.password.length > 0;
   }, [form]);
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canSubmit || isSubmitting) {
       return;
@@ -82,7 +83,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await axios.post<AuthResponse & {access: string}>(API_PATH, {
+      const response = await axios.post<AuthResponse & { access: string; refresh: string }>(API_PATH, {
         username: form.username.trim(),
         password: form.password,
       });
@@ -95,6 +96,7 @@ export default function LoginPage() {
         profile_image: payload?.profile_image,
         role: normalizeRole(payload?.role),
         token: payload?.access,
+        refresh: payload?.refresh,
       };
 
       localStorage.setItem("authUser", JSON.stringify(user));
@@ -106,11 +108,13 @@ export default function LoginPage() {
           | Record<string, string[] | string>
           | undefined;
 
+        const firstValue = data ? Object.values(data)[0] : undefined;
+        const derivedMessage = Array.isArray(firstValue) ? firstValue[0] : firstValue;
         const message =
-          data?.message ||
-          data?.detail ||
-          data?.non_field_errors?.[0] ||
-          (data ? Object.values(data)[0]?.[0] : undefined) ||
+          (typeof data?.message === "string" ? data.message : undefined) ||
+          (typeof data?.detail === "string" ? data.detail : undefined) ||
+          (typeof data?.non_field_errors?.[0] === "string" ? data.non_field_errors[0] : undefined) ||
+          (typeof derivedMessage === "string" ? derivedMessage : undefined) ||
           "Login failed. Please try again.";
 
         setError(message);
@@ -128,11 +132,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen text-white">
-      <img
-        src={loginBackground}
-        alt="Login Background"
-        className="absolute inset-0 h-full w-full object-cover p-5"
+    <div className="relative min-h-screen w-screen overflow-hidden text-white">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${loginBackground})` }}
+        aria-hidden="true"
       />
       <div className="absolute inset-0 bg-slate-950/40" />
       <div className="relative z-10 flex min-h-screen items-center justify-center px-6">

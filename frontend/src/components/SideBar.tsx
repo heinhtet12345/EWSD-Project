@@ -11,9 +11,10 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import axios from "axios";
 
-type Role = "admin" | "qa-coordinator" | "qa-manager" | "staff";
+type Role = "admin" | "qa_coordinator" | "qa_manager" | "staff";
 
 type RoleTab = {
   label: string;
@@ -27,12 +28,12 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Manage Closure Period", to: "/008", icon: Calendar },
     { label: "Manage Staffs", to: "/007", icon: Users },
   ],
-  "qa-coordinator": [
+  "qa_coordinator": [
     { label: "Dashboard", to: "/", icon: LayoutDashboard },
     { label: "All Ideas", to: "/006", icon: FileText },
     { label: "Review and Moderate Ideas", to: "/005", icon: ShieldCheck },
   ],
-  "qa-manager": [
+  "qa_manager": [
     { label: "Dashboard", to: "/", icon: LayoutDashboard },
     { label: "All Ideas", to: "/003", icon: FileText },
     { label: "Statistical Analysis", to: "/004", icon: BarChart3 },
@@ -49,8 +50,43 @@ interface SideBarProps {
 }
 
 export default function SideBar({ role = "staff" }: SideBarProps) {
+  const navigate = useNavigate();
   const tabs = ROLE_TABS[role] ?? ROLE_TABS.staff;
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const handleLogout = async () => {
+    let accessToken: string | undefined;
+    let refreshToken: string | undefined;
+
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { token?: string; refresh?: string };
+        accessToken = parsed?.token;
+        refreshToken = parsed?.refresh;
+      }
+    } catch {
+      // Ignore localStorage parsing errors and proceed with logout cleanup.
+    }
+
+    if (refreshToken) {
+      try {
+        await axios.post(
+          "/api/logout/",
+          { refresh: refreshToken },
+          accessToken
+            ? { headers: { Authorization: `Bearer ${accessToken}` } }
+            : undefined
+        );
+      } catch {
+        // If logout fails, still clear local state to force re-auth.
+      }
+    }
+
+    localStorage.removeItem("authUser");
+    window.dispatchEvent(new Event("auth-changed"));
+    navigate("/", { replace: true });
+  };
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 768px)");
@@ -148,6 +184,7 @@ export default function SideBar({ role = "staff" }: SideBarProps) {
             className={`group relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white ${
               isCollapsed ? "justify-center" : ""
             }`}
+            onClick={handleLogout}
           >
             <LogOut className="h-5 w-5 shrink-0" />
             <span className={isCollapsed ? "hidden" : "inline"}>Logout</span>

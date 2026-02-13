@@ -5,8 +5,36 @@ interface ToolBarProps {
   userName?: string;
 }
 
+const getStoredUser = () => {
+  try {
+    const raw = localStorage.getItem("authUser");
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as {
+      id?: string | number;
+      user_id?: string | number;
+      username?: string;
+      profileimg?: string;
+      profile_image?: string;
+    };
+    if (!parsed?.username) {
+      return null;
+    }
+    return {
+      id: parsed.user_id ?? parsed.id,
+      name: parsed.username,
+      profileimg: parsed.profile_image || parsed.profileimg,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
-  const [user, setUser] = useState<{ id?: string | number; name: string; profileimg?: string } | null>(null);
+  const [user, setUser] = useState<{ id?: string | number; name: string; profileimg?: string } | null>(
+    () => getStoredUser()
+  );
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -16,28 +44,22 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
   }, [isDarkMode]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("authUser");
-      if (!raw) {
-        return;
+    const handleAuthChange = () => {
+      setUser(getStoredUser());
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "authUser") {
+        handleAuthChange();
       }
-      const parsed = JSON.parse(raw) as {
-        id?: string | number;
-        user_id?: string | number;
-        username?: string;
-        profileimg?: string;
-        profile_image?: string;
-      };
-      if (parsed?.username) {
-        setUser({
-          id: parsed.user_id ?? parsed.id,
-          name: parsed.username,
-          profileimg: parsed.profile_image || parsed.profileimg,
-        });
-      }
-    } catch {
-      setUser(null);
-    }
+    };
+
+    window.addEventListener("auth-changed", handleAuthChange);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("auth-changed", handleAuthChange);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   const displayName = user?.name || userName;

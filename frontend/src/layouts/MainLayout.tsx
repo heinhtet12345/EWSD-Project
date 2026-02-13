@@ -2,7 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import SideBar from "../components/SideBar";
 import ToolBar from "../components/ToolBar";
 
-const ROLE_PREFIXES = ["admin", "qa-coordinator", "qa-manager", "staff"] as const;
+const ROLE_PREFIXES = ["admin", "qa_coordinator", "qa_manager", "staff"] as const;
 
 type Role = (typeof ROLE_PREFIXES)[number];
 
