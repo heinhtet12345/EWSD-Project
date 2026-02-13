@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .serializer import LoginSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.permissions import IsAuthenticated
-
 
 class LoginView(APIView):
 
@@ -40,3 +40,20 @@ class LoginView(APIView):
             })
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return Response({"message": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError:
+            return Response({"message": "Invalid refresh token"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
