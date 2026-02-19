@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BreadCrumb } from "primereact/breadcrumb";
 import type { MenuItem } from "primereact/menuitem";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, House } from "lucide-react";
+import axios from "axios";
 
 import ViewCategoryTable from "../components/tables/ViewCategoryTable";
 import { AddCategoriesFrom } from "../forms/AddCategoriesForm";
@@ -13,12 +14,26 @@ type Category = {
   description: string;
 };
 
-const categories: Category[] = [];
+type CategoryApiItem = {
+  id: number;
+  category_name?: string;
+  category_desc?: string;
+  name?: string;
+  description?: string;
+};
+
+const CATEGORY_CREATE_PATH = "/api/categories/add/";
+const CATEGORY_VIEW_PATH = "/api/categories/view/";
 
 function QAManagerCategoriesPage() {
   const navigate = useNavigate();
+  const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const breadcrumbItems = useMemo<MenuItem[]>(() => {
     if (isAddingCategory) {
@@ -62,7 +77,87 @@ function QAManagerCategoriesPage() {
     }
 
     return categories.filter((category) => category.name.toLowerCase().includes(normalizedSearch));
-  }, [searchTerm]);
+  }, [categories, searchTerm]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCategories = async () => {
+      setIsLoading(true);
+      setLoadError("");
+      try {
+        const response = await axios.get(CATEGORY_VIEW_PATH);
+        if (!isMounted) {
+          return;
+        }
+        const data = Array.isArray(response.data) ? response.data : response.data?.results;
+        if (Array.isArray(data)) {
+          const normalized = data.map((item: CategoryApiItem) => ({
+            id: item.id,
+            name: item.category_name ?? item.name ?? "",
+            description: item.category_desc ?? item.description ?? "",
+          }));
+          setCategories(normalized);
+        }
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+        if (axios.isAxiosError(error)) {
+          setLoadError(error.response?.statusText || "Unable to load categories.");
+        } else {
+          setLoadError("Unable to load categories.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleAddCategory = async (category: { name: string; description: string }) => {
+    const trimmedName = category.name.trim();
+    const trimmedDescription = category.description.trim();
+
+    if (!trimmedName || !trimmedDescription) {
+      setFormError("Name and description are required.");
+      return;
+    }
+
+    setFormError("");
+    setIsSaving(true);
+
+    try {
+      const response = await axios.post(CATEGORY_CREATE_PATH, {
+        name: trimmedName,
+        description: trimmedDescription,
+      });
+
+      const responseId = response.data?.id ?? Date.now();
+      setCategories((prev) => [
+        { id: responseId, name: trimmedName, description: trimmedDescription },
+        ...prev,
+      ]);
+      setIsAddingCategory(false);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message =
+          (error.response?.data as { message?: string })?.message ||
+          error.response?.statusText ||
+          "Unable to add category.";
+        setFormError(message);
+      } else {
+        setFormError("Unable to add category.");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const breadcrumbHome = useMemo(
     () => ({
@@ -94,35 +189,56 @@ function QAManagerCategoriesPage() {
       />
 
       {!isAddingCategory && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex w-full items-center sm:w-auto">
-            <input
-              type="search"
-              placeholder="Search categories"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 sm:w-64"
-            />
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex w-full items-center sm:w-auto">
+              <input
+                type="search"
+                placeholder="Search categories"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 sm:w-64"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsAddingCategory(true)}
+              className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+            >
+              Add Category
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsAddingCategory(true)}
-            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-          >
-            Add Category
-          </button>
+          {loadError && (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {loadError}
+            </div>
+          )}
         </div>
       )}
 
       {isAddingCategory ? (
-        <AddCategoriesFrom
-          onClose={() => setIsAddingCategory(false)}
-          onCancel={() => setIsAddingCategory(false)}
-          onSubmit={() => setIsAddingCategory(false)}
-        />
+        <div className="space-y-3">
+          {formError && (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {formError}
+            </div>
+          )}
+          <AddCategoriesFrom
+            onClose={() => setIsAddingCategory(false)}
+            onCancel={() => setIsAddingCategory(false)}
+            onSubmit={handleAddCategory}
+          />
+          {isSaving && (
+            <p className="text-sm text-slate-500">Saving category...</p>
+          )}
+        </div>
       ) : (
-        <ViewCategoryTable categories={filteredCategories} />
+        <div className="space-y-2">
+          {isLoading && <p className="text-sm text-slate-500">Loading categories...</p>}
+          <ViewCategoryTable categories={filteredCategories} />
+        </div>
       )}
     </section>
   );
