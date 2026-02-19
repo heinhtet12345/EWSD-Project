@@ -1,17 +1,17 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from .models import Category
 
 # 1. Helper to format the User data for the frontend
 class UserSerializer(serializers.ModelSerializer):
-    # 'role' is calculated from the Groups
+    # 'role' is from the Groups
     role = serializers.SerializerMethodField()
     # 'profile_img' is pulled from the related Profile model
     profile_img = serializers.ImageField(source='profile.profile_image', read_only=True)
 
     class Meta:
         model = User
-        # Frontend specifically asked for: id, name (username), role, profile_img
         fields = ['id', 'username', 'role', 'profile_img']
 
     def get_role(self, obj):
@@ -39,3 +39,8 @@ class LoginSerializer(serializers.Serializer):
         # We attach the user object so the View can access it
         data['user'] = user
         return data
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'category_name', 'category_desc']

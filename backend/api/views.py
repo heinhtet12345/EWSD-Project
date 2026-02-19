@@ -1,10 +1,15 @@
+from os import name
+from unicodedata import category
+from urllib import request
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializer import LoginSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
-
+from .models import Category
+from .serializer import CategorySerializer
 
 class LoginView(APIView):
 
@@ -40,3 +45,46 @@ class LoginView(APIView):
             })
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AddCategoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        # Only QA Manager allowed
+        if not request.user.groups.filter(name="QA_Manager").exists():
+            return Response(
+                {"message": "Not authorized"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        name = request.data.get("name")
+        description = request.data.get("description")
+
+        if not name or not description:
+            return Response(
+                {"message": "Name and description are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        category = Category.objects.create(
+            category_name=name,
+            category_desc=description
+        )
+
+        return Response({
+            "id": category.id,
+            "name": category.category_name,
+            "description": category.category_desc
+        }, status=status.HTTP_201_CREATED)
+
+class ViewCategoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        categories = Category.objects.all()
+        serializer = CategorySerializer(categories, many=True)
+
+        return Response({
+            "results": serializer.data
+        })
