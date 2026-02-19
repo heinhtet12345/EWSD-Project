@@ -219,7 +219,7 @@ function QAManagerCategoriesPage() {
       )}
 
       {isAddingCategory ? (
-        <div className="space-y-3">
+        <div className="w-full max-w-4xl space-y-3">
           {formError && (
             <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               {formError}
@@ -235,7 +235,7 @@ function QAManagerCategoriesPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="w-full max-w-7xl space-y-2">
           {isLoading && <p className="text-sm text-slate-500">Loading categories...</p>}
           <ViewCategoryTable categories={filteredCategories} />
         </div>

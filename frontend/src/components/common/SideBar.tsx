@@ -110,7 +110,7 @@ export default function SideBar({ role = "staff" }: SideBarProps) {
     <aside className="h-screen">
       <nav
         className={`h-full flex flex-col shadow-sm text-white transition-[width] duration-200 ${
-          isCollapsed ? "w-16" : "w-[200px]"
+          isCollapsed ? "w-16" : "w-[250px]"
         }`}
         style={{
           backgroundColor: "var(--sidebar_bg)",

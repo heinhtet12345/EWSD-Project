@@ -17,7 +17,7 @@ export const AddCategoriesFrom = ({ onCancel, onClose, onSubmit }: AddCategories
   }
 
   return (
-    <div className="qa-add-category-form w-full rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
+    <div className="qa-add-category-form w-full max-w-1400 rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Add Category</h2>
@@ -63,7 +63,7 @@ export const AddCategoriesFrom = ({ onCancel, onClose, onSubmit }: AddCategories
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             rows={4}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 resize-none"
           />
         </div>
 
