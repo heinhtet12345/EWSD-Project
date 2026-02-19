@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronRight, House } from "lucide-react";
 
 import ViewCategoryTable from "../components/tables/ViewCategoryTable";
-import { AddCategoriesFrom } from "../forms/AddCategoriesFrom";
+import { AddCategoriesFrom } from "../forms/AddCategoriesForm";
 
 type Category = {
   id: number;
@@ -90,7 +90,7 @@ function QAManagerCategoriesPage() {
         model={breadcrumbItems}
         home={breadcrumbHome}
         separatorIcon={breadcrumbSeparator}
-        className="rounded-xl border border-slate-200 bg-white px-1 py-1 shadow-sm"
+        className="qa-categories-breadcrumb rounded-xl border border-slate-200 bg-white px-1 py-1 shadow-sm"
       />
 
       {!isAddingCategory && (

@@ -12,9 +12,9 @@ type QAManagerCategoriesTableProps = {
 
 export default function QAManagerCategoriesTable({ categories }: QAManagerCategoriesTableProps) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="qa-category-table overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <table className="min-w-full divide-y divide-slate-200">
-        <thead className="bg-slate-50">
+        <thead className="qa-category-table-head bg-slate-50">
           <tr>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
               ID
@@ -30,11 +30,11 @@ export default function QAManagerCategoriesTable({ categories }: QAManagerCatego
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 bg-white">
+        <tbody className="qa-category-table-body divide-y divide-slate-100 bg-white">
           {categories.length === 0 ? (
             <tr>
               <td colSpan={4} className="px-4 py-10">
-                <div className="flex flex-col items-center justify-center gap-1 text-center">
+                <div className="qa-category-empty-state flex flex-col items-center justify-center gap-1 text-center opacity-50">
                   <FolderOpen className="h-8 w-8 text-slate-400" />
                   <p className="text-sm font-medium text-slate-700">No categories available</p>
                   <p className="text-sm text-slate-500">Categories will appear here once added</p>

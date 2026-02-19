@@ -35,12 +35,30 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
   const [user, setUser] = useState<{ id?: string | number; name: string; profileimg?: string } | null>(
     () => getStoredUser()
   );
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    try {
+      const stored = localStorage.getItem("theme");
+      if (stored === "dark") {
+        return true;
+      }
+      if (stored === "light") {
+        return false;
+      }
+    } catch {
+      // Ignore storage errors and fall back to system preference.
+    }
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  });
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = isDarkMode ? "dark" : "light";
+    try {
+      localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+    } catch {
+      // Ignore storage write errors.
+    }
   }, [isDarkMode]);
 
   useEffect(() => {
