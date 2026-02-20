@@ -1,25 +1,33 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from .models import Category, Department, Role
 
-# 1. Helper to format the User data for the frontend
+User = get_user_model()
+
+
 class UserSerializer(serializers.ModelSerializer):
-    # 'role' is calculated from the Groups
-    role = serializers.SerializerMethodField()
-    # 'profile_img' is pulled from the related Profile model
-    profile_img = serializers.ImageField(source='profile.profile_image', read_only=True)
+    # Pull the Role name from the Foreign Key
+    role_name = serializers.CharField(source='role.role_name', read_only=True)
+    # Pull the Department name from the Foreign Key
+    department_name = serializers.CharField(source='department.dept_name', read_only=True)
 
     class Meta:
         model = User
-        # Frontend specifically asked for: id, name (username), role, profile_img
-        fields = ['id', 'username', 'role', 'profile_img']
+        fields = [
+            'user_id', 
+            'username', 
+            'role_name', 
+            'department_name', 
+            'dob', 
+            'address', 
+            'phone', 
+            'hire_date', 
+            'active_status',
+            'profile_image'
+        ]
 
-    def get_role(self, obj):
-        # Grabs the first assigned group name (e.g., "QA_Manager")
-        group = obj.groups.first()
-        return group.name if group else "No Role"
-
-# 2. Your existing Login Serializer (Updated)
+# 2. Login Serializer
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
@@ -36,6 +44,13 @@ class LoginSerializer(serializers.Serializer):
         if not user.is_active:
             raise serializers.ValidationError("User is not active")
 
-        # We attach the user object so the View can access it
+        # Attaching the user object for the View
         data['user'] = user
         return data
+
+# 3. Category Serializer
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['category_id', 'category_name', 'category_desc']
+        read_only_fields = ['category_id']
