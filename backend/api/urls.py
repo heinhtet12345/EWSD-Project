@@ -5,6 +5,6 @@ from .views import ViewCategoryView
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
-    path('categories/add/', AddCategoryView.as_view()),
-    path('categories/view/', ViewCategoryView.as_view()),
+    path('categories/add/', AddCategoryView.as_view(), name='add-category'),
+    path('categories/view/', ViewCategoryView.as_view(), name='view-categories'),
 ]
