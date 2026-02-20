@@ -153,8 +153,12 @@ STATIC_URL = 'static/'
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=3),
+    'USER_ID_FIELD': 'user_id', 
+    'USER_ID_CLAIM': 'user_id',
 }
 
 #profile image
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+AUTH_USER_MODEL = 'api.User'
