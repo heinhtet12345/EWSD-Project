@@ -2,6 +2,7 @@ from os import name
 from unicodedata import category
 from urllib import request
 
+from django.shortcuts import get_object_or_404, redirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -51,3 +52,17 @@ class ViewCategoryView(APIView):
         return Response({
             "results": serializer.data
         })
+
+    def delete(self, request, category_id):
+        if not request.user.role or request.user.role.role_name != "QA_Manager":
+            return Response(
+                {"message": "Not authorized. QA Manager role required."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        category = get_object_or_404(Category, category_id=category_id)
+        category.delete() 
+        return Response(
+            {"message": "Category deleted successfully"},
+            status=status.HTTP_200_OK
+        )

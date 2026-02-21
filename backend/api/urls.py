@@ -8,6 +8,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('categories/add/', AddCategoryView.as_view(), name='add-category'),
     path('categories/view/', ViewCategoryView.as_view(), name='view-categories'),
+    path('categories/<int:id>/', ViewCategoryView.as_view(), name='delete_category'),
 ]
 
 
