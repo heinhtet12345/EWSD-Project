@@ -16,6 +16,7 @@ type Category = {
 
 type CategoryApiItem = {
   id: number;
+  category_id?: number;
   category_name?: string;
   category_desc?: string;
   name?: string;
@@ -24,6 +25,28 @@ type CategoryApiItem = {
 
 const CATEGORY_CREATE_PATH = "/api/categories/add/";
 const CATEGORY_VIEW_PATH = "/api/categories/view/";
+
+const getAuthConfig = () => {
+  try {
+    const raw = localStorage.getItem("authUser");
+    if (!raw) {
+      return undefined;
+    }
+
+    const parsed = JSON.parse(raw) as { token?: string };
+    if (!parsed?.token) {
+      return undefined;
+    }
+
+    return {
+      headers: {
+        Authorization: `Bearer ${parsed.token}`,
+      },
+    };
+  } catch {
+    return undefined;
+  }
+};
 
 function QAManagerCategoriesPage() {
   const navigate = useNavigate();
@@ -85,14 +108,14 @@ function QAManagerCategoriesPage() {
       setIsLoading(true);
       setLoadError("");
       try {
-        const response = await axios.get(CATEGORY_VIEW_PATH);
+        const response = await axios.get(CATEGORY_VIEW_PATH, getAuthConfig());
         if (!isMounted) {
           return;
         }
         const data = Array.isArray(response.data) ? response.data : response.data?.results;
         if (Array.isArray(data)) {
           const normalized = data.map((item: CategoryApiItem) => ({
-            id: item.id,
+            id: item.id ?? item.category_id ?? Date.now(),
             name: item.category_name ?? item.name ?? "",
             description: item.category_desc ?? item.description ?? "",
           }));
@@ -133,12 +156,16 @@ function QAManagerCategoriesPage() {
     setIsSaving(true);
 
     try {
-      const response = await axios.post(CATEGORY_CREATE_PATH, {
-        name: trimmedName,
-        description: trimmedDescription,
-      });
+      const response = await axios.post(
+        CATEGORY_CREATE_PATH,
+        {
+          name: trimmedName,
+          description: trimmedDescription,
+        },
+        getAuthConfig(),
+      );
 
-      const responseId = response.data?.id ?? Date.now();
+      const responseId = response.data?.id ?? response.data?.category_id ?? Date.now();
       setCategories((prev) => [
         { id: responseId, name: trimmedName, description: trimmedDescription },
         ...prev,
