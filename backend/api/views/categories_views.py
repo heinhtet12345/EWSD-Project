@@ -52,6 +52,9 @@ class ViewCategoryView(APIView):
         return Response({
             "results": serializer.data
         })
+    
+class DeleteCategoryView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def delete(self, request, category_id):
         if not request.user.role or request.user.role.role_name != "QA_Manager":
