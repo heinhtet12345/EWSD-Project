@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from "react-router-dom";
-import SideBar from "../components/SideBar";
-import ToolBar from "../components/ToolBar";
+import SideBar from "../components/common/SideBar";
+import ToolBar from "../components/common/ToolBar";
 
 const ROLE_PREFIXES = ["admin", "qa_coordinator", "qa_manager", "staff"] as const;
 

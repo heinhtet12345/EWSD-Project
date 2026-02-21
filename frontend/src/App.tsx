@@ -5,8 +5,11 @@ import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import QACoordDashboard from "./pages/QACoordDashboard";
 import QAManagerDashboard from "./pages/QAManagerDashboard";
+import QAManagerCategoriesPage from "./pages/QAManagerCategoriesPage";
+
 import StaffDashboard from "./pages/StaffDashboard";
 import NotFound from "./components/common/404NotFound";
+
 
 export default function App() {
   return (
@@ -16,6 +19,7 @@ export default function App() {
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="qa_coordinator" element={<QACoordDashboard />} />
         <Route path="qa_manager" element={<QAManagerDashboard />} />
+        <Route path="qa_manager/categories" element={<QAManagerCategoriesPage />} />
         <Route path="staff" element={<StaffDashboard />} />
         <Route path="*" element={<NotFound />} />
       </Route>

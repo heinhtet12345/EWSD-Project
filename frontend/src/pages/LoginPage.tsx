@@ -11,10 +11,13 @@ type LoginFormState = {
 };
 
 type AuthResponse = {
-  user_id?: string;
+  user_id?: string | number;
+  id?: string | number;
   username?: string;
   profile_image?: string;
   role?: string;
+  role_name?: string;
+  department?: string;
   message?: string;
   refresh?: string;
 };
@@ -29,7 +32,9 @@ const ROLE_TO_PATH: Record<Role, string> = {
 const ROLE_ALIAS: Record<string, Role> = {
   admin: "admin",
   "qa_manager": "qa_manager",
+  "qa manager": "qa_manager",
   "qa_coordinator": "qa_coordinator",
+  "qa coordinator": "qa_coordinator",
   staff: "staff",
 };
 
@@ -91,10 +96,11 @@ export default function LoginPage() {
       const payload = response.data;
 
       const user = {
-        id: payload?.user_id,
+        id: payload?.user_id ?? payload?.id,
         username: payload?.username,
         profile_image: payload?.profile_image,
-        role: normalizeRole(payload?.role),
+        role: normalizeRole(payload?.role ?? payload?.role_name),
+        department: payload?.department,
         token: payload?.access,
         refresh: payload?.refresh,
       };
@@ -214,7 +220,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+              <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-sm text-grey-700 ">
                 {error}
               </div>
             )}

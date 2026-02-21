@@ -21,3 +21,83 @@
     --dashboard_bg: #0f172a;
     --dashboard_text: #ffffff;
 }
+
+.qa-category-table {
+    border-color: var(--toolbar_border) !important;
+}
+
+:root[data-theme='dark'] .qa-category-table,
+:root[data-theme='dark'] .qa-category-table-head,
+:root[data-theme='dark'] .qa-category-table-body {
+    background-color: var(--toolbar_bg) !important;
+}
+
+:root[data-theme='dark'] .qa-category-table th,
+:root[data-theme='dark'] .qa-category-table td,
+:root[data-theme='dark'] .qa-category-table p,
+:root[data-theme='dark'] .qa-category-table button,
+:root[data-theme='dark'] .qa-category-table svg {
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+:root[data-theme='dark'] .qa-category-empty-state p {
+    color: #ffffff !important;
+    font-weight: 400 !important;
+}
+
+:root[data-theme='dark'] .qa-categories-breadcrumb {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+:root[data-theme='dark'] .qa-categories-breadcrumb button,
+:root[data-theme='dark'] .qa-categories-breadcrumb span,
+:root[data-theme='dark'] .qa-categories-breadcrumb svg {
+    color: #ffffff !important;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+:root[data-theme='dark'] .qa-categories-breadcrumb button:hover,
+:root[data-theme='dark'] .qa-categories-breadcrumb button:focus-visible {
+    color: #000000 !important;
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+:root[data-theme='dark'] .qa-categories-breadcrumb button:hover *,
+:root[data-theme='dark'] .qa-categories-breadcrumb button:focus-visible * {
+    color: #000000 !important;
+}
+
+:root[data-theme='dark'] .qa-add-category-form {
+    background-color: var(--toolbar_bg) !important;
+    border-color: var(--toolbar_border) !important;
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .qa-add-category-form h2,
+:root[data-theme='dark'] .qa-add-category-form p,
+:root[data-theme='dark'] .qa-add-category-form label,
+:root[data-theme='dark'] .qa-add-category-form span,
+:root[data-theme='dark'] .qa-add-category-form button,
+:root[data-theme='dark'] .qa-add-category-form svg {
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .qa-add-category-form .qa-back-button:hover,
+:root[data-theme='dark'] .qa-add-category-form .qa-back-button:hover * {
+    color: var(--sidebar-active_tab) !important;
+}
+
+:root[data-theme='dark'] .qa-add-category-form input,
+:root[data-theme='dark'] .qa-add-category-form textarea {
+    background-color: var(--toolbar_bg) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .qa-add-category-form input::placeholder,
+:root[data-theme='dark'] .qa-add-category-form textarea::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
