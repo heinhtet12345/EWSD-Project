@@ -1,7 +1,6 @@
 from django.urls import path
-from .views import LoginView
-from .views import AddCategoryView
-from .views import ViewCategoryView 
+from .views.auth_views import LoginView
+
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
