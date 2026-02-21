@@ -8,9 +8,10 @@ type Category = {
 
 type QAManagerCategoriesTableProps = {
   categories: Category[];
+  onDelete?: (id: number) => void;
 };
 
-export default function QAManagerCategoriesTable({ categories }: QAManagerCategoriesTableProps) {
+export default function QAManagerCategoriesTable({ categories, onDelete }: QAManagerCategoriesTableProps) {
   return (
     <div className="qa-category-table overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <table className="min-w-full divide-y divide-slate-200">
@@ -48,8 +49,12 @@ export default function QAManagerCategoriesTable({ categories }: QAManagerCatego
                 <td className="px-4 py-3 text-sm text-slate-700">{category.name}</td>
                 <td className="px-4 py-3 text-sm text-slate-700">{category.description}</td>
                 <td className="px-4 py-3 text-sm text-slate-700">
-                  <button type="button" className="font-medium text-slate-700 hover:text-slate-900">
-                    View
+                  <button
+                    type="button"
+                    onClick={() => onDelete?.(category.id)}
+                    className="font-medium text-rose-600 hover:text-rose-700"
+                  >
+                    Delete
                   </button>
                 </td>
               </tr>

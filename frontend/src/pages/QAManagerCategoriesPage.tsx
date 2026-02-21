@@ -25,6 +25,7 @@ type CategoryApiItem = {
 
 const CATEGORY_CREATE_PATH = "/api/categories/add/";
 const CATEGORY_VIEW_PATH = "/api/categories/view/";
+const CATEGORY_DELETE_PATH = "/api/categories/delete";
 
 const getAuthConfig = () => {
   try {
@@ -186,6 +187,24 @@ function QAManagerCategoriesPage() {
     }
   };
 
+  const handleDeleteCategory = async (id: number) => {
+    try {
+      await axios.delete(`${CATEGORY_DELETE_PATH}/${id}/`, getAuthConfig());
+      setCategories((prev) => prev.filter((category) => category.id !== id));
+      setLoadError("");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setLoadError(
+          (error.response?.data as { message?: string })?.message ||
+            error.response?.statusText ||
+            "Unable to delete category.",
+        );
+      } else {
+        setLoadError("Unable to delete category.");
+      }
+    }
+  };
+
   const breadcrumbHome = useMemo(
     () => ({
       label: "Dashboard",
@@ -263,8 +282,8 @@ function QAManagerCategoriesPage() {
         </div>
       ) : (
         <div className="w-full max-w-7xl space-y-2">
-          {isLoading && <p className="text-sm text-slate-500">Loading categories...</p>}
-          <ViewCategoryTable categories={filteredCategories} />
+          {isLoading && <p className="text-sm text-slate-500 text-center">Loading categories...</p>}
+          <ViewCategoryTable categories={filteredCategories} onDelete={handleDeleteCategory} />
         </div>
       )}
     </section>
