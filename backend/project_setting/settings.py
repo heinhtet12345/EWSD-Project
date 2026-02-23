@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'api',
+    'closure_period',
 ]
 
 MIDDLEWARE = [
