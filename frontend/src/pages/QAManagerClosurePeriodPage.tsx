@@ -23,8 +23,8 @@ type ClosurePeriodApiItem = {
   academicYear?: string
 }
 
-const CLOSURE_PERIOD_CREATE_PATH = '/categories/closure-period/create/'
-const CLOSURE_PERIOD_LIST_PATH = '/categories/closure-period/list/'
+const CLOSURE_PERIOD_CREATE_PATH = '/closure-period/create/'
+const CLOSURE_PERIOD_LIST_PATH = '/closure-period/list/'
 
 const getAuthConfig = () => {
   try {
