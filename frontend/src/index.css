@@ -16,7 +16,7 @@
     --sidebar_bg: #1e1f3f;
     --sidebar-active_tab: #3b3f9a;
     --sidebar_border: transparent;
-    --toolbar_bg: #6b7280;
+    --toolbar_bg: #334155;
     --toolbar_border: transparent;
     --dashboard_bg: #0f172a;
     --dashboard_text: #ffffff;
@@ -26,9 +26,19 @@
     border-color: var(--toolbar_border) !important;
 }
 
+.qa-closure-table {
+    border-color: var(--toolbar_border) !important;
+}
+
 :root[data-theme='dark'] .qa-category-table,
 :root[data-theme='dark'] .qa-category-table-head,
 :root[data-theme='dark'] .qa-category-table-body {
+    background-color: var(--toolbar_bg) !important;
+}
+
+:root[data-theme='dark'] .qa-closure-table,
+:root[data-theme='dark'] .qa-closure-table-head,
+:root[data-theme='dark'] .qa-closure-table-body {
     background-color: var(--toolbar_bg) !important;
 }
 
@@ -37,8 +47,31 @@
 :root[data-theme='dark'] .qa-category-table p,
 :root[data-theme='dark'] .qa-category-table button,
 :root[data-theme='dark'] .qa-category-table svg {
+    color: #CECECE !important;
+    font-weight: 700;
+}
+
+:root[data-theme='dark'] .qa-closure-table th{
     color: #ffffff !important;
     font-weight: 700;
+}
+
+:root[data-theme='dark'] .qa-closure-table td,
+:root[data-theme='dark'] .qa-closure-table p,
+:root[data-theme='dark'] .qa-closure-table button,
+:root[data-theme='dark'] .qa-closure-table svg {
+    color: #CECECE !important;
+    font-weight: 700;
+}
+
+:root[data-theme='dark'] .qa-closure-table .qa-closure-edit-button {
+    background-color: #DADEFF !important;
+    color: #000490 !important;
+}
+
+:root[data-theme='dark'] .qa-closure-table .qa-closure-edit-button:hover {
+    background-color: #1d4ed8 !important;
+    color: #ffffff !important;
 }
 
 :root[data-theme='dark'] .qa-category-empty-state p {
@@ -70,6 +103,43 @@
     color: #000000 !important;
 }
 
+:root[data-theme='dark'] .qa-closure-breadcrumb {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+:root[data-theme='dark'] .qa-closure-breadcrumb button,
+:root[data-theme='dark'] .qa-closure-breadcrumb span,
+:root[data-theme='dark'] .qa-closure-breadcrumb svg {
+    color: #ffffff !important;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+:root[data-theme='dark'] .qa-closure-breadcrumb button:hover,
+:root[data-theme='dark'] .qa-closure-breadcrumb button:focus-visible {
+    color: #000000 !important;
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+:root[data-theme='dark'] .qa-closure-breadcrumb button:hover *,
+:root[data-theme='dark'] .qa-closure-breadcrumb button:focus-visible * {
+    color: #000000 !important;
+}
+
+.qa-closure-title {
+    color: #000000;
+}
+
+.qa-closure-subtitle {
+    color: #64748b;
+}
+
+:root[data-theme='dark'] .qa-closure-title,
+:root[data-theme='dark'] .qa-closure-subtitle {
+    color: #ffffff !important;
+}
+
 :root[data-theme='dark'] .qa-add-category-form {
     background-color: var(--toolbar_bg) !important;
     border-color: var(--toolbar_border) !important;
@@ -99,5 +169,32 @@
 
 :root[data-theme='dark'] .qa-add-category-form input::placeholder,
 :root[data-theme='dark'] .qa-add-category-form textarea::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+:root[data-theme='dark'] .qa-add-closure-form {
+    background-color: var(--toolbar_bg) !important;
+    border-color: var(--toolbar_border) !important;
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .qa-add-closure-form h2,
+:root[data-theme='dark'] .qa-add-closure-form p,
+:root[data-theme='dark'] .qa-add-closure-form label,
+:root[data-theme='dark'] .qa-add-closure-form span,
+:root[data-theme='dark'] .qa-add-closure-form button,
+:root[data-theme='dark'] .qa-add-closure-form svg {
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .qa-add-closure-form input,
+:root[data-theme='dark'] .qa-add-closure-form textarea {
+    background-color: var(--toolbar_bg) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .qa-add-closure-form input::placeholder,
+:root[data-theme='dark'] .qa-add-closure-form textarea::placeholder {
     color: rgba(255, 255, 255, 0.6) !important;
 }
