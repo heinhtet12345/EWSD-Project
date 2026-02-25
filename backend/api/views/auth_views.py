@@ -5,6 +5,7 @@ from urllib import request
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.contrib.auth.models import update_last_login
 from ..serializer import LoginSerializer, UserSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -15,6 +16,8 @@ class LoginView(APIView):
 
         if serializer.is_valid():
             user = serializer.validated_data['user']
+
+            update_last_login(None, user)
 
             #generate token jwt
             refresh = RefreshToken.for_user(user)
