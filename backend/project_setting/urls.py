@@ -18,6 +18,9 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 
+# direct view import for root change password endpoint
+from password_reset.views import ChangePasswordAPIView
+
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from django.conf import settings
@@ -27,6 +30,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('closure-period/', include('closure_period.urls')),
+    path('password-reset/', include('password_reset.urls')),
+    # expose the change-password endpoint at the root as well (avoids redirect on POST)
+    path('change_password/', ChangePasswordAPIView.as_view(), name='change_password_root'),
 
     # API Documentation
     path('api/docs/', RedirectView.as_view(url='/api/docs/swagger/', permanent=False)),
