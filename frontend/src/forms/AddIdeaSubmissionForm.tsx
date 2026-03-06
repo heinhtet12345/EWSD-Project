@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { MultiSelect } from 'primereact/multiselect'
-import { Checkbox } from 'primereact/checkbox'
+import { Checkbox, CheckboxChangeEvent } from 'primereact/checkbox'
 import axios from 'axios'
 
 type Category = {
@@ -35,7 +35,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
         })
         const data = response.data.results || response.data
         setCategories(data.map((cat: any) => ({ id: cat.category_id || cat.id, name: cat.category_name || cat.name, description: cat.category_desc || cat.description })))
-      } catch (err) {
+      } catch {
         setError('Failed to load categories')
       }
     }
@@ -65,7 +65,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
         },
       })
       onSubmit({ title, selectedCategories, description, file, anonymous })
-    } catch (err) {
+    } catch {
       setError('Failed to submit idea')
     } finally {
       setLoading(false)
@@ -120,7 +120,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
         <Checkbox
           inputId="anonymous"
           checked={anonymous}
-          onChange={(e) => setAnonymous(e.checked)}
+          onChange={(e: CheckboxChangeEvent) => setAnonymous(!!e.checked)}
         />
         <label htmlFor="anonymous" className="ml-2 text-sm">Submit Anonymously</label>
       </div>
@@ -128,7 +128,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
         <Checkbox
           inputId="terms"
           checked={termsAccepted}
-          onChange={(e) => setTermsAccepted(e.checked)}
+          onChange={(e: CheckboxChangeEvent) => setTermsAccepted(!!e.checked)}
           required
         />
         <label htmlFor="terms" className="ml-2 text-sm">I accept the terms and conditions</label>
