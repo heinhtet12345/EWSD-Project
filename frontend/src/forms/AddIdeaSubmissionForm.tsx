@@ -58,7 +58,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
       formData.append('anonymous_status', anonymous.toString())
       formData.append('terms_accepted', termsAccepted.toString())
       if (file) formData.append('documents', file)
-      await axios.post('/api/ideas/submit', formData, {
+      await axios.post('/ideas/post/', formData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('authUser') ? JSON.parse(localStorage.getItem('authUser')!).token : ''}`,
           'Content-Type': 'multipart/form-data',
