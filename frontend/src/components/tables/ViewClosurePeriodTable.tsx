@@ -1,4 +1,5 @@
 import React from 'react'
+import { FolderOpen } from 'lucide-react'
 
 export type ClosurePeriod = {
 	id: number
@@ -65,33 +66,45 @@ const ViewClosurePeriodTable = ({ periods }: ViewClosurePeriodTableProps) => {
 					</tr>
 				</thead>
 				<tbody className="qa-closure-table-body divide-y divide-slate-100 bg-white">
-					{periods.map((period) => (
-						<tr key={period.id}>
-                            <td className="px-4 py-3 text-sm text-slate-700 text-center">{period.academicYear}</td>
-							<td className="px-4 py-3 text-sm text-slate-700 text-center">{formatDate(period.startDate)}</td>
-							<td className="px-4 py-3 text-sm text-slate-700 text-center">{formatDate(period.ideaClosureDate)}</td>
-							<td className="px-4 py-3 text-sm text-slate-700 text-center">{formatDate(period.commentClosureDate)}</td>
-							<td className="px-4 py-3 text-sm text-slate-700 text-center">
-								<span
-									className={`inline-flex items-center rounded-full px-4 py-1 text-xs font-bold ${
-										period.isActive
-											? 'bg-emerald-100 text-emerald-700'
-											: 'bg-slate-100 text-slate-600'
-									}`}
-								>
-									{period.isActive ? 'Open' : 'Closed'}
-								</span>
+					{periods.length === 0 ? (
+						<tr>
+							<td colSpan={6} className="px-4 py-10">
+								<div className="qa-closure-empty-state flex flex-col items-center justify-center gap-1 text-center opacity-50">
+									<FolderOpen className="h-8 w-8 text-slate-400" />
+									<p className="text-sm font-medium text-slate-700">No closure periods available</p>
+									<p className="text-sm text-slate-500">Closure periods will appear here once added</p>
+								</div>
 							</td>
-							<td className="px-4 py-3 text-center text-sm text-slate-700 dark:text-[#000490]">
-                                <button
-                                    type="button"
-									className="qa-closure-edit-button rounded-md bg-[#DADEFF] px-3 py-1 text-xs text-[#0e139e] transition hover:bg-blue-700 hover:text-white font-bold"
-                                >
-                                    Edit
-                                </button>
-                            </td>
 						</tr>
-					))}
+					) : (
+						periods.map((period) => (
+							<tr key={period.id}>
+								<td className="px-4 py-3 text-sm text-slate-700 text-center">{period.academicYear}</td>
+								<td className="px-4 py-3 text-sm text-slate-700 text-center">{formatDate(period.startDate)}</td>
+								<td className="px-4 py-3 text-sm text-slate-700 text-center">{formatDate(period.ideaClosureDate)}</td>
+								<td className="px-4 py-3 text-sm text-slate-700 text-center">{formatDate(period.commentClosureDate)}</td>
+								<td className="px-4 py-3 text-sm text-slate-700 text-center">
+									<span
+										className={`inline-flex items-center rounded-full px-4 py-1 text-xs font-bold ${
+											period.isActive
+												? 'bg-emerald-100 text-emerald-700'
+												: 'bg-slate-100 text-slate-600'
+										}`}
+									>
+										{period.isActive ? 'Open' : 'Closed'}
+									</span>
+								</td>
+								<td className="px-4 py-3 text-center text-sm text-slate-700 dark:text-[#000490]">
+									<button
+										type="button"
+										className="qa-closure-edit-button rounded-md bg-[#DADEFF] px-3 py-1 text-xs text-[#0e139e] transition hover:bg-blue-700 hover:text-white font-bold"
+									>
+										Edit
+									</button>
+								</td>
+							</tr>
+						))
+					)}
 				</tbody>
 			</table>
 		</div>

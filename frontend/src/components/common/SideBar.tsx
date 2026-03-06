@@ -27,7 +27,7 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
     { label: "Manage Closure Period", to: "/008", icon: Calendar },
     { label: "Manage Staffs", to: "/007", icon: Users },
-  ],
+  ], 
   "qa_coordinator": [
     { label: "Dashboard", to: "/qa_coordinator", icon: LayoutDashboard },
     { label: "All Ideas", to: "/006", icon: FileText },
@@ -42,8 +42,8 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
   ],
   staff: [
     { label: "Dashboard", to: "/staff", icon: LayoutDashboard },
-    { label: "All Ideas", to: "/001", icon: FileText },
-    { label: "My Ideas", to: "/002", icon: User },
+    { label: "All Ideas", to: "/staff/all-ideas", icon: FileText },
+    { label: "My Ideas", to: "/staff/my-ideas", icon: User },
   ],
 };
 
