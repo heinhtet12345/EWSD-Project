@@ -26,8 +26,8 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
-    path('closure-period/', include('closure_period.urls')),
-    path('ideas/', include('IdeaPost.urls')),
+    path('closure-period/', include('api.closure_period.urls')),
+    path('ideas/', include('api.ideas.urls')),
 
     # API Documentation
     path('api/docs/', RedirectView.as_view(url='/api/docs/swagger/', permanent=False)),
