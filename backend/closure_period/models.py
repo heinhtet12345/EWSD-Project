@@ -1,6 +1,6 @@
-from time import timezone
+from django.utils import timezone
 from django.db import models
-from jsonschema import ValidationError
+from django.core.exceptions import ValidationError
 class ClosurePeriod(models.Model):
     
     start_date = models.DateField(auto_now_add=True)
@@ -18,11 +18,11 @@ class ClosurePeriod(models.Model):
 
     @property
     def is_idea_open(self):
-        return timezone.now() < self.idea_closure_date
+        return timezone.now().date() < self.idea_closure_date
 
     @property
     def is_comment_open(self):
-        return timezone.now() < self.comment_closure_date
+        return timezone.now().date() < self.comment_closure_date
 
     def __str__(self):
         return f"Idea closes: {self.idea_closure_date} | Comment closes: {self.comment_closure_date}"
