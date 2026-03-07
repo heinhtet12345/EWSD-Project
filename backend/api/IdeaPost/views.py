@@ -111,6 +111,7 @@ class ListIdeasView(APIView):
             )
         
         mine_only = str(request.query_params.get('mine', 'false')).lower() == 'true'
+        my_department_only = str(request.query_params.get('my_department', 'false')).lower() == 'true'
 
         # Filter ideas based on user role and requested scope
         if role == 'staff':
@@ -118,6 +119,8 @@ class ListIdeasView(APIView):
         elif role == 'qa_coordinator':
             # QA Coordinators can see ideas from their department
             ideas = Idea.objects.filter(department=request.user.department)
+        elif role == 'qa_manager' and my_department_only:
+            ideas = Idea.objects.filter(department=request.user.department) if request.user.department else Idea.objects.none()
         else:
             # QA Managers and Admins can see all ideas
             ideas = Idea.objects.all()

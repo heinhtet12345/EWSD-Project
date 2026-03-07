@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { BreadCrumb } from 'primereact/breadcrumb'
 import type { MenuItem } from 'primereact/menuitem'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, House } from 'lucide-react'
 import axios from 'axios'
 
@@ -80,8 +80,10 @@ const extractApiErrorMessage = (error: unknown, fallback: string): string => {
   return error.response?.statusText || error.message || fallback
 }
 
-const QAManagerClosurePeriodPage = () => {
+const ClosurePeriodPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
+  const dashboardPath = location.pathname.startsWith('/admin') ? '/admin' : '/qa_manager'
   const [isAdding, setIsAdding] = useState(false)
   const [periods, setPeriods] = useState<ClosurePeriod[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -204,7 +206,7 @@ const QAManagerClosurePeriodPage = () => {
   const breadcrumbHome = useMemo(
     () => ({
       label: 'Dashboard',
-      command: () => navigate('/qa_manager'),
+      command: () => navigate(dashboardPath),
       template: (item: MenuItem) => (
         <button
           type="button"
@@ -216,7 +218,7 @@ const QAManagerClosurePeriodPage = () => {
         </button>
       ),
     }),
-    [navigate],
+    [dashboardPath, navigate],
   )
 
   const breadcrumbSeparator = <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -277,4 +279,4 @@ const QAManagerClosurePeriodPage = () => {
   )
 }
 
-export default QAManagerClosurePeriodPage
+export default ClosurePeriodPage

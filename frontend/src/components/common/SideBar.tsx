@@ -25,7 +25,8 @@ type RoleTab = {
 const ROLE_TABS: Record<Role, RoleTab[]> = {
   admin: [
     { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
-    { label: "Manage Closure Period", to: "/008", icon: Calendar },
+    { label: "Users", to: "/admin/users", icon: User},
+    { label: "Manage Closure Period", to: "/admin/closure-period", icon: Calendar },
     { label: "Manage Staffs", to: "/007", icon: Users },
   ], 
   "qa_coordinator": [
@@ -35,7 +36,8 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
   ],
   "qa_manager": [
     { label: "Dashboard", to: "/qa_manager", icon: LayoutDashboard },
-    { label: "All Ideas", to: "/003", icon: FileText },
+    { label: "All Ideas", to: "/qa_manager/all-ideas", icon: FileText },
+    { label: "My Department", to: "/qa_manager/my-department", icon: ShieldCheck },
     { label: "Closure Period", to: "/qa_manager/closure-period", icon: ShieldCheck },
     { label: "Categories", to: "/qa_manager/categories", icon: FileText },
     { label: "Statistical Analysis", to: "/004", icon: BarChart3 },

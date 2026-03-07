@@ -60,7 +60,6 @@ class ForgotPasswordRequestView(APIView):
             status=status.HTTP_200_OK,
         )
 
-
 class AdminUserListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -92,7 +91,7 @@ class AdminResetUserPasswordView(APIView):
             recipient=target_user,
             title="Your password has been reset",
             message='Your password was reset by admin. Temporary password: "pass123".',
-            notification_type="password_reset_done",
+            notification_type="password_reset_request",
         )
 
         if target_user.email:
@@ -108,3 +107,31 @@ class AdminResetUserPasswordView(APIView):
                 pass
 
         return Response({"message": "Password reset to pass123."}, status=status.HTTP_200_OK)
+
+
+class AdminDisableUserAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, user_id):
+        if _normalized_role(request.user) != "admin":
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        target_user = User.objects.filter(user_id=user_id).first()
+        if not target_user:
+            return Response({"message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if _normalized_role(target_user) == "admin":
+            return Response({"message": "Cannot disable admin account."}, status=status.HTTP_400_BAD_REQUEST)
+
+        target_user.active_status = False
+        target_user.is_active = False
+        target_user.save(update_fields=["active_status", "is_active"])
+
+        Notification.objects.create(
+            recipient=target_user,
+            title="Account disabled",
+            message="Your account has been disabled by admin.",
+            notification_type="account_disabled",
+        )
+
+        return Response({"message": f'Account "{target_user.username}" disabled.'}, status=status.HTTP_200_OK)
