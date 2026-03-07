@@ -2,6 +2,7 @@ from django.utils import timezone
 from django.db import models
 from django.core.exceptions import ValidationError
 class ClosurePeriod(models.Model):
+    id = models.AutoField(primary_key=True)
     
     start_date = models.DateField(auto_now_add=True)
     idea_closure_date = models.DateField()
