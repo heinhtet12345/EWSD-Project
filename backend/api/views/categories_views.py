@@ -1,8 +1,4 @@
-from os import name
-from unicodedata import category
-from urllib import request
-
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -10,13 +6,19 @@ from ..serializer import CategorySerializer
 from rest_framework.permissions import IsAuthenticated
 from ..models import Category
 
+
+def _normalized_role(user) -> str:
+    role_name = getattr(getattr(user, "role", None), "role_name", "") or ""
+    return role_name.strip().lower().replace(" ", "_")
+
+
 class AddCategoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
 
         # Only QA Manager allowed
-        if not request.user.role or request.user.role.role_name != "QA_Manager":
+        if _normalized_role(request.user) != "qa_manager":
             return Response(
                 {"message": "Not authorized. QA Manager role required."},
                 status=status.HTTP_403_FORBIDDEN
@@ -57,7 +59,7 @@ class DeleteCategoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, category_id):
-        if not request.user.role or request.user.role.role_name != "QA_Manager":
+        if _normalized_role(request.user) != "qa_manager":
             return Response(
                 {"message": "Not authorized. QA Manager role required."},
                 status=status.HTTP_403_FORBIDDEN

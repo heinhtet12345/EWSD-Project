@@ -9,11 +9,16 @@ from .serializer import ClosurePeriodSerializer
 from .models import ClosurePeriod
 
 
+def _normalized_role(user) -> str:
+    role_name = getattr(getattr(user, "role", None), "role_name", "") or ""
+    return role_name.strip().lower().replace(" ", "_")
+
+
 class AddClosurePeriodView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not hasattr(request.user, "role") or request.user.role.role_name != "QA_Manager":
+        if _normalized_role(request.user) != "qa_manager":
             return Response(
                 {"message": "Not authorized. QA Manager role required."},
                 status=status.HTTP_403_FORBIDDEN

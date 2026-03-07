@@ -22,8 +22,17 @@ class IdeaCreateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['idea_id', 'submit_datetime', 'user', 'department', 'closurePeriod', 'documents']
 
-    def validate(self, data):
-        if not data.get('terms_accepted'):
-            raise serializers.ValidationError("You must accept the terms.")
-        return data
+class IdeaListSerializer(serializers.ModelSerializer):
+    category_ids = serializers.SerializerMethodField()
+    documents = DocumentSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Idea
+        fields = [
+            'idea_id', 'idea_title', 'idea_content', 
+            'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'closurePeriod', 'documents'
+        ]
+    
+    def get_category_ids(self, obj):
+        return list(obj.categories.values_list('category_id', flat=True))
 

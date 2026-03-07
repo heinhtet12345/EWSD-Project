@@ -198,3 +198,267 @@
 :root[data-theme='dark'] .qa-add-closure-form textarea::placeholder {
     color: rgba(255, 255, 255, 0.6) !important;
 }
+
+:root[data-theme='dark'] .qa-add-idea-form {
+    background-color: var(--toolbar_bg) !important;
+    border-color: var(--toolbar_border) !important;
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .qa-add-idea-form h2,
+:root[data-theme='dark'] .qa-add-idea-form p,
+:root[data-theme='dark'] .qa-add-idea-form label,
+:root[data-theme='dark'] .qa-add-idea-form span,
+:root[data-theme='dark'] .qa-add-idea-form button,
+:root[data-theme='dark'] .qa-add-idea-form svg {
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .qa-add-idea-form input,
+:root[data-theme='dark'] .qa-add-idea-form textarea {
+    background-color: var(--toolbar_bg) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .qa-add-idea-form input::placeholder,
+:root[data-theme='dark'] .qa-add-idea-form textarea::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+:root[data-theme='dark'] .qa-add-idea-form .qa-back-button:hover,
+:root[data-theme='dark'] .qa-add-idea-form .qa-back-button:hover * {
+    color: var(--sidebar-active_tab) !important;
+}
+
+/* PrimeReact MultiSelect Styling */
+.p-multiselect {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    background-color: white !important;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+/* General PrimeReact overlay styling */
+.p-overlaypanel,
+.p-multiselect-panel,
+.p-dropdown-panel,
+.p-calendar-panel {
+    z-index: 9999 !important;
+    position: absolute !important;
+    overflow: hidden !important;
+}
+
+.p-multiselect:focus {
+    border-color: #94a3b8 !important;
+    box-shadow: 0 0 0 3px rgb(226 232 240 / 0.5) !important;
+    outline: none !important;
+}
+
+.p-multiselect .p-multiselect-label {
+    padding: 0.5rem 0.75rem !important;
+    color: #0f172a !important;
+    background-color: transparent !important;
+}
+
+.p-multiselect .p-multiselect-trigger {
+    color: #64748b !important;
+}
+
+.p-multiselect-panel {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important;
+    background-color: white !important;
+    z-index: 9999 !important;
+    position: absolute !important;
+    overflow: hidden !important;
+}
+
+.p-multiselect-item {
+    padding: 0.5rem 0.75rem !important;
+    color: #0f172a !important;
+}
+
+.p-multiselect-item:hover {
+    background-color: #f8fafc !important;
+}
+
+.p-multiselect-item.p-highlight {
+    background-color: #3b82f6 !important;
+    color: white !important;
+}
+
+/* PrimeReact Checkbox Styling */
+.p-checkbox {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    border: none !important;
+    background: none !important;
+    box-shadow: none !important;
+}
+
+.p-checkbox .p-checkbox-box {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.25rem !important;
+    background-color: white !important;
+    transition: border-color 0.15s ease-in-out, background-color 0.15s ease-in-out !important;
+    box-shadow: none !important;
+}
+
+.p-checkbox .p-checkbox-box:hover {
+    border-color: #94a3b8 !important;
+}
+
+.p-checkbox .p-checkbox-box.p-highlight {
+    background-color: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+}
+
+.p-checkbox .p-checkbox-box.p-highlight .p-checkbox-icon {
+    color: white !important;
+}
+
+/* Dark mode for PrimeReact components */
+:root[data-theme='dark'] .p-multiselect {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    background-color: var(--toolbar_bg) !important;
+}
+
+:root[data-theme='dark'] .p-multiselect .p-multiselect-label {
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .p-multiselect .p-multiselect-trigger {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+:root[data-theme='dark'] .p-multiselect-panel {
+    background-color: var(--toolbar_bg) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    z-index: 9999 !important;
+    position: absolute !important;
+    overflow: hidden !important;
+}
+
+:root[data-theme='dark'] .p-multiselect-item {
+    color: #ffffff !important;
+}
+
+:root[data-theme='dark'] .p-multiselect-item:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+:root[data-theme='dark'] .p-checkbox .p-checkbox-box {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    background-color: var(--toolbar_bg) !important;
+    box-shadow: none !important;
+}
+
+:root[data-theme='dark'] .p-checkbox .p-checkbox-box:hover {
+    border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Idea form specific styles */
+.qa-add-idea-form .p-multiselect {
+    width: 100% !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    background-color: white !important;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+.qa-add-idea-form .p-multiselect:focus {
+    border-color: #94a3b8 !important;
+    box-shadow: 0 0 0 3px rgb(226 232 240 / 0.5) !important;
+    outline: none !important;
+}
+
+.qa-add-idea-form .p-multiselect .p-multiselect-label {
+    padding: 0.5rem 0.75rem !important;
+    color: #0f172a !important;
+    background-color: transparent !important;
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+}
+
+.qa-add-idea-form .p-multiselect .p-multiselect-trigger {
+    color: #64748b !important;
+    padding: 0 0.75rem !important;
+}
+
+.qa-add-idea-form .p-multiselect-panel {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important;
+    background-color: white !important;
+    z-index: 9999 !important;
+    max-height: 12rem !important;
+    overflow-y: auto !important;
+}
+
+.qa-add-idea-form .p-multiselect-item {
+    padding: 0.5rem 0.75rem !important;
+    color: #0f172a !important;
+    font-size: 0.875rem !important;
+    transition: background-color 0.15s ease-in-out !important;
+}
+
+.qa-add-idea-form .p-multiselect-item:hover {
+    background-color: #f8fafc !important;
+}
+
+.qa-add-idea-form .p-multiselect-item.p-highlight {
+    background-color: #3b82f6 !important;
+    color: white !important;
+}
+
+/* So selected options in this panel are not bright blue */
+.qa-category-panel .p-multiselect-item.p-highlight {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-left: 3px solid #93c5fd !important;
+}
+
+.qa-category-panel .p-multiselect-item.p-highlight:hover {
+    background-color: #f1f5f9 !important;
+}
+
+.qa-add-idea-form .p-multiselect .p-multiselect-chip {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    border-radius: 0.25rem !important;
+    padding: 0.125rem 0.5rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    margin: 0.125rem !important;
+}
+
+.qa-add-idea-form .p-multiselect .p-multiselect-chip .p-multiselect-chip-icon {
+    color: white !important;
+    font-size: 0.75rem !important;
+}
+
+/* Hide checkboxes in the idea category multiselect panel only */
+.qa-category-panel .p-multiselect-item .p-checkbox,
+.qa-category-panel .p-multiselect-item .p-checkbox-box,
+.qa-category-panel .p-multiselect-item input[type="checkbox"],
+.qa-category-panel .p-multiselect-item .p-checkbox-input {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+:root[data-theme='dark'] .qa-category-panel .p-multiselect-item.p-highlight {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+    border-left: 3px solid #60a5fa !important;
+}
+
+.p-checkbox .p-checkbox-input {
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    appearance: auto !important;
+}

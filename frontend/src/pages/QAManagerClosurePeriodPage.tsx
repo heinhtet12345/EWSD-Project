@@ -23,8 +23,8 @@ type ClosurePeriodApiItem = {
   academicYear?: string
 }
 
-const CLOSURE_PERIOD_CREATE_PATH = '/closure-period/create/'
-const CLOSURE_PERIOD_LIST_PATH = '/closure-period/list/'
+const CLOSURE_PERIOD_CREATE_PATH = '/api/closure-period/create/'
+const CLOSURE_PERIOD_LIST_PATH = '/api/closure-period/list/'
 
 const getAuthConfig = () => {
   try {
@@ -56,6 +56,29 @@ const normalizeClosurePeriod = (item: ClosurePeriodApiItem, fallbackId: number):
   isActive: item.is_active ?? item.isActive ?? true,
   academicYear: item.academic_year ?? item.academicYear ?? '',
 })
+
+const extractApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (!axios.isAxiosError(error)) return fallback
+
+  const data = error.response?.data
+  if (!data) return error.message || fallback
+
+  if (typeof data === 'string') return data
+  if (typeof data.message === 'string') return data.message
+  if (typeof data.detail === 'string') return data.detail
+
+  const fieldErrors = Object.entries(data as Record<string, unknown>)
+    .map(([field, value]) => {
+      if (Array.isArray(value)) return `${field}: ${value.join(', ')}`
+      if (typeof value === 'string') return `${field}: ${value}`
+      return null
+    })
+    .filter(Boolean) as string[]
+
+  if (fieldErrors.length > 0) return fieldErrors.join(' | ')
+
+  return error.response?.statusText || error.message || fallback
+}
 
 const QAManagerClosurePeriodPage = () => {
   const navigate = useNavigate()
@@ -111,7 +134,6 @@ const QAManagerClosurePeriodPage = () => {
   }, [])
 
   const handleAddClosurePeriod = async (payload: {
-    startDate: string
     ideaSubmissibleEndDate: string
     commentableEndDate: string
     academicYear: string
@@ -123,7 +145,6 @@ const QAManagerClosurePeriodPage = () => {
       const response = await axios.post(
         CLOSURE_PERIOD_CREATE_PATH,
         {
-          start_date: payload.startDate,
           idea_closure_date: payload.ideaSubmissibleEndDate,
           comment_closure_date: payload.commentableEndDate,
           academic_year: payload.academicYear,
@@ -132,7 +153,6 @@ const QAManagerClosurePeriodPage = () => {
       )
 
       const created = normalizeClosurePeriod(response.data ?? {}, Date.now())
-      created.startDate = created.startDate || payload.startDate
       created.ideaClosureDate = created.ideaClosureDate || payload.ideaSubmissibleEndDate
       created.commentClosureDate = created.commentClosureDate || payload.commentableEndDate
       created.academicYear = created.academicYear || payload.academicYear
@@ -140,15 +160,7 @@ const QAManagerClosurePeriodPage = () => {
       setPeriods((prev) => [created, ...prev])
       setIsAdding(false)
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setFormError(
-          (error.response?.data as { message?: string })?.message ||
-            error.response?.statusText ||
-            'Unable to create closure period.',
-        )
-      } else {
-        setFormError('Unable to create closure period.')
-      }
+      setFormError(extractApiErrorMessage(error, 'Unable to create closure period.'))
     } finally {
       setIsSaving(false)
     }

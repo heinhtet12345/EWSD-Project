@@ -13,7 +13,7 @@ class Idea(models.Model):
     department = models.ForeignKey('api.Department', on_delete=models.CASCADE)
     closurePeriod = models.ForeignKey('closure_period.ClosurePeriod', on_delete=models.CASCADE)
     
-    categories = models.ManyToManyField('api.Category', related_name='ideas')
+    categories = models.ManyToManyField('api.Category', related_name='ideas', db_table='Idea_Category')
 
     def __str__(self):
         return self.idea_title

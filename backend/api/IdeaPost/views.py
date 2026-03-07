@@ -2,12 +2,19 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.core.mail import send_mail
+from django.core.mail import BadHeaderError
 from django.contrib.auth import get_user_model
 from api.closure_period.models import ClosurePeriod
-from .serializer import IdeaCreateSerializer
+from .serializer import IdeaCreateSerializer, IdeaListSerializer
 from .models import Idea, UploadedDocument
 
 User = get_user_model()
+
+
+def _normalized_role(user) -> str:
+    role_name = getattr(getattr(user, "role", None), "role_name", "") or ""
+    return role_name.strip().lower().replace(" ", "_")
+
 
 class PostIdeaView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -45,7 +52,11 @@ class PostIdeaView(APIView):
                         file_name=f.name 
                     )
 
-                self.send_coordinator_notification(idea)
+                # Do not fail idea submission if SMTP server is unavailable.
+                try:
+                    self.send_coordinator_notification(idea)
+                except Exception:
+                    pass
 
                 return Response(IdeaCreateSerializer(idea).data, status=status.HTTP_201_CREATED)
             except Exception as e:
@@ -59,15 +70,47 @@ class PostIdeaView(APIView):
     def send_coordinator_notification(self, idea):
         """Finds the QA Coordinator in the same department and sends email via Papercut."""
         coordinator = User.objects.filter(
-            role__role_name="QA_Coordinator",
+            role__role_name__in=["QA_Coordinator", "Qa Coordinator"],
             department=idea.department 
         ).first()
 
         if coordinator:
-            send_mail(
-                subject=f"New Idea Submitted: {idea.idea_title}",
-                message=f"Staff {idea.user.username} submitted an idea in {idea.department.dept_name}.",
-                from_email="system@ewsd.edu",
-                recipient_list=[coordinator.email],
-                fail_silently=False, # Set to False to catch errors in terminal
+            try:
+                send_mail(
+                    subject=f"New Idea Submitted: {idea.idea_title}",
+                    message=f"Staff {idea.user.username} submitted an idea in {idea.department.dept_name}.",
+                    from_email="system@ewsd.edu",
+                    recipient_list=[coordinator.email],
+                    fail_silently=True,
+                )
+            except (BadHeaderError, OSError):
+                # Ignore mail transport issues to keep core submission flow reliable.
+                return
+
+class ListIdeasView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Only allow staff and QA coordinators to view ideas
+        role = _normalized_role(request.user)
+        if role not in ['staff', 'qa_coordinator', 'qa_manager', 'admin']:
+            return Response(
+                {"message": "Not authorized to view ideas."}, 
+                status=status.HTTP_403_FORBIDDEN
             )
+        
+        # Filter ideas based on user role
+        if role == 'staff':
+            # Staff can only see their own ideas
+            ideas = Idea.objects.filter(user=request.user)
+        elif role == 'qa_coordinator':
+            # QA Coordinators can see ideas from their department
+            ideas = Idea.objects.filter(department=request.user.department)
+        else:
+            # QA Managers and Admins can see all ideas
+            ideas = Idea.objects.all()
+        
+        serializer = IdeaListSerializer(ideas, many=True)
+        return Response({
+            "results": serializer.data
+        })

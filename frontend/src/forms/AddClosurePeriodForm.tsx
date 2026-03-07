@@ -1,7 +1,6 @@
 import React, { useState, type FormEvent } from 'react'
 
 type ClosurePeriodPayload = {
-  startDate: string
   ideaSubmissibleEndDate: string
   commentableEndDate: string
   academicYear: string
@@ -13,7 +12,6 @@ type AddClosurePeriodFormProps = {
 }
 
 export const AddClosurePeriodForm = ({ onSubmit, onCancel }: AddClosurePeriodFormProps) => {
-  const [startDate, setStartDate] = useState('')
   const [ideaSubmissibleEndDate, setIdeaSubmissibleEndDate] = useState('')
   const [commentableEndDate, setCommentableEndDate] = useState('')
   const [academicYear, setAcademicYear] = useState('')
@@ -22,7 +20,6 @@ export const AddClosurePeriodForm = ({ onSubmit, onCancel }: AddClosurePeriodFor
     event.preventDefault()
 
     onSubmit?.({
-      startDate,
       ideaSubmissibleEndDate,
       commentableEndDate,
       academicYear,
@@ -47,19 +44,7 @@ export const AddClosurePeriodForm = ({ onSubmit, onCancel }: AddClosurePeriodFor
             placeholder="e.g. 2025/2026"
             value={academicYear}
             onChange={(event) => setAcademicYear(event.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="start-date" className="text-sm font-medium text-slate-700">
-            Start date
-          </label>
-          <input
-            id="start-date"
-            type="date"
-            value={startDate}
-            onChange={(event) => setStartDate(event.target.value)}
+            required
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
           />
         </div>
@@ -73,6 +58,7 @@ export const AddClosurePeriodForm = ({ onSubmit, onCancel }: AddClosurePeriodFor
             type="date"
             value={ideaSubmissibleEndDate}
             onChange={(event) => setIdeaSubmissibleEndDate(event.target.value)}
+            required
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
           />
         </div>
@@ -86,6 +72,7 @@ export const AddClosurePeriodForm = ({ onSubmit, onCancel }: AddClosurePeriodFor
             type="date"
             value={commentableEndDate}
             onChange={(event) => setCommentableEndDate(event.target.value)}
+            required
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
           />
         </div>
