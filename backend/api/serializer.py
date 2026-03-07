@@ -17,6 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'user_id', 
             'username', 
+            'email',
             'role_name', 
             'department_name', 
             'dob', 
@@ -26,6 +27,28 @@ class UserSerializer(serializers.ModelSerializer):
             'active_status',
             'profile_image'
         ]
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    role_name = serializers.CharField(source='role.role_name', read_only=True)
+    department_name = serializers.CharField(source='department.dept_name', read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            'user_id',
+            'username',
+            'email',
+            'role_name',
+            'department_name',
+            'dob',
+            'address',
+            'phone',
+            'hire_date',
+            'active_status',
+            'profile_image',
+        ]
+        read_only_fields = ['user_id', 'role_name', 'department_name', 'hire_date', 'active_status']
 
 # 2. Login Serializer
 class LoginSerializer(serializers.Serializer):

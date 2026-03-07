@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bell, ChevronDown, Moon, Search, Sun, User } from "lucide-react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 interface ToolBarProps {
   userName?: string;
@@ -42,6 +43,21 @@ const getStoredUser = () => {
   }
 };
 
+const getStoredRole = () => {
+  try {
+    const raw = localStorage.getItem("authUser");
+    if (!raw) return "staff";
+    const parsed = JSON.parse(raw) as { role?: string };
+    const role = String(parsed?.role || "staff").trim().toLowerCase();
+    if (role === "admin" || role === "qa_manager" || role === "qa_coordinator" || role === "staff") {
+      return role;
+    }
+    return "staff";
+  } catch {
+    return "staff";
+  }
+};
+
 const getAuthConfig = () => {
   try {
     const raw = localStorage.getItem("authUser");
@@ -55,6 +71,7 @@ const getAuthConfig = () => {
 };
 
 export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
+  const navigate = useNavigate();
   const [user, setUser] = useState<{ id?: string | number; name: string; profileimg?: string } | null>(
     () => getStoredUser()
   );
@@ -130,6 +147,45 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
   }, []);
 
   const displayName = user?.name || userName;
+
+  const handleGoToProfile = () => {
+    const role = getStoredRole();
+    setIsUserMenuOpen(false);
+    navigate(`/${role}/profile`);
+  };
+
+  const handleLogout = async () => {
+    setIsUserMenuOpen(false);
+    let accessToken: string | undefined;
+    let refreshToken: string | undefined;
+
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { token?: string; refresh?: string };
+        accessToken = parsed?.token;
+        refreshToken = parsed?.refresh;
+      }
+    } catch {
+      // Ignore parsing errors and continue cleanup.
+    }
+
+    if (refreshToken) {
+      try {
+        await axios.post(
+          "/api/logout/",
+          { refresh: refreshToken },
+          accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined
+        );
+      } catch {
+        // Ignore failed logout endpoint, still clear local auth.
+      }
+    }
+
+    localStorage.removeItem("authUser");
+    window.dispatchEvent(new Event("auth-changed"));
+    navigate("/", { replace: true });
+  };
 
   return (
     <header
@@ -303,6 +359,7 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
               <button
                 type="button"
                 className="block w-full px-4 py-2 text-left text-slate-700 hover:bg-slate-100"
+                onClick={handleGoToProfile}
               >
                 Profile
               </button>
@@ -315,6 +372,7 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
               <button
                 type="button"
                 className="block w-full px-4 py-2 text-left text-red-600 hover:bg-slate-100"
+                onClick={handleLogout}
               >
                 Logout
               </button>

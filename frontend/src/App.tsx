@@ -11,8 +11,8 @@ import QAManagerClosurePeriodPage from "./pages/QAManagerClosurePeriodPage";
 
 import StaffDashboard from "./pages/StaffDashboard";
 import StaffAllIdeaPage from "./pages/StaffAllIdeaPage";
+import UserProfilePage from "./pages/UserProfilePage";
 import NotFound from "./components/common/404NotFound";
-import { AddClosurePeriodForm } from "./forms/AddClosurePeriodForm";
 
 export default function App() {
   return (
@@ -24,8 +24,12 @@ export default function App() {
         <Route path="qa_manager" element={<QAManagerDashboard />} />
         <Route path="qa_manager/categories" element={<QAManagerCategoriesPage />} />
         <Route path="qa_manager/closure-period" element={<QAManagerClosurePeriodPage />} />
+        <Route path="qa_manager/profile" element={<UserProfilePage />} />
+        <Route path="qa_coordinator/profile" element={<UserProfilePage />} />
+        <Route path="admin/profile" element={<UserProfilePage />} />
         <Route path="staff" element={<StaffDashboard />} />
         <Route path="staff/all-ideas" element={<StaffAllIdeaPage />} />
+        <Route path="staff/profile" element={<UserProfilePage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
