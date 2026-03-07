@@ -1,9 +1,20 @@
 import { useEffect, useState } from "react";
 import { Bell, ChevronDown, Moon, Search, Sun, User } from "lucide-react";
+import axios from "axios";
 
 interface ToolBarProps {
   userName?: string;
 }
+
+type NotificationItem = {
+  notification_id: number;
+  title: string;
+  message: string;
+  notification_type: string;
+  is_read: boolean;
+  created_at: string;
+  idea?: number | null;
+};
 
 const getStoredUser = () => {
   try {
@@ -31,6 +42,18 @@ const getStoredUser = () => {
   }
 };
 
+const getAuthConfig = () => {
+  try {
+    const raw = localStorage.getItem("authUser");
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as { token?: string };
+    if (!parsed?.token) return undefined;
+    return { headers: { Authorization: `Bearer ${parsed.token}` } };
+  } catch {
+    return undefined;
+  }
+};
+
 export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
   const [user, setUser] = useState<{ id?: string | number; name: string; profileimg?: string } | null>(
     () => getStoredUser()
@@ -50,6 +73,25 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
     return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
   });
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await axios.get("/api/notifications/", getAuthConfig());
+      const data = response.data?.results;
+      const count = response.data?.unread_count;
+      if (Array.isArray(data)) {
+        setNotifications(data);
+      } else {
+        setNotifications([]);
+      }
+      setUnreadCount(typeof count === "number" ? count : 0);
+    } catch {
+      // Keep toolbar usable if notifications fail.
+    }
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -64,6 +106,7 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
   useEffect(() => {
     const handleAuthChange = () => {
       setUser(getStoredUser());
+      fetchNotifications();
     };
 
     const handleStorage = (event: StorageEvent) => {
@@ -78,6 +121,12 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
       window.removeEventListener("auth-changed", handleAuthChange);
       window.removeEventListener("storage", handleStorage);
     };
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = window.setInterval(fetchNotifications, 30000);
+    return () => window.clearInterval(interval);
   }, []);
 
   const displayName = user?.name || userName;
@@ -104,15 +153,95 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          aria-label="Notifications"
-          className={`mt-1 rounded-lg p-2 transition hover:bg-slate-100 ${
-            isDarkMode ? "text-white hover:text-slate-600" : "text-slate-600"
-          }`}
-        >
-          <Bell className="h-5 w-5" />
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Notifications"
+            onClick={() => {
+              setIsNotificationOpen((value) => !value);
+              fetchNotifications();
+            }}
+            className={`mt-1 rounded-lg p-2 transition hover:bg-slate-100 ${
+              isDarkMode ? "text-white hover:text-slate-600" : "text-slate-600"
+            }`}
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {isNotificationOpen && (
+            <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+              <div className="mb-2 flex items-center justify-between px-2 py-1">
+                <p className="text-sm font-semibold text-slate-800">Notifications</p>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await axios.patch("/api/notifications/read-all/", {}, getAuthConfig());
+                        setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
+                        setUnreadCount(0);
+                      } catch {
+                        // Ignore failed mark-all action in UI.
+                      }
+                    }}
+                    className="text-xs font-medium text-blue-600 hover:underline"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-80 space-y-1 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <p className="px-2 py-6 text-center text-sm text-slate-500">No notifications yet</p>
+                ) : (
+                  notifications.map((item) => (
+                    <button
+                      key={item.notification_id}
+                      type="button"
+                      onClick={async () => {
+                        if (item.is_read) return;
+                        try {
+                          await axios.patch(
+                            `/api/notifications/${item.notification_id}/read/`,
+                            {},
+                            getAuthConfig()
+                          );
+                          setNotifications((prev) =>
+                            prev.map((current) =>
+                              current.notification_id === item.notification_id
+                                ? { ...current, is_read: true }
+                                : current
+                            )
+                          );
+                          setUnreadCount((prev) => Math.max(0, prev - 1));
+                        } catch {
+                          // Ignore failed mark-read action in UI.
+                        }
+                      }}
+                      className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                        item.is_read
+                          ? "border-slate-100 bg-white"
+                          : "border-blue-100 bg-blue-50/40"
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-slate-800">{item.title}</p>
+                      <p className="mt-0.5 text-xs text-slate-600">{item.message}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        {new Date(item.created_at).toLocaleString()}
+                      </p>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         <button
           type="button"

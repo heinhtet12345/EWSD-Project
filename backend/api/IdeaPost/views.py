@@ -5,6 +5,7 @@ from django.core.mail import send_mail
 from django.core.mail import BadHeaderError
 from django.contrib.auth import get_user_model
 from api.closure_period.models import ClosurePeriod
+from api.models import Notification
 from .serializer import IdeaCreateSerializer, IdeaListSerializer
 from .models import Idea, UploadedDocument
 
@@ -68,24 +69,34 @@ class PostIdeaView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def send_coordinator_notification(self, idea):
-        """Finds the QA Coordinator in the same department and sends email via Papercut."""
-        coordinator = User.objects.filter(
-            role__role_name__in=["QA_Coordinator", "Qa Coordinator"],
-            department=idea.department 
-        ).first()
+        """Notify QA coordinators in the same department (in-app + optional email)."""
+        coordinators = [
+            user
+            for user in User.objects.filter(department=idea.department).select_related('role')
+            if _normalized_role(user) == 'qa_coordinator'
+        ]
 
-        if coordinator:
-            try:
-                send_mail(
-                    subject=f"New Idea Submitted: {idea.idea_title}",
-                    message=f"Staff {idea.user.username} submitted an idea in {idea.department.dept_name}.",
-                    from_email="system@ewsd.edu",
-                    recipient_list=[coordinator.email],
-                    fail_silently=True,
-                )
-            except (BadHeaderError, OSError):
-                # Ignore mail transport issues to keep core submission flow reliable.
-                return
+        for coordinator in coordinators:
+            Notification.objects.create(
+                recipient=coordinator,
+                title='New idea submitted',
+                message=f'{idea.user.username} submitted "{idea.idea_title}" in {idea.department.dept_name}.',
+                notification_type='idea_submitted',
+                idea=idea,
+            )
+
+            if coordinator.email:
+                try:
+                    send_mail(
+                        subject=f"New Idea Submitted: {idea.idea_title}",
+                        message=f"Staff {idea.user.username} submitted an idea in {idea.department.dept_name}.",
+                        from_email="system@ewsd.edu",
+                        recipient_list=[coordinator.email],
+                        fail_silently=True,
+                    )
+                except (BadHeaderError, OSError):
+                    # Ignore mail transport issues to keep core submission flow reliable.
+                    continue
 
 class ListIdeasView(APIView):
     permission_classes = [permissions.IsAuthenticated]

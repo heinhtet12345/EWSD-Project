@@ -58,4 +58,31 @@ class Category(models.Model):
         return self.category_name
 
 
+class Notification(models.Model):
+    notification_id = models.AutoField(primary_key=True)
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications'
+    )
+    title = models.CharField(max_length=120)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=50, default='general')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    idea = models.ForeignKey(
+        'IdeaPost.Idea',
+        on_delete=models.CASCADE,
+        related_name='notifications',
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} -> {self.recipient}"
+
+
 

@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Category, Department, Role
+from .models import Category, Department, Role, Notification
 
 User = get_user_model()
 
@@ -54,3 +54,18 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['category_id', 'category_name', 'category_desc']
         read_only_fields = ['category_id']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = [
+            'notification_id',
+            'title',
+            'message',
+            'notification_type',
+            'is_read',
+            'created_at',
+            'idea',
+        ]
+        read_only_fields = fields
