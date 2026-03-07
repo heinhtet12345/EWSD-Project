@@ -10,7 +10,7 @@ urlpatterns = [
     path('categories/view/', ViewCategoryView.as_view(), name='view-categories'),
     path('categories/delete/<int:category_id>/', DeleteCategoryView.as_view(), name='delete_category'),
     path('closure-period/', include('api.closure_period.urls')),
-    path('ideas/', include('api.ideas.urls')),
+    path('ideas/', include('api.IdeaPost.urls')),
 ]
 
 

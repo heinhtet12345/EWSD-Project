@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
-from closure_period.models import ClosurePeriod
+from api.closure_period.models import ClosurePeriod
 from .serializer import IdeaCreateSerializer
 from .models import Idea, UploadedDocument
 
