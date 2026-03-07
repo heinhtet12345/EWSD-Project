@@ -11,6 +11,7 @@ import QAManagerClosurePeriodPage from "./pages/QAManagerClosurePeriodPage";
 
 import StaffDashboard from "./pages/StaffDashboard";
 import StaffAllIdeaPage from "./pages/StaffAllIdeaPage";
+import StaffMyIdeasPage from "./pages/StaffMyIdeasPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import NotFound from "./components/common/404NotFound";
 
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="admin/profile" element={<UserProfilePage />} />
         <Route path="staff" element={<StaffDashboard />} />
         <Route path="staff/all-ideas" element={<StaffAllIdeaPage />} />
+        <Route path="staff/my-ideas" element={<StaffMyIdeasPage />} />
         <Route path="staff/profile" element={<UserProfilePage />} />
         <Route path="*" element={<NotFound />} />
       </Route>

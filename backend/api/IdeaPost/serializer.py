@@ -24,13 +24,15 @@ class IdeaCreateSerializer(serializers.ModelSerializer):
 
 class IdeaListSerializer(serializers.ModelSerializer):
     category_ids = serializers.SerializerMethodField()
+    department_name = serializers.CharField(source='department.dept_name', read_only=True)
+    closure_period_academic_year = serializers.CharField(source='closurePeriod.academic_year', read_only=True)
     documents = DocumentSerializer(many=True, read_only=True)
     
     class Meta:
         model = Idea
         fields = [
             'idea_id', 'idea_title', 'idea_content', 
-            'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'closurePeriod', 'documents'
+            'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'department_name', 'closurePeriod', 'closure_period_academic_year', 'documents'
         ]
     
     def get_category_ids(self, obj):

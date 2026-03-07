@@ -110,10 +110,11 @@ class ListIdeasView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Filter ideas based on user role
+        mine_only = str(request.query_params.get('mine', 'false')).lower() == 'true'
+
+        # Filter ideas based on user role and requested scope
         if role == 'staff':
-            # Staff can only see their own ideas
-            ideas = Idea.objects.filter(user=request.user)
+            ideas = Idea.objects.filter(user=request.user) if mine_only else Idea.objects.all()
         elif role == 'qa_coordinator':
             # QA Coordinators can see ideas from their department
             ideas = Idea.objects.filter(department=request.user.department)
