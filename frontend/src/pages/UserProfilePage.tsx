@@ -5,6 +5,7 @@ import { Camera, Edit3, Eye, EyeOff, KeyRound, Mail, MapPin, Phone, Save, Shield
 type ProfileData = {
   user_id: number;
   username: string;
+  name: string;
   email: string;
   role_name: string;
   department_name: string;
@@ -83,7 +84,7 @@ const updateProfile = async (payload: FormData) => {
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [form, setForm] = useState({
-    username: "",
+    name: "",
     email: "",
     dob: "",
     phone: "",
@@ -111,6 +112,30 @@ export default function UserProfilePage() {
   const resolvedPreviewImage = useMemo(() => previewImage || profile?.profile_image || null, [previewImage, profile]);
 
   useEffect(() => {
+    if (!success) return;
+    const timeoutId = window.setTimeout(() => setSuccess(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [success]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timeoutId = window.setTimeout(() => setError(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [error]);
+
+  useEffect(() => {
+    if (!passwordSuccess) return;
+    const timeoutId = window.setTimeout(() => setPasswordSuccess(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [passwordSuccess]);
+
+  useEffect(() => {
+    if (!passwordError) return;
+    const timeoutId = window.setTimeout(() => setPasswordError(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [passwordError]);
+
+  useEffect(() => {
     const fetchProfile = async () => {
       setIsLoading(true);
       setError("");
@@ -119,7 +144,7 @@ export default function UserProfilePage() {
         const data = response.data;
         setProfile(data);
         setForm({
-          username: normalizeField(data.username),
+          name: normalizeField(data.name),
           email: normalizeField(data.email),
           dob: normalizeField(data.dob),
           phone: normalizeField(data.phone),
@@ -174,7 +199,7 @@ export default function UserProfilePage() {
     setSuccess("");
     setError("");
     setForm({
-      username: normalizeField(profile.username),
+      name: normalizeField(profile.name),
       email: normalizeField(profile.email),
       dob: normalizeField(profile.dob),
       phone: normalizeField(profile.phone),
@@ -192,7 +217,7 @@ export default function UserProfilePage() {
 
     try {
       const payload = new FormData();
-      payload.append("username", form.username.trim());
+      payload.append("name", form.name.trim());
       payload.append("email", form.email.trim());
       payload.append("dob", form.dob || "");
       payload.append("phone", form.phone.trim());
@@ -206,7 +231,7 @@ export default function UserProfilePage() {
       const updated = response.data;
       setProfile(updated);
       setForm({
-        username: normalizeField(updated.username),
+        name: normalizeField(updated.name),
         email: normalizeField(updated.email),
         dob: normalizeField(updated.dob),
         phone: normalizeField(updated.phone),
@@ -225,6 +250,7 @@ export default function UserProfilePage() {
             "authUser",
             JSON.stringify({
               ...parsed,
+              name: updated.name,
               username: updated.username,
               profile_image: updated.profile_image,
             }),
@@ -348,19 +374,21 @@ export default function UserProfilePage() {
       ) : profile ? (
         <div className="space-y-5">
           <form onSubmit={handleSubmit} className="grid gap-5 lg:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-            <div className="flex flex-col items-center text-center">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-1">
+            <div className="flex flex-col items-center text-center ">
               {resolvedPreviewImage ? (
-                <img src={resolvedPreviewImage} alt={profile.username} className="h-28 w-28 rounded-full object-cover ring-4 ring-slate-100" />
+                <img src={resolvedPreviewImage} alt={profile.name || profile.username} className="h-28 w-28 rounded-full object-cover ring-4 ring-slate-100" />
               ) : (
                 <div className="flex h-28 w-28 items-center justify-center rounded-full bg-slate-100 text-slate-500 ring-4 ring-slate-50">
                   <User className="h-10 w-10" />
                 </div>
               )}
 
-              <h2 className="mt-4 text-lg font-semibold text-slate-900">{profile.username}</h2>
+              <h2 className="mt-4 text-lg font-semibold text-slate-900">{profile.name || profile.username}</h2>
               <p className="text-sm text-slate-500">{profile.role_name || "No role"}</p>
-              <p className="text-xs text-slate-400">{profile.department_name || "No department"}</p>
+              <p className="text-xs text-slate-400">
+                @{profile.username} • {profile.department_name || "No department"}
+              </p>
 
               {isEditing && (
                 <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
@@ -372,13 +400,13 @@ export default function UserProfilePage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Username</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</label>
                 <input
-                  name="username"
-                  value={form.username}
+                  name="name"
+                  value={form.name}
                   onChange={handleFieldChange}
                   disabled={!isEditing}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
@@ -436,7 +464,8 @@ export default function UserProfilePage() {
                     value={form.address}
                     onChange={handleFieldChange}
                     disabled={!isEditing}
-                    className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
+                    className="w-full resize-none rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
+                    style={{ resize: "none" }}
                   />
                 </div>
               </div>

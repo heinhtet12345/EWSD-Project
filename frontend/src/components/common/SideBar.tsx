@@ -28,20 +28,18 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Users", to: "/admin/users", icon: User},
     { label: "Manage Closure Period", to: "/admin/closure-period", icon: Calendar },
     { label: "Activities", to: "/admin/analytics", icon: BarChart3 },
-    { label: "Manage Staffs", to: "/007", icon: Users },
   ], 
-  "qa_coordinator": [
-    { label: "Dashboard", to: "/qa_coordinator", icon: LayoutDashboard },
-    { label: "All Ideas", to: "/006", icon: FileText },
-    { label: "Review and Moderate Ideas", to: "/005", icon: ShieldCheck },
-  ],
   "qa_manager": [
     { label: "Dashboard", to: "/qa_manager", icon: LayoutDashboard },
     { label: "All Ideas", to: "/qa_manager/all-ideas", icon: FileText },
     { label: "My Department", to: "/qa_manager/my-department", icon: ShieldCheck },
     { label: "Closure Period", to: "/qa_manager/closure-period", icon: ShieldCheck },
     { label: "Categories", to: "/qa_manager/categories", icon: FileText },
-    { label: "Statistical Analysis", to: "/004", icon: BarChart3 },
+  ],
+  "qa_coordinator": [
+    { label: "Dashboard", to: "/qa_coordinator", icon: LayoutDashboard },
+    { label: "All Ideas", to: "/006", icon: FileText },
+    { label: "Review and Moderate Ideas", to: "/005", icon: ShieldCheck },
   ],
   staff: [
     { label: "Dashboard", to: "/staff", icon: LayoutDashboard },

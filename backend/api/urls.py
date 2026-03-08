@@ -12,6 +12,8 @@ from .views.notifications_views import (
 from .views.admin_views import (
     ForgotPasswordRequestView,
     AdminUserListView,
+    AdminUserMetaView,
+    AdminCreateUserView,
     AdminResetUserPasswordView,
     AdminDisableUserAccountView,
     AdminEnableUserAccountView,
@@ -25,6 +27,8 @@ urlpatterns = [
     path('profile/me/', UserProfileView.as_view(), name='profile-me'),
     path('profile/change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
+    path('admin/users/meta/', AdminUserMetaView.as_view(), name='admin-user-meta'),
+    path('admin/users/create/', AdminCreateUserView.as_view(), name='admin-user-create'),
     path('admin/users/<int:user_id>/reset-password/', AdminResetUserPasswordView.as_view(), name='admin-user-reset-password'),
     path('admin/users/<int:user_id>/disable/', AdminDisableUserAccountView.as_view(), name='admin-user-disable'),
     path('admin/users/<int:user_id>/enable/', AdminEnableUserAccountView.as_view(), name='admin-user-enable'),

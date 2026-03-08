@@ -7,6 +7,7 @@ User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='first_name', required=False, allow_blank=True)
     # Pull the Role name from the Foreign Key
     role_name = serializers.CharField(source='role.role_name', read_only=True)
     # Pull the Department name from the Foreign Key
@@ -17,6 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'user_id', 
             'username', 
+            'name',
             'email',
             'role_name', 
             'department_name', 
@@ -30,6 +32,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='first_name', required=False, allow_blank=True)
     role_name = serializers.CharField(source='role.role_name', read_only=True)
     department_name = serializers.CharField(source='department.dept_name', read_only=True)
 
@@ -38,6 +41,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             'user_id',
             'username',
+            'name',
             'email',
             'role_name',
             'department_name',
@@ -48,7 +52,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'active_status',
             'profile_image',
         ]
-        read_only_fields = ['user_id', 'role_name', 'department_name', 'hire_date', 'active_status']
+        read_only_fields = ['user_id', 'username', 'role_name', 'department_name', 'hire_date', 'active_status']
 
 # 2. Login Serializer
 class LoginSerializer(serializers.Serializer):

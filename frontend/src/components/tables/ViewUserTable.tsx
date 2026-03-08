@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import AddUserForm from "../../forms/AddUserForm";
 
 type AppUser = {
   user_id: number;
@@ -8,6 +9,11 @@ type AppUser = {
   role_name: string;
   department_name: string;
   active_status: boolean;
+};
+
+type AdminUserMeta = {
+  roles?: string[];
+  departments?: string[];
 };
 
 const getAuthConfig = () => {
@@ -31,6 +37,10 @@ export default function ViewUserTable() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [processingUserId, setProcessingUserId] = useState<number | null>(null);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [availableDepartments, setAvailableDepartments] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -53,8 +63,21 @@ export default function ViewUserTable() {
     }
   };
 
+  const fetchUserMeta = async () => {
+    try {
+      const response = await axios.get<AdminUserMeta>("/api/admin/users/meta/", getAuthConfig());
+      const roles = Array.isArray(response.data?.roles) ? response.data.roles : [];
+      const departments = Array.isArray(response.data?.departments) ? response.data.departments : [];
+      setAvailableRoles(roles);
+      setAvailableDepartments(departments);
+    } catch {
+      // Keep list usable if metadata endpoint fails.
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchUserMeta();
   }, []);
 
   const roleOptions = useMemo(
@@ -190,6 +213,34 @@ export default function ViewUserTable() {
     }
   };
 
+  const handleCreateUser = async (payload: {
+    name: string;
+    username: string;
+    email: string;
+    role_name: string;
+    department_name: string;
+  }) => {
+    setError("");
+    setSuccess("");
+    setIsCreatingUser(true);
+    try {
+      const response = await axios.post("/api/admin/users/create/", payload, getAuthConfig());
+      setSuccess((response.data as { message?: string })?.message || `User "${payload.username}" created.`);
+      setIsAddingUser(false);
+      await fetchUsers();
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined;
+        setError(data?.message || data?.detail || "Failed to create user.");
+      } else {
+        setError("Failed to create user.");
+      }
+      throw err;
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
   return (
     <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
@@ -197,7 +248,7 @@ export default function ViewUserTable() {
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <input
           type="text"
           value={searchTerm}
@@ -229,9 +280,24 @@ export default function ViewUserTable() {
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={() => setIsAddingUser(true)}
+          className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800"
+        >
+          Add User
+        </button>
       </div>
 
-      {isLoadingUsers ? (
+      {isAddingUser ? (
+        <AddUserForm
+          roles={availableRoles}
+          departments={availableDepartments}
+          isSubmitting={isCreatingUser}
+          onCancel={() => setIsAddingUser(false)}
+          onSubmit={handleCreateUser}
+        />
+      ) : isLoadingUsers ? (
         <p className="px-2 py-4 text-sm text-slate-500">Loading users...</p>
       ) : (
         <div className="overflow-x-auto">
@@ -306,7 +372,7 @@ export default function ViewUserTable() {
         </div>
       )}
 
-      {!isLoadingUsers && filteredUsers.length > 0 && (
+      {!isAddingUser && !isLoadingUsers && filteredUsers.length > 0 && (
         <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-500">
             Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length}

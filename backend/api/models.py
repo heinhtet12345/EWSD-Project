@@ -41,7 +41,7 @@ class User(AbstractUser):
     )
 
     profile_image = models.ImageField(
-        upload_to='profile_images/',
+        upload_to='profile_image/',
         null=True,
         blank=True
     )

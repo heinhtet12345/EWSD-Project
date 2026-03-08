@@ -26,6 +26,7 @@ const getStoredUser = () => {
     const parsed = JSON.parse(raw) as {
       id?: string | number;
       user_id?: string | number;
+      name?: string;
       username?: string;
       profileimg?: string;
       profile_image?: string;
@@ -35,7 +36,7 @@ const getStoredUser = () => {
     }
     return {
       id: parsed.user_id ?? parsed.id,
-      name: parsed.username,
+      name: (parsed.name || "").trim() || parsed.username,
       profileimg: parsed.profile_image || parsed.profileimg,
     };
   } catch {

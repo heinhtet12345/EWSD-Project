@@ -15,6 +15,7 @@ type AuthResponse = {
   user_id?: string | number;
   id?: string | number;
   username?: string;
+  name?: string;
   profile_image?: string;
   role?: string;
   role_name?: string;
@@ -100,6 +101,7 @@ export default function LoginPage() {
       const user = {
         id: payload?.user_id ?? payload?.id,
         username: payload?.username,
+        name: payload?.name || "",
         profile_image: payload?.profile_image,
         role: normalizeRole(payload?.role ?? payload?.role_name),
         department: payload?.department,

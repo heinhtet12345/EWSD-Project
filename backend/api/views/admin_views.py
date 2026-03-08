@@ -1,10 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.core.mail import BadHeaderError, send_mail
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..models import Notification
+from ..models import Department, Notification, Role
 from ..serializer import UserSerializer
 
 User = get_user_model()
@@ -13,6 +14,10 @@ User = get_user_model()
 def _normalized_role(user) -> str:
     role_name = getattr(getattr(user, "role", None), "role_name", "") or ""
     return role_name.strip().lower().replace(" ", "_")
+
+
+def _normalized_role_name(role_name: str) -> str:
+    return str(role_name or "").strip().lower().replace(" ", "_")
 
 
 def _admin_users_queryset():
@@ -70,6 +75,95 @@ class AdminUserListView(APIView):
         users = User.objects.select_related("role", "department").order_by("username")
         serializer = UserSerializer(users, many=True)
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
+
+
+class AdminUserMetaView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if _normalized_role(request.user) != "admin":
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        roles = list(Role.objects.order_by("role_name").values_list("role_name", flat=True))
+        departments = list(Department.objects.order_by("dept_name").values_list("dept_name", flat=True))
+        return Response({"roles": roles, "departments": departments}, status=status.HTTP_200_OK)
+
+
+class AdminCreateUserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if _normalized_role(request.user) != "admin":
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        username = str(request.data.get("username", "")).strip()
+        email = str(request.data.get("email", "")).strip()
+        name = str(request.data.get("name", "")).strip()
+        role_name = str(request.data.get("role_name", "")).strip()
+        department_name = str(request.data.get("department_name", "")).strip()
+
+        if not username:
+            return Response({"message": "Username is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not email:
+            return Response({"message": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not role_name:
+            return Response({"message": "Role is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if User.objects.filter(username__iexact=username).exists():
+            return Response({"message": "Username already exists."}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(email__iexact=email).exists():
+            return Response({"message": "Email already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        role_obj = Role.objects.filter(role_name__iexact=role_name).first()
+        if not role_obj:
+            return Response({"message": "Invalid role."}, status=status.HTTP_400_BAD_REQUEST)
+
+        normalized_selected_role = _normalized_role_name(role_obj.role_name)
+        if normalized_selected_role == "qa_manager":
+            qa_manager_role_names = {"qa_manager", "qa manager"}
+            manager_exists = any(
+                _normalized_role_name(existing_role_name) in qa_manager_role_names
+                for existing_role_name in User.objects.select_related("role").values_list("role__role_name", flat=True)
+                if existing_role_name
+            )
+            if manager_exists:
+                return Response({"message": "Only one QA Manager is allowed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        requires_department = normalized_selected_role in {"qa_coordinator", "qa coordinator", "staff"}
+        department_obj = None
+        if requires_department:
+            if not department_name:
+                return Response(
+                    {"message": "Department is required for QA Coordinator and Staff."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            department_obj = Department.objects.filter(dept_name__iexact=department_name).first()
+            if not department_obj:
+                return Response({"message": "Invalid department."}, status=status.HTTP_400_BAD_REQUEST)
+        elif department_name:
+            department_obj = Department.objects.filter(dept_name__iexact=department_name).first()
+
+        user = User(
+            username=username,
+            email=email,
+            first_name=name,
+            role=role_obj,
+            department=department_obj,
+            hire_date=timezone.now().date(),
+            active_status=True,
+            is_active=True,
+        )
+        user.set_password("pass123")
+        user.save()
+
+        serializer = UserSerializer(user)
+        return Response(
+            {
+                "message": f'User "{username}" created. Temporary password is pass123.',
+                "user": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class AdminResetUserPasswordView(APIView):
