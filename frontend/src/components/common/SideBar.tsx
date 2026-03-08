@@ -27,6 +27,7 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
     { label: "Users", to: "/admin/users", icon: User},
     { label: "Manage Closure Period", to: "/admin/closure-period", icon: Calendar },
+    { label: "Activities", to: "/admin/analytics", icon: BarChart3 },
     { label: "Manage Staffs", to: "/007", icon: Users },
   ], 
   "qa_coordinator": [
@@ -110,7 +111,7 @@ export default function SideBar({ role = "staff" }: SideBarProps) {
   }, []);
 
   return (
-    <aside className="h-screen">
+    <aside className="sticky top-0 h-screen shrink-0">
       <nav
         className={`h-full flex flex-col shadow-sm text-white transition-[width] duration-200 ${
           isCollapsed ? "w-16" : "w-[250px]"

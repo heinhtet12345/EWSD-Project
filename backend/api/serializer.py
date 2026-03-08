@@ -61,11 +61,20 @@ class LoginSerializer(serializers.Serializer):
             password=data['password']
         )
 
+        # Backward compatibility: allow login for accounts disabled via active_status,
+        # even if is_active was previously set False by older logic.
+        if not user:
+            inactive_user = User.objects.filter(username=data['username']).first()
+            if (
+                inactive_user
+                and not inactive_user.active_status
+                and not inactive_user.is_active
+                and inactive_user.check_password(data['password'])
+            ):
+                user = inactive_user
+
         if not user:
             raise serializers.ValidationError("Invalid username or password")
-
-        if not user.is_active:
-            raise serializers.ValidationError("User is not active")
 
         # Attaching the user object for the View
         data['user'] = user

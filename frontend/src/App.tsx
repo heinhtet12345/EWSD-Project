@@ -9,6 +9,7 @@ import QAManagerAllIdeasPage from "./pages/QAManagerAllIdeasPage";
 import QAManagerDepartmentIdeasPage from "./pages/QAManagerDepartmentIdeasPage";
 import QAManagerCategoriesPage from "./pages/QAManagerCategoriesPage";
 import ClosurePeriodPage from "./pages/ClosurePeriodPage";
+import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 
 
 import StaffDashboard from "./pages/StaffDashboard";
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/users" element={<ViewUserTable />} />
         <Route path="admin/closure-period" element={<ClosurePeriodPage />} />
+        <Route path="admin/analytics" element={<AdminAnalyticsPage />} />
         <Route path="qa_coordinator" element={<QACoordDashboard />} />
         <Route path="qa_manager" element={<QAManagerDashboard />} />
         <Route path="qa_manager/all-ideas" element={<QAManagerAllIdeasPage />} />

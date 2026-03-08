@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, ChevronDown, Moon, Search, Sun, User } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -93,8 +93,9 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const notificationRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const response = await axios.get("/api/notifications/", getAuthConfig());
       const data = response.data?.results;
@@ -108,7 +109,7 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
     } catch {
       // Keep toolbar usable if notifications fail.
     }
-  };
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -138,12 +139,29 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
       window.removeEventListener("auth-changed", handleAuthChange);
       window.removeEventListener("storage", handleStorage);
     };
-  }, []);
+  }, [fetchNotifications]);
 
   useEffect(() => {
-    fetchNotifications();
+    const initialFetchTimeout = window.setTimeout(() => {
+      fetchNotifications();
+    }, 0);
     const interval = window.setInterval(fetchNotifications, 30000);
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialFetchTimeout);
+      window.clearInterval(interval);
+    };
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!notificationRef.current) return;
+      if (!notificationRef.current.contains(event.target as Node)) {
+        setIsNotificationOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
   const displayName = user?.name || userName;
@@ -209,7 +227,7 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="relative">
+        <div className="relative" ref={notificationRef}>
           <button
             type="button"
             aria-label="Notifications"
@@ -252,7 +270,10 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
                 )}
               </div>
 
-              <div className="max-h-80 space-y-1 overflow-y-auto">
+              <div
+                className="hide-scrollbar max-h-80 space-y-1 overflow-y-auto overscroll-contain"
+                onWheel={(event) => event.stopPropagation()}
+              >
                 {notifications.length === 0 ? (
                   <p className="px-2 py-6 text-center text-sm text-slate-500">No notifications yet</p>
                 ) : (

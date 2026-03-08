@@ -108,6 +108,18 @@ export default function ViewUserTable() {
     }
   }, [currentPage, totalPages]);
 
+  useEffect(() => {
+    if (!success) return;
+    const timeoutId = window.setTimeout(() => setSuccess(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [success]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timeoutId = window.setTimeout(() => setError(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [error]);
+
   const handleResetPassword = async (user: AppUser) => {
     setError("");
     setSuccess("");
@@ -149,6 +161,29 @@ export default function ViewUserTable() {
         setError(data?.message || data?.detail || "Failed to disable account.");
       } else {
         setError("Failed to disable account.");
+      }
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const handleEnableUser = async (user: AppUser) => {
+    const shouldEnable = window.confirm(`Enable account for "${user.username}"?`);
+    if (!shouldEnable) return;
+
+    setError("");
+    setSuccess("");
+    setProcessingUserId(user.user_id);
+    try {
+      const response = await axios.post(`/api/admin/users/${user.user_id}/enable/`, {}, getAuthConfig());
+      setSuccess((response.data as { message?: string })?.message || `Account enabled for ${user.username}.`);
+      await fetchUsers();
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined;
+        setError(data?.message || data?.detail || "Failed to enable account.");
+      } else {
+        setError("Failed to enable account.");
       }
     } finally {
       setProcessingUserId(null);
@@ -230,7 +265,7 @@ export default function ViewUserTable() {
                       <td className="px-4 py-3 text-sm text-slate-700">{user.email || "-"}</td>
                       <td className="px-4 py-3 text-sm text-slate-700">{user.role_name || "-"}</td>
                       <td className="px-4 py-3 text-sm text-slate-700">{user.department_name || "-"}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.active_status ? "Active" : "Inactive"}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">{user.active_status ? "Active" : "Disabled"}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
                           <button
@@ -241,14 +276,25 @@ export default function ViewUserTable() {
                           >
                             Reset Password
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDisableUser(user)}
-                            disabled={isProcessing || !user.active_status || isAdminUser}
-                            className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            Disable Account
-                          </button>
+                          {user.active_status ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDisableUser(user)}
+                              disabled={isProcessing || isAdminUser}
+                              className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Disable Account
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleEnableUser(user)}
+                              disabled={isProcessing}
+                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Enable Account
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

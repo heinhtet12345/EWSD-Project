@@ -123,8 +123,9 @@ class AdminDisableUserAccountView(APIView):
         if _normalized_role(target_user) == "admin":
             return Response({"message": "Cannot disable admin account."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Keep Django auth active so user can still log in and read notifications.
         target_user.active_status = False
-        target_user.is_active = False
+        target_user.is_active = True
         target_user.save(update_fields=["active_status", "is_active"])
 
         Notification.objects.create(
@@ -135,3 +136,28 @@ class AdminDisableUserAccountView(APIView):
         )
 
         return Response({"message": f'Account "{target_user.username}" disabled.'}, status=status.HTTP_200_OK)
+
+
+class AdminEnableUserAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, user_id):
+        if _normalized_role(request.user) != "admin":
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        target_user = User.objects.filter(user_id=user_id).first()
+        if not target_user:
+            return Response({"message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        target_user.active_status = True
+        target_user.is_active = True
+        target_user.save(update_fields=["active_status", "is_active"])
+
+        Notification.objects.create(
+            recipient=target_user,
+            title="Account enabled",
+            message="Your account has been enabled by admin.",
+            notification_type="account_enabled",
+        )
+
+        return Response({"message": f'Account "{target_user.username}" enabled.'}, status=status.HTTP_200_OK)

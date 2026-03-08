@@ -21,6 +21,13 @@ class PostIdeaView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        role = _normalized_role(request.user)
+        if role == "staff" and not bool(getattr(request.user, "active_status", True)):
+            return Response(
+                {"message": "Your account is disabled. You cannot submit ideas."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         active_period = ClosurePeriod.objects.filter(is_active=True).first()
         
         if not active_period or not active_period.is_idea_open:

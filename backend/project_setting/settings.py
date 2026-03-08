@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'api',
     'api.closure_period',
     'api.IdeaPost',
+    'api.analytics',
 
 ]
 

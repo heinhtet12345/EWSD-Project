@@ -25,6 +25,7 @@ export default function QAManagerDepartmentIdeasPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
 
   const itemsPerPage = 5
 
@@ -118,6 +119,21 @@ export default function QAManagerDepartmentIdeasPage() {
     }
   }
 
+  const shouldShowDescriptionToggle = (content: string) =>
+    content.length > 180 || content.includes('\n')
+
+  const toggleIdeaContent = (ideaId: number) => {
+    setExpandedIdeaIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(ideaId)) {
+        next.delete(ideaId)
+      } else {
+        next.add(ideaId)
+      }
+      return next
+    })
+  }
+
   return (
     <section className="space-y-4">
       <div>
@@ -171,7 +187,9 @@ export default function QAManagerDepartmentIdeasPage() {
                         {idea.anonymous_status ? 'Posted anonymously' : `Posted by User #${idea.user}`} • {new Date(idea.submit_datetime).toLocaleString()}
                       </p>
                     </div>
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">Idea #{idea.idea_id}</span>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                      {idea.department_name || `Department #${idea.department}`}
+                    </span>
                   </div>
 
                   {idea.category_ids.length > 0 && (
@@ -184,7 +202,30 @@ export default function QAManagerDepartmentIdeasPage() {
                     </div>
                   )}
 
-                  <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{idea.idea_content}</p>
+                  <p
+                    className="whitespace-pre-wrap text-sm leading-6 text-slate-700"
+                    style={
+                      expandedIdeaIds.has(idea.idea_id)
+                        ? undefined
+                        : {
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }
+                    }
+                  >
+                    {idea.idea_content}
+                  </p>
+                  {shouldShowDescriptionToggle(idea.idea_content) && (
+                    <button
+                      type="button"
+                      onClick={() => toggleIdeaContent(idea.idea_id)}
+                      className="mt-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                    >
+                      {expandedIdeaIds.has(idea.idea_id) ? 'Show less' : 'See more'}
+                    </button>
+                  )}
 
                   {idea.documents.length > 0 && (
                     <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">

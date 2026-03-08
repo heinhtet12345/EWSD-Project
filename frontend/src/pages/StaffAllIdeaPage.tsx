@@ -28,6 +28,8 @@ const StaffAllIdeaPage = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
+  const [isCheckingAccount, setIsCheckingAccount] = useState(false)
 
   const itemsPerPage = 5
 
@@ -138,6 +140,39 @@ const StaffAllIdeaPage = () => {
     }
   }
 
+  const handleAddIdeaClick = async () => {
+    setError('')
+    setIsCheckingAccount(true)
+    try {
+      const response = await axios.get('/api/profile/me/', getAuthConfig())
+      const activeStatus = Boolean(response.data?.active_status)
+      if (!activeStatus) {
+        setError('User cannot use this feature when account is disabled.')
+        return
+      }
+      setIsAdding(true)
+    } catch {
+      setError('Unable to verify account status. Please try again.')
+    } finally {
+      setIsCheckingAccount(false)
+    }
+  }
+
+  const shouldShowDescriptionToggle = (content: string) =>
+    content.length > 180 || content.includes('\n')
+
+  const toggleIdeaContent = (ideaId: number) => {
+    setExpandedIdeaIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(ideaId)) {
+        next.delete(ideaId)
+      } else {
+        next.add(ideaId)
+      }
+      return next
+    })
+  }
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -148,10 +183,11 @@ const StaffAllIdeaPage = () => {
         {!isAdding && (
           <button
             type="button"
-            onClick={() => setIsAdding(true)}
+            onClick={handleAddIdeaClick}
+            disabled={isCheckingAccount}
             className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-800"
           >
-            Add New Idea
+            {isCheckingAccount ? 'Checking...' : 'Add New Idea'}
           </button>
         )}
       </div>
@@ -208,7 +244,7 @@ const StaffAllIdeaPage = () => {
               {Object.entries(groupedByClosure).map(([closureTitle, groupIdeas]) => (
                 <div key={closureTitle} className="space-y-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
-                    <p className="text-sm font-semibold text-slate-700">{closureTitle}</p>
+                    <p className="text-sm font-semibold text-slate-700">Active Closure Period : {closureTitle}</p>
                   </div>
 
                   {groupIdeas.map((idea) => (
@@ -220,7 +256,9 @@ const StaffAllIdeaPage = () => {
                             {idea.anonymous_status ? 'Posted anonymously' : `Posted by User #${idea.user}`} • {new Date(idea.submit_datetime).toLocaleString()}
                           </p>
                         </div>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">Idea #{idea.idea_id}</span>
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                          {idea.department_name || `Department #${idea.department}`}
+                        </span>
                       </div>
 
                       {idea.category_ids.length > 0 && (
@@ -233,7 +271,30 @@ const StaffAllIdeaPage = () => {
                         </div>
                       )}
 
-                      <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{idea.idea_content}</p>
+                      <p
+                        className="whitespace-pre-wrap text-sm leading-6 text-slate-700"
+                        style={
+                          expandedIdeaIds.has(idea.idea_id)
+                            ? undefined
+                            : {
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                              }
+                        }
+                      >
+                        {idea.idea_content}
+                      </p>
+                      {shouldShowDescriptionToggle(idea.idea_content) && (
+                        <button
+                          type="button"
+                          onClick={() => toggleIdeaContent(idea.idea_id)}
+                          className="mt-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                        >
+                          {expandedIdeaIds.has(idea.idea_id) ? 'Show less' : 'See more'}
+                        </button>
+                      )}
 
                       {idea.documents.length > 0 && (
                         <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">

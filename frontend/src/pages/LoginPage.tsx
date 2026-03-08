@@ -21,6 +21,9 @@ type AuthResponse = {
   department?: string;
   message?: string;
   refresh?: string;
+  active_status?: boolean;
+  first_login?: boolean;
+  last_login_at?: string | null;
 };
 
 const ROLE_TO_PATH: Record<Role, string> = {
@@ -100,11 +103,20 @@ export default function LoginPage() {
         profile_image: payload?.profile_image,
         role: normalizeRole(payload?.role ?? payload?.role_name),
         department: payload?.department,
+        active_status: payload?.active_status ?? true,
         token: payload?.access,
         refresh: payload?.refresh,
       };
 
       localStorage.setItem("authUser", JSON.stringify(user));
+      sessionStorage.setItem(
+        "loginNotice",
+        JSON.stringify({
+          username: user.username,
+          firstLogin: Boolean(payload?.first_login),
+          lastLoginAt: payload?.last_login_at ?? null,
+        }),
+      );
       navigate(ROLE_TO_PATH[user.role], { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
