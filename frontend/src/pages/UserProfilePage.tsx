@@ -5,12 +5,17 @@ import { Camera, Edit3, Eye, EyeOff, KeyRound, Mail, MapPin, Phone, Save, Shield
 type ProfileData = {
   user_id: number;
   username: string;
+  first_name: string;
+  last_name: string;
   name: string;
   email: string;
   role_name: string;
   department_name: string;
   dob: string | null;
-  address: string;
+  address_line_1: string;
+  township: string;
+  city: string;
+  postal_code: string;
   phone: string;
   hire_date: string | null;
   active_status: boolean;
@@ -84,11 +89,15 @@ const updateProfile = async (payload: FormData) => {
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [form, setForm] = useState({
-    name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     dob: "",
     phone: "",
-    address: "",
+    address_line_1: "",
+    township: "",
+    city: "",
+    postal_code: "",
   });
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -110,6 +119,11 @@ export default function UserProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const resolvedPreviewImage = useMemo(() => previewImage || profile?.profile_image || null, [previewImage, profile]);
+  const displayName = useMemo(() => {
+    if (!profile) return "";
+    const fullName = `${normalizeField(profile.first_name)} ${normalizeField(profile.last_name)}`.trim();
+    return fullName || normalizeField(profile.name) || profile.username;
+  }, [profile]);
 
   useEffect(() => {
     if (!success) return;
@@ -144,11 +158,15 @@ export default function UserProfilePage() {
         const data = response.data;
         setProfile(data);
         setForm({
-          name: normalizeField(data.name),
+          first_name: normalizeField(data.first_name),
+          last_name: normalizeField(data.last_name),
           email: normalizeField(data.email),
           dob: normalizeField(data.dob),
           phone: normalizeField(data.phone),
-          address: normalizeField(data.address),
+          address_line_1: normalizeField(data.address_line_1),
+          township: normalizeField(data.township),
+          city: normalizeField(data.city),
+          postal_code: normalizeField(data.postal_code),
         });
       } catch (err) {
         if (axios.isAxiosError(err)) {
@@ -199,11 +217,15 @@ export default function UserProfilePage() {
     setSuccess("");
     setError("");
     setForm({
-      name: normalizeField(profile.name),
+      first_name: normalizeField(profile.first_name),
+      last_name: normalizeField(profile.last_name),
       email: normalizeField(profile.email),
       dob: normalizeField(profile.dob),
       phone: normalizeField(profile.phone),
-      address: normalizeField(profile.address),
+      address_line_1: normalizeField(profile.address_line_1),
+      township: normalizeField(profile.township),
+      city: normalizeField(profile.city),
+      postal_code: normalizeField(profile.postal_code),
     });
   };
 
@@ -217,11 +239,15 @@ export default function UserProfilePage() {
 
     try {
       const payload = new FormData();
-      payload.append("name", form.name.trim());
+      payload.append("first_name", form.first_name.trim());
+      payload.append("last_name", form.last_name.trim());
       payload.append("email", form.email.trim());
       payload.append("dob", form.dob || "");
       payload.append("phone", form.phone.trim());
-      payload.append("address", form.address.trim());
+      payload.append("address_line_1", form.address_line_1.trim());
+      payload.append("township", form.township.trim());
+      payload.append("city", form.city.trim());
+      payload.append("postal_code", form.postal_code.trim());
       if (selectedImage) {
         payload.append("profile_image", selectedImage);
       }
@@ -231,17 +257,22 @@ export default function UserProfilePage() {
       const updated = response.data;
       setProfile(updated);
       setForm({
-        name: normalizeField(updated.name),
+        first_name: normalizeField(updated.first_name),
+        last_name: normalizeField(updated.last_name),
         email: normalizeField(updated.email),
         dob: normalizeField(updated.dob),
         phone: normalizeField(updated.phone),
-        address: normalizeField(updated.address),
+        address_line_1: normalizeField(updated.address_line_1),
+        township: normalizeField(updated.township),
+        city: normalizeField(updated.city),
+        postal_code: normalizeField(updated.postal_code),
       });
       setIsEditing(false);
       setSelectedImage(null);
       setPreviewImage(null);
       setSuccess("Profile updated successfully.");
 
+      const updatedDisplayName = `${normalizeField(updated.first_name)} ${normalizeField(updated.last_name)}`.trim() || updated.username;
       try {
         const raw = localStorage.getItem("authUser");
         if (raw) {
@@ -250,7 +281,9 @@ export default function UserProfilePage() {
             "authUser",
             JSON.stringify({
               ...parsed,
-              name: updated.name,
+              first_name: updated.first_name,
+              last_name: updated.last_name,
+              name: updatedDisplayName,
               username: updated.username,
               profile_image: updated.profile_image,
             }),
@@ -375,16 +408,16 @@ export default function UserProfilePage() {
         <div className="space-y-5">
           <form onSubmit={handleSubmit} className="grid gap-5 lg:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-1">
-            <div className="flex flex-col items-center text-center ">
+            <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
               {resolvedPreviewImage ? (
-                <img src={resolvedPreviewImage} alt={profile.name || profile.username} className="h-28 w-28 rounded-full object-cover ring-4 ring-slate-100" />
+                <img src={resolvedPreviewImage} alt={displayName || profile.username} className="h-28 w-28 rounded-full object-cover ring-4 ring-slate-100" />
               ) : (
                 <div className="flex h-28 w-28 items-center justify-center rounded-full bg-slate-100 text-slate-500 ring-4 ring-slate-50">
                   <User className="h-10 w-10" />
                 </div>
               )}
 
-              <h2 className="mt-4 text-lg font-semibold text-slate-900">{profile.name || profile.username}</h2>
+              <h2 className="mt-4 text-lg font-semibold text-slate-900">{displayName || profile.username}</h2>
               <p className="text-sm text-slate-500">{profile.role_name || "No role"}</p>
               <p className="text-xs text-slate-400">
                 @{profile.username} • {profile.department_name || "No department"}
@@ -403,10 +436,21 @@ export default function UserProfilePage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">First Name</label>
                 <input
-                  name="name"
-                  value={form.name}
+                  name="first_name"
+                  value={form.first_name}
+                  onChange={handleFieldChange}
+                  disabled={!isEditing}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Name</label>
+                <input
+                  name="last_name"
+                  value={form.last_name}
                   onChange={handleFieldChange}
                   disabled={!isEditing}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
@@ -440,6 +484,53 @@ export default function UserProfilePage() {
                 />
               </div>
 
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Address Line 1</label>
+                <div className="relative">
+                  <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    name="address_line_1"
+                    value={form.address_line_1}
+                    onChange={handleFieldChange}
+                    disabled={!isEditing}
+                    className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Township</label>
+                <input
+                  name="township"
+                  value={form.township}
+                  onChange={handleFieldChange}
+                  disabled={!isEditing}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">City</label>
+                <input
+                  name="city"
+                  value={form.city}
+                  onChange={handleFieldChange}
+                  disabled={!isEditing}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Postal Code</label>
+                <input
+                  name="postal_code"
+                  value={form.postal_code}
+                  onChange={handleFieldChange}
+                  disabled={!isEditing}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
+                />
+              </div>
+
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</label>
                 <div className="relative">
@@ -453,25 +544,9 @@ export default function UserProfilePage() {
                   />
                 </div>
               </div>
-
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Address</label>
-                <div className="relative">
-                  <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <textarea
-                    name="address"
-                    rows={3}
-                    value={form.address}
-                    onChange={handleFieldChange}
-                    disabled={!isEditing}
-                    className="w-full resize-none rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 disabled:bg-slate-50"
-                    style={{ resize: "none" }}
-                  />
-                </div>
-              </div>
             </div>
 
-            <div className="mt-5 grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-3">
+            <div className="mt-5 grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Role</p>
                 <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-slate-700">
@@ -486,6 +561,19 @@ export default function UserProfilePage() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Hire Date</p>
                 <p className="mt-1 text-sm font-medium text-slate-700">{profile.hire_date || "-"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Address</p>
+                <p className="mt-1 text-sm font-medium text-slate-700">
+                  {[
+                    profile.address_line_1,
+                    profile.township,
+                    profile.city,
+                    profile.postal_code,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") || "-"}
+                </p>
               </div>
             </div>
 

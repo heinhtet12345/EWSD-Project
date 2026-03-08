@@ -89,6 +89,8 @@ class LoginView(APIView):
                 "message": "Login successful",
                 "user_id": user.user_id,
                 "username": user.username,
+                "first_name": user_data.get("first_name", ""),
+                "last_name": user_data.get("last_name", ""),
                 "name": user_data.get("name", ""),
                 "role": user_data.get("role_name", "No Role Assigned"),
                 "department": user_data.get("department_name", "No Department Assigned"),

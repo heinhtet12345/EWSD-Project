@@ -137,6 +137,13 @@ const StaffMyIdeasPage = () => {
     })
   }
 
+  const resolveDocumentUrl = (url: string) => {
+    if (!url) return '#'
+    if (url.startsWith('http://') || url.startsWith('https://')) return url
+    if (url.startsWith('/')) return url
+    return `/${url}`
+  }
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -234,7 +241,7 @@ const StaffMyIdeasPage = () => {
                     {idea.documents.length > 0 && (
                       <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
                         {idea.documents.map((doc) => (
-                          <a key={doc.doc_id} href={doc.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
+                          <a key={doc.doc_id} href={resolveDocumentUrl(doc.file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
                             <Paperclip className="h-4 w-4" /> {doc.file_name}
                           </a>
                         ))}

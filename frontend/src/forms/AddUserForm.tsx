@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 
 type AddUserPayload = {
-  name: string;
+  first_name: string;
+  last_name: string;
   username: string;
   email: string;
   role_name: string;
@@ -20,7 +21,8 @@ const normalizeRole = (value: string) => value.trim().toLowerCase().replace(/\s+
 
 export default function AddUserForm({ roles, departments, isSubmitting = false, onCancel, onSubmit }: AddUserFormProps) {
   const [form, setForm] = useState<AddUserPayload>({
-    name: "",
+    first_name: "",
+    last_name: "",
     username: "",
     email: "",
     role_name: "",
@@ -33,7 +35,7 @@ export default function AddUserForm({ roles, departments, isSubmitting = false, 
     return role === "qa_coordinator" || role === "staff";
   }, [form.role_name]);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
 
@@ -57,7 +59,8 @@ export default function AddUserForm({ roles, departments, isSubmitting = false, 
     try {
       await onSubmit({
         ...form,
-        name: form.name.trim(),
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
         username: form.username.trim(),
         email: form.email.trim(),
         role_name: form.role_name.trim(),
@@ -78,12 +81,22 @@ export default function AddUserForm({ roles, departments, isSubmitting = false, 
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">First Name</label>
           <input
-            value={form.name}
-            onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+            value={form.first_name}
+            onChange={(event) => setForm((prev) => ({ ...prev, first_name: event.target.value }))}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400"
-            placeholder="Display name"
+            placeholder="First name"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Name</label>
+          <input
+            value={form.last_name}
+            onChange={(event) => setForm((prev) => ({ ...prev, last_name: event.target.value }))}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+            placeholder="Last name"
           />
         </div>
 

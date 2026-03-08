@@ -14,6 +14,8 @@ type Idea = {
   department_name?: string
   closurePeriod: number
   closure_period_academic_year?: string
+  poster_username?: string | null
+  poster_name?: string | null
   documents: { doc_id: number; file: string; file_name: string; upload_time: string }[]
 }
 
@@ -24,10 +26,24 @@ export default function QAManagerDepartmentIdeasPage() {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [actionMessage, setActionMessage] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
 
   const itemsPerPage = 5
+
+  const getStoredRole = () => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      if (!raw) return 'staff'
+      const parsed = JSON.parse(raw) as { role?: string }
+      return String(parsed?.role || 'staff').trim().toLowerCase()
+    } catch {
+      return 'staff'
+    }
+  }
+
+  const canModerate = getStoredRole() !== 'qa_coordinator'
 
   const getAuthConfig = () => {
     try {
@@ -88,6 +104,12 @@ export default function QAManagerDepartmentIdeasPage() {
     setCurrentPage(1)
   }, [searchTerm, selectedCategory])
 
+  useEffect(() => {
+    if (!actionMessage) return
+    const timeoutId = window.setTimeout(() => setActionMessage(''), 3500)
+    return () => window.clearTimeout(timeoutId)
+  }, [actionMessage])
+
   const fetchIdeas = async () => {
     setLoading(true)
     setError('')
@@ -119,6 +141,27 @@ export default function QAManagerDepartmentIdeasPage() {
     }
   }
 
+  const handleDisableUser = async (userId: number) => {
+    const shouldDisable = window.confirm(`Disable account for User #${userId}?`)
+    if (!shouldDisable) return
+
+    setError('')
+    setActionMessage('')
+    try {
+      const response = await axios.post(`/api/admin/users/${userId}/disable/`, {}, getAuthConfig())
+      const message = (response.data as { message?: string })?.message || `User #${userId} disabled.`
+      setActionMessage(message)
+      await fetchIdeas()
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined
+        setError(data?.message || data?.detail || 'Failed to disable user.')
+      } else {
+        setError('Failed to disable user.')
+      }
+    }
+  }
+
   const shouldShowDescriptionToggle = (content: string) =>
     content.length > 180 || content.includes('\n')
 
@@ -132,6 +175,13 @@ export default function QAManagerDepartmentIdeasPage() {
       }
       return next
     })
+  }
+
+  const resolveDocumentUrl = (url: string) => {
+    if (!url) return '#'
+    if (url.startsWith('http://') || url.startsWith('https://')) return url
+    if (url.startsWith('/')) return url
+    return `/${url}`
   }
 
   return (
@@ -164,6 +214,7 @@ export default function QAManagerDepartmentIdeasPage() {
       </div>
 
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {actionMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{actionMessage}</div>}
       {loading && <p className="text-sm text-slate-500">Loading ideas...</p>}
 
       {filteredIdeas.length === 0 && !loading ? (
@@ -184,7 +235,11 @@ export default function QAManagerDepartmentIdeasPage() {
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
                       <p className="mt-1 text-xs text-slate-500">
-                        {idea.anonymous_status ? 'Posted anonymously' : `Posted by User #${idea.user}`} • {new Date(idea.submit_datetime).toLocaleString()}
+                        {idea.poster_name
+                          ? `Posted by ${idea.poster_name}`
+                          : idea.anonymous_status
+                            ? 'Posted anonymously'
+                            : `Posted by User #${idea.user}`} • {new Date(idea.submit_datetime).toLocaleString()}
                       </p>
                     </div>
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
@@ -230,7 +285,7 @@ export default function QAManagerDepartmentIdeasPage() {
                   {idea.documents.length > 0 && (
                     <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
                       {idea.documents.map((doc) => (
-                        <a key={doc.doc_id} href={doc.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
+                        <a key={doc.doc_id} href={resolveDocumentUrl(doc.file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
                           <Paperclip className="h-4 w-4" /> {doc.file_name}
                         </a>
                       ))}
@@ -241,8 +296,13 @@ export default function QAManagerDepartmentIdeasPage() {
                     <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"><ThumbsUp className="h-4 w-4" /> Upvote</button>
                     <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"><ThumbsDown className="h-4 w-4" /> Downvote</button>
                     <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"><MessageCircle className="h-4 w-4" /> Comment</button>
-                    <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"><ShieldCheck className="h-4 w-4" /> Approve</button>
-                    <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"><XCircle className="h-4 w-4" /> Reject</button>
+                    {canModerate && (
+                      <>
+                        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"><ShieldCheck className="h-4 w-4" /> Approve</button>
+                        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"><XCircle className="h-4 w-4" /> Reject</button>
+                        <button type="button" onClick={() => handleDisableUser(idea.user)} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"><XCircle className="h-4 w-4" /> Disable User</button>
+                      </>
+                    )}
                   </div>
                 </article>
               ))}

@@ -27,14 +27,36 @@ class IdeaListSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.dept_name', read_only=True)
     closure_period_academic_year = serializers.CharField(source='closurePeriod.academic_year', read_only=True)
     documents = DocumentSerializer(many=True, read_only=True)
+    poster_username = serializers.SerializerMethodField()
+    poster_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Idea
         fields = [
             'idea_id', 'idea_title', 'idea_content', 
-            'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'department_name', 'closurePeriod', 'closure_period_academic_year', 'documents'
+            'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'department_name', 'closurePeriod', 'closure_period_academic_year', 'documents', 'poster_username', 'poster_name'
         ]
     
     def get_category_ids(self, obj):
         return list(obj.categories.values_list('category_id', flat=True))
+
+    def _can_view_poster_identity(self, obj) -> bool:
+        viewer_role = str(self.context.get('viewer_role', '')).strip().lower()
+        if viewer_role in {'admin', 'qa_manager', 'qa_coordinator'}:
+            return True
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated and request.user == obj.user:
+            return True
+        return not obj.anonymous_status
+
+    def get_poster_username(self, obj):
+        return obj.user.username if self._can_view_poster_identity(obj) else None
+
+    def get_poster_name(self, obj):
+        if not self._can_view_poster_identity(obj):
+            return None
+        first_name = (obj.user.first_name or '').strip()
+        last_name = (obj.user.last_name or '').strip()
+        full_name = f"{first_name} {last_name}".strip()
+        return full_name or obj.user.username
 

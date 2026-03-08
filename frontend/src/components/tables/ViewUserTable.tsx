@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { useLocation } from "react-router-dom";
 import AddUserForm from "../../forms/AddUserForm";
 
 type AppUser = {
@@ -29,6 +30,20 @@ const getAuthConfig = () => {
 };
 
 export default function ViewUserTable() {
+  const location = useLocation();
+  const currentRole = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) return "staff";
+      const parsed = JSON.parse(raw) as { role?: string };
+      return String(parsed.role || "staff").trim().toLowerCase();
+    } catch {
+      return "staff";
+    }
+  }, []);
+  const canAddUser = currentRole === "admin";
+  const canResetPassword = currentRole === "admin";
+
   const [users, setUsers] = useState<AppUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [error, setError] = useState("");
@@ -43,6 +58,12 @@ export default function ViewUserTable() {
   const [availableDepartments, setAvailableDepartments] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const highlightedUserId = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const raw = params.get("userId");
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [location.search]);
 
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
@@ -132,6 +153,16 @@ export default function ViewUserTable() {
   }, [currentPage, totalPages]);
 
   useEffect(() => {
+    if (!highlightedUserId) return;
+    const targetIndex = filteredUsers.findIndex((user) => user.user_id === highlightedUserId);
+    if (targetIndex < 0) return;
+    const targetPage = Math.floor(targetIndex / itemsPerPage) + 1;
+    if (targetPage !== currentPage) {
+      setCurrentPage(targetPage);
+    }
+  }, [highlightedUserId, filteredUsers, currentPage]);
+
+  useEffect(() => {
     if (!success) return;
     const timeoutId = window.setTimeout(() => setSuccess(""), 3500);
     return () => window.clearTimeout(timeoutId);
@@ -214,7 +245,8 @@ export default function ViewUserTable() {
   };
 
   const handleCreateUser = async (payload: {
-    name: string;
+    first_name: string;
+    last_name: string;
     username: string;
     email: string;
     role_name: string;
@@ -248,7 +280,7 @@ export default function ViewUserTable() {
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <div className={`grid grid-cols-1 gap-3 ${canAddUser ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
         <input
           type="text"
           value={searchTerm}
@@ -280,13 +312,15 @@ export default function ViewUserTable() {
             </option>
           ))}
         </select>
-        <button
-          type="button"
-          onClick={() => setIsAddingUser(true)}
-          className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800"
-        >
-          Add User
-        </button>
+        {canAddUser && (
+          <button
+            type="button"
+            onClick={() => setIsAddingUser(true)}
+            className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800"
+          >
+            Add User
+          </button>
+        )}
       </div>
 
       {isAddingUser ? (
@@ -326,7 +360,10 @@ export default function ViewUserTable() {
                   const isAdminUser = roleName === "admin";
 
                   return (
-                    <tr key={user.user_id}>
+                    <tr
+                      key={user.user_id}
+                      className={user.user_id === highlightedUserId ? "bg-amber-50/60" : undefined}
+                    >
                       <td className="px-4 py-3 text-sm text-slate-700">{user.username}</td>
                       <td className="px-4 py-3 text-sm text-slate-700">{user.email || "-"}</td>
                       <td className="px-4 py-3 text-sm text-slate-700">{user.role_name || "-"}</td>
@@ -334,14 +371,16 @@ export default function ViewUserTable() {
                       <td className="px-4 py-3 text-sm text-slate-700">{user.active_status ? "Active" : "Disabled"}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleResetPassword(user)}
-                            disabled={isProcessing}
-                            className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            Reset Password
-                          </button>
+                          {canResetPassword && (
+                            <button
+                              type="button"
+                              onClick={() => handleResetPassword(user)}
+                              disabled={isProcessing}
+                              className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Reset Password
+                            </button>
+                          )}
                           {user.active_status ? (
                             <button
                               type="button"

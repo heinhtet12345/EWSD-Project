@@ -20,7 +20,10 @@ class Role(models.Model):
 class User(AbstractUser):
     user_id = models.AutoField(primary_key=True)
     dob = models.DateField(null=True, blank=True)
-    address = models.CharField(max_length=256, blank=True)
+    address_line_1 = models.CharField(max_length=256, blank=True)
+    township = models.CharField(max_length=100, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     hire_date = models.DateField(null=True, blank=True)
     active_status = models.BooleanField(default=True)

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { ChevronLeft, ChevronRight, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Flag, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import AddIdeaSubmissionForm from '../forms/AddIdeaSubmissionForm'
 
 type Idea = {
@@ -15,10 +16,14 @@ type Idea = {
   department_name?: string
   closurePeriod: number
   closure_period_academic_year?: string
+  poster_username?: string | null
+  poster_name?: string | null
   documents: { doc_id: number; file: string; file_name: string; upload_time: string }[]
 }
 
 const StaffAllIdeaPage = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [isAdding, setIsAdding] = useState(false)
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [categoryMap, setCategoryMap] = useState<Record<number, string>>({})
@@ -30,6 +35,7 @@ const StaffAllIdeaPage = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
   const [isCheckingAccount, setIsCheckingAccount] = useState(false)
+  const [actionMessage, setActionMessage] = useState('')
 
   const itemsPerPage = 5
 
@@ -63,6 +69,39 @@ const StaffAllIdeaPage = () => {
       return matchesSearch && matchesCategory && matchesDepartment
     })
   }, [ideas, searchTerm, selectedCategory, selectedDepartment])
+
+  const currentRole = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      if (!raw) return 'staff'
+      const parsed = JSON.parse(raw) as { role?: string }
+      return String(parsed.role || 'staff').trim().toLowerCase()
+    } catch {
+      return 'staff'
+    }
+  }, [])
+
+  const isStaff = currentRole === 'staff'
+  const canModerateView = currentRole === 'qa_manager' || currentRole === 'admin'
+  const currentUserId = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as { user_id?: number | string; id?: number | string }
+      const numericId = Number(parsed.user_id ?? parsed.id)
+      return Number.isFinite(numericId) ? numericId : null
+    } catch {
+      return null
+    }
+  }, [])
+
+  const highlightIdeaId = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    const rawId = params.get('highlightIdeaId')
+    const parsed = Number(rawId)
+    return Number.isFinite(parsed) ? parsed : null
+  }, [location.search])
+
 
   const totalPages = Math.max(1, Math.ceil(filteredIdeas.length / itemsPerPage))
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -105,6 +144,23 @@ const StaffAllIdeaPage = () => {
   useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm, selectedCategory, selectedDepartment])
+
+  useEffect(() => {
+    if (!actionMessage) return
+    const timeoutId = window.setTimeout(() => setActionMessage(''), 3500)
+    return () => window.clearTimeout(timeoutId)
+  }, [actionMessage])
+
+  useEffect(() => {
+    if (!highlightIdeaId || filteredIdeas.length === 0) return
+    const highlightIndex = filteredIdeas.findIndex((idea) => idea.idea_id === highlightIdeaId)
+    if (highlightIndex < 0) return
+    const targetPage = Math.floor(highlightIndex / itemsPerPage) + 1
+    if (targetPage !== currentPage) {
+      setCurrentPage(targetPage)
+    }
+  }, [highlightIdeaId, filteredIdeas, currentPage])
+
 
   const fetchIdeas = async () => {
     setLoading(true)
@@ -158,6 +214,25 @@ const StaffAllIdeaPage = () => {
     }
   }
 
+  const handleReportIdea = async (ideaId: number) => {
+    const shouldReport = window.confirm('Report this idea to QA Manager and Admin?')
+    if (!shouldReport) return
+
+    setError('')
+    setActionMessage('')
+    try {
+      const response = await axios.post(`/api/ideas/${ideaId}/report/`, {}, getAuthConfig())
+      setActionMessage((response.data as { message?: string })?.message || 'Idea reported successfully.')
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined
+        setError(data?.message || data?.detail || 'Failed to report idea.')
+      } else {
+        setError('Failed to report idea.')
+      }
+    }
+  }
+
   const shouldShowDescriptionToggle = (content: string) =>
     content.length > 180 || content.includes('\n')
 
@@ -173,6 +248,19 @@ const StaffAllIdeaPage = () => {
     })
   }
 
+  const resolveDocumentUrl = (url: string) => {
+    if (!url) return '#'
+    if (url.startsWith('http://') || url.startsWith('https://')) return url
+    if (url.startsWith('/')) return url
+    return `/${url}`
+  }
+
+  const handleOpenUserRow = (userId: number) => {
+    if (!canModerateView) return
+    const basePath = currentRole === 'admin' ? '/admin/users' : '/qa_manager/users'
+    navigate(`${basePath}?userId=${userId}`)
+  }
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -180,7 +268,7 @@ const StaffAllIdeaPage = () => {
           <h1 className="text-2xl font-semibold text-black">All Ideas</h1>
           <p className="text-sm text-slate-500">View ideas across departments.</p>
         </div>
-        {!isAdding && (
+        {!isAdding && isStaff && (
           <button
             type="button"
             onClick={handleAddIdeaClick}
@@ -233,6 +321,7 @@ const StaffAllIdeaPage = () => {
           </div>
 
           {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+          {actionMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{actionMessage}</div>}
           {loading && <p className="text-sm text-slate-500">Loading ideas...</p>}
 
           {filteredIdeas.length === 0 && !loading ? (
@@ -248,17 +337,54 @@ const StaffAllIdeaPage = () => {
                   </div>
 
                   {groupIdeas.map((idea) => (
-                    <article key={idea.idea_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                    <article
+                      key={idea.idea_id}
+                      className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
+                        highlightIdeaId === idea.idea_id
+                          ? 'border-amber-300 ring-2 ring-amber-200'
+                          : 'border-slate-200'
+                      }`}
+                    >
                       <div className="mb-3 flex items-start justify-between gap-3">
                         <div>
                           <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
                           <p className="mt-1 text-xs text-slate-500">
-                            {idea.anonymous_status ? 'Posted anonymously' : `Posted by User #${idea.user}`} • {new Date(idea.submit_datetime).toLocaleString()}
+                            {idea.poster_name ? (
+                              <>
+                                Posted by{" "}
+                                {canModerateView ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenUserRow(idea.user)}
+                                    className="font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                                  >
+                                    {idea.poster_name}
+                                  </button>
+                                ) : (
+                                  idea.poster_name
+                                )}
+                              </>
+                            ) : idea.anonymous_status ? (
+                              "Posted anonymously"
+                            ) : (
+                              `Posted by User #${idea.user}`
+                            )} | {new Date(idea.submit_datetime).toLocaleString()}
                           </p>
                         </div>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
-                          {idea.department_name || `Department #${idea.department}`}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                            {idea.department_name || `Department #${idea.department}`}
+                          </span>
+                          {isStaff && idea.user !== currentUserId && (
+                            <button
+                              type="button"
+                              onClick={() => handleReportIdea(idea.idea_id)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                            >
+                              <Flag className="h-4 w-4" /> Report
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {idea.category_ids.length > 0 && (
@@ -299,7 +425,7 @@ const StaffAllIdeaPage = () => {
                       {idea.documents.length > 0 && (
                         <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
                           {idea.documents.map((doc) => (
-                            <a key={doc.doc_id} href={doc.file} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
+                            <a key={doc.doc_id} href={resolveDocumentUrl(doc.file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
                               <Paperclip className="h-4 w-4" />
                               {doc.file_name}
                             </a>
@@ -317,6 +443,11 @@ const StaffAllIdeaPage = () => {
                         <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
                           <MessageCircle className="h-4 w-4" /> Comment
                         </button>
+                        {canModerateView && (
+                          <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">
+                            Moderation View
+                          </span>
+                        )}
                       </div>
                     </article>
                   ))}
@@ -354,3 +485,5 @@ const StaffAllIdeaPage = () => {
 }
 
 export default StaffAllIdeaPage
+
+

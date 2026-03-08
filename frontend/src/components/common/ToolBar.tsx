@@ -26,6 +26,8 @@ const getStoredUser = () => {
     const parsed = JSON.parse(raw) as {
       id?: string | number;
       user_id?: string | number;
+      first_name?: string;
+      last_name?: string;
       name?: string;
       username?: string;
       profileimg?: string;
@@ -34,9 +36,10 @@ const getStoredUser = () => {
     if (!parsed?.username) {
       return null;
     }
+    const fullName = `${(parsed.first_name || "").trim()} ${(parsed.last_name || "").trim()}`.trim();
     return {
       id: parsed.user_id ?? parsed.id,
-      name: (parsed.name || "").trim() || parsed.username,
+      name: fullName || (parsed.name || "").trim() || parsed.username,
       profileimg: parsed.profile_image || parsed.profileimg,
     };
   } catch {
@@ -97,6 +100,11 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
   const notificationRef = useRef<HTMLDivElement | null>(null);
 
   const fetchNotifications = useCallback(async () => {
+    if (!getAuthConfig()?.headers?.Authorization) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
     try {
       const response = await axios.get("/api/notifications/", getAuthConfig());
       const data = response.data?.results;
@@ -125,7 +133,6 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
   useEffect(() => {
     const handleAuthChange = () => {
       setUser(getStoredUser());
-      fetchNotifications();
     };
 
     const handleStorage = (event: StorageEvent) => {
@@ -171,6 +178,22 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
     const role = getStoredRole();
     setIsUserMenuOpen(false);
     navigate(`/${role}/profile`);
+  };
+
+  const getNotificationTargetPath = (item: NotificationItem) => {
+    if (!item.idea) return null;
+    const role = getStoredRole();
+
+    if (role === "qa_manager") {
+      return `/qa_manager/all-ideas?highlightIdeaId=${item.idea}`;
+    }
+    if (role === "admin") {
+      return `/admin/all-ideas?highlightIdeaId=${item.idea}`;
+    }
+    if (role === "qa_coordinator") {
+      return `/qa_coordinator/my-department?highlightIdeaId=${item.idea}`;
+    }
+    return `/staff/all-ideas?highlightIdeaId=${item.idea}`;
   };
 
   const handleLogout = async () => {
@@ -283,23 +306,29 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
                       key={item.notification_id}
                       type="button"
                       onClick={async () => {
-                        if (item.is_read) return;
+                        const targetPath = getNotificationTargetPath(item);
                         try {
-                          await axios.patch(
-                            `/api/notifications/${item.notification_id}/read/`,
-                            {},
-                            getAuthConfig()
-                          );
-                          setNotifications((prev) =>
-                            prev.map((current) =>
-                              current.notification_id === item.notification_id
-                                ? { ...current, is_read: true }
-                                : current
-                            )
-                          );
-                          setUnreadCount((prev) => Math.max(0, prev - 1));
+                          if (!item.is_read) {
+                            await axios.patch(
+                              `/api/notifications/${item.notification_id}/read/`,
+                              {},
+                              getAuthConfig()
+                            );
+                            setNotifications((prev) =>
+                              prev.map((current) =>
+                                current.notification_id === item.notification_id
+                                  ? { ...current, is_read: true }
+                                  : current
+                              )
+                            );
+                            setUnreadCount((prev) => Math.max(0, prev - 1));
+                          }
                         } catch {
                           // Ignore failed mark-read action in UI.
+                        }
+                        setIsNotificationOpen(false);
+                        if (targetPath) {
+                          navigate(targetPath);
                         }
                       }}
                       className={`w-full rounded-lg border px-3 py-2 text-left transition ${
@@ -384,12 +413,6 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
                 onClick={handleGoToProfile}
               >
                 Profile
-              </button>
-              <button
-                type="button"
-                className="block w-full px-4 py-2 text-left text-slate-700 hover:bg-slate-100"
-              >
-                Settings
               </button>
               <button
                 type="button"

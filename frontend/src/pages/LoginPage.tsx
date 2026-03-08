@@ -15,6 +15,8 @@ type AuthResponse = {
   user_id?: string | number;
   id?: string | number;
   username?: string;
+  first_name?: string;
+  last_name?: string;
   name?: string;
   profile_image?: string;
   role?: string;
@@ -98,10 +100,15 @@ export default function LoginPage() {
       });
 
       const payload = response.data;
+      const firstName = (payload?.first_name || "").trim();
+      const lastName = (payload?.last_name || "").trim();
+      const fullName = `${firstName} ${lastName}`.trim() || (payload?.name || "");
       const user = {
         id: payload?.user_id ?? payload?.id,
         username: payload?.username,
-        name: payload?.name || "",
+        first_name: firstName,
+        last_name: lastName,
+        name: fullName,
         profile_image: payload?.profile_image,
         role: normalizeRole(payload?.role ?? payload?.role_name),
         department: payload?.department,

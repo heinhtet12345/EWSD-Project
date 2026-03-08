@@ -120,19 +120,53 @@ class ListIdeasView(APIView):
         mine_only = str(request.query_params.get('mine', 'false')).lower() == 'true'
         my_department_only = str(request.query_params.get('my_department', 'false')).lower() == 'true'
 
+        active_ideas = Idea.objects.filter(user__active_status=True)
+
         # Filter ideas based on user role and requested scope
         if role == 'staff':
-            ideas = Idea.objects.filter(user=request.user) if mine_only else Idea.objects.all()
+            ideas = active_ideas.filter(user=request.user) if mine_only else active_ideas
         elif role == 'qa_coordinator':
             # QA Coordinators can see ideas from their department
-            ideas = Idea.objects.filter(department=request.user.department)
+            ideas = active_ideas.filter(department=request.user.department)
         elif role == 'qa_manager' and my_department_only:
-            ideas = Idea.objects.filter(department=request.user.department) if request.user.department else Idea.objects.none()
+            ideas = active_ideas.filter(department=request.user.department) if request.user.department else Idea.objects.none()
         else:
             # QA Managers and Admins can see all ideas
-            ideas = Idea.objects.all()
+            ideas = active_ideas
         
-        serializer = IdeaListSerializer(ideas, many=True)
+        serializer = IdeaListSerializer(ideas, many=True, context={"request": request, "viewer_role": role})
         return Response({
             "results": serializer.data
         })
+
+
+class ReportIdeaView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, idea_id):
+        role = _normalized_role(request.user)
+        if role != "staff":
+            return Response({"message": "Only staff can report ideas."}, status=status.HTTP_403_FORBIDDEN)
+
+        idea = Idea.objects.filter(idea_id=idea_id).select_related("department", "user").first()
+        if not idea:
+            return Response({"message": "Idea not found."}, status=status.HTTP_404_NOT_FOUND)
+        if idea.user_id == request.user.user_id:
+            return Response({"message": "You cannot report your own idea."}, status=status.HTTP_400_BAD_REQUEST)
+
+        recipients = [
+            user
+            for user in User.objects.select_related("role")
+            if _normalized_role(user) in {"admin", "qa_manager"}
+        ]
+
+        for recipient in recipients:
+            Notification.objects.create(
+                recipient=recipient,
+                title="Idea reported",
+                message=f'"{idea.idea_title}" was reported by {request.user.username}.',
+                notification_type="idea_reported",
+                idea=idea,
+            )
+
+        return Response({"message": "Idea reported successfully."}, status=status.HTTP_200_OK)

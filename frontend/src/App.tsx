@@ -1,5 +1,5 @@
 import "./App.css";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -25,13 +25,19 @@ export default function App() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/*" element={<MainLayout />}>
         <Route path="admin" element={<AdminDashboard />} />
+        <Route path="admin/all-ideas" element={<StaffAllIdeaPage />} />
         <Route path="admin/users" element={<ViewUserTable />} />
         <Route path="admin/closure-period" element={<ClosurePeriodPage />} />
         <Route path="admin/analytics" element={<AdminAnalyticsPage />} />
         <Route path="qa_coordinator" element={<QACoordDashboard />} />
+        <Route path="qa_coordinator/all-ideas" element={<StaffAllIdeaPage />} />
+        <Route path="qa_coordinator/my-department" element={<QAManagerDepartmentIdeasPage />} />
+        <Route path="qa_coordinator/review-moderate" element={<QAManagerDepartmentIdeasPage />} />
+        <Route path="005" element={<Navigate to="/qa_coordinator/my-department" replace />} />
+        <Route path="006" element={<Navigate to="/qa_coordinator/all-ideas" replace />} />
         <Route path="qa_manager" element={<QAManagerDashboard />} />
         <Route path="qa_manager/all-ideas" element={<QAManagerAllIdeasPage />} />
-        <Route path="qa_manager/my-department" element={<QAManagerDepartmentIdeasPage />} />
+        <Route path="qa_manager/users" element={<ViewUserTable />} />
         <Route path="qa_manager/categories" element={<QAManagerCategoriesPage />} />
         <Route path="qa_manager/closure-period" element={<ClosurePeriodPage />} />
         <Route path="qa_manager/profile" element={<UserProfilePage />} />

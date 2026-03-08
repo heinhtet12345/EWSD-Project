@@ -31,15 +31,16 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
   ], 
   "qa_manager": [
     { label: "Dashboard", to: "/qa_manager", icon: LayoutDashboard },
+    { label: "Users", to: "/qa_manager/users", icon: User},
     { label: "All Ideas", to: "/qa_manager/all-ideas", icon: FileText },
-    { label: "My Department", to: "/qa_manager/my-department", icon: ShieldCheck },
     { label: "Closure Period", to: "/qa_manager/closure-period", icon: ShieldCheck },
     { label: "Categories", to: "/qa_manager/categories", icon: FileText },
   ],
   "qa_coordinator": [
     { label: "Dashboard", to: "/qa_coordinator", icon: LayoutDashboard },
-    { label: "All Ideas", to: "/006", icon: FileText },
-    { label: "Review and Moderate Ideas", to: "/005", icon: ShieldCheck },
+    { label: "All Ideas", to: "/qa_coordinator/all-ideas", icon: FileText },
+    { label: "My Department", to: "/qa_coordinator/my-department", icon: ShieldCheck },
+
   ],
   staff: [
     { label: "Dashboard", to: "/staff", icon: LayoutDashboard },

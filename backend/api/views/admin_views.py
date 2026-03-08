@@ -24,6 +24,19 @@ def _admin_users_queryset():
     return [user for user in User.objects.select_related("role") if _normalized_role(user) == "admin"]
 
 
+def _requester_can_toggle_user(requester, target_user) -> bool:
+    requester_role = _normalized_role(requester)
+    target_role = _normalized_role(target_user)
+
+    if requester_role == "admin":
+        return target_role != "admin"
+
+    if requester_role == "qa_manager":
+        return target_role in {"staff", "qa_coordinator"}
+
+    return False
+
+
 class ForgotPasswordRequestView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -69,10 +82,17 @@ class AdminUserListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if _normalized_role(request.user) != "admin":
+        requester_role = _normalized_role(request.user)
+        if requester_role not in {"admin", "qa_manager"}:
             return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
 
-        users = User.objects.select_related("role", "department").order_by("username")
+        users_queryset = User.objects.select_related("role", "department").order_by("username")
+        if requester_role == "qa_manager":
+            allowed_roles = {"staff", "qa_coordinator"}
+            users = [user for user in users_queryset if _normalized_role(user) in allowed_roles]
+        else:
+            users = users_queryset
+
         serializer = UserSerializer(users, many=True)
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
 
@@ -98,9 +118,14 @@ class AdminCreateUserView(APIView):
 
         username = str(request.data.get("username", "")).strip()
         email = str(request.data.get("email", "")).strip()
-        name = str(request.data.get("name", "")).strip()
+        first_name = str(request.data.get("first_name", "")).strip()
+        last_name = str(request.data.get("last_name", "")).strip()
+        legacy_name = str(request.data.get("name", "")).strip()
         role_name = str(request.data.get("role_name", "")).strip()
         department_name = str(request.data.get("department_name", "")).strip()
+
+        if not first_name and legacy_name:
+            first_name = legacy_name
 
         if not username:
             return Response({"message": "Username is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -146,7 +171,8 @@ class AdminCreateUserView(APIView):
         user = User(
             username=username,
             email=email,
-            first_name=name,
+            first_name=first_name,
+            last_name=last_name,
             role=role_obj,
             department=department_obj,
             hire_date=timezone.now().date(),
@@ -207,15 +233,16 @@ class AdminDisableUserAccountView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, user_id):
-        if _normalized_role(request.user) != "admin":
+        requester_role = _normalized_role(request.user)
+        if requester_role not in {"admin", "qa_manager"}:
             return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
 
         target_user = User.objects.filter(user_id=user_id).first()
         if not target_user:
             return Response({"message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if _normalized_role(target_user) == "admin":
-            return Response({"message": "Cannot disable admin account."}, status=status.HTTP_400_BAD_REQUEST)
+        if not _requester_can_toggle_user(request.user, target_user):
+            return Response({"message": "Not authorized to disable this user."}, status=status.HTTP_403_FORBIDDEN)
 
         # Keep Django auth active so user can still log in and read notifications.
         target_user.active_status = False
@@ -236,12 +263,16 @@ class AdminEnableUserAccountView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, user_id):
-        if _normalized_role(request.user) != "admin":
+        requester_role = _normalized_role(request.user)
+        if requester_role not in {"admin", "qa_manager"}:
             return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
 
         target_user = User.objects.filter(user_id=user_id).first()
         if not target_user:
             return Response({"message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not _requester_can_toggle_user(request.user, target_user):
+            return Response({"message": "Not authorized to enable this user."}, status=status.HTTP_403_FORBIDDEN)
 
         target_user.active_status = True
         target_user.is_active = True
