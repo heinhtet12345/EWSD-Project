@@ -6,7 +6,7 @@ from django.core.mail import BadHeaderError
 from django.contrib.auth import get_user_model
 from api.closure_period.models import ClosurePeriod
 from api.models import Notification
-from .serializer import IdeaCreateSerializer, IdeaListSerializer
+from .serializer import IdeaCreateSerializer, IdeaListSerializer, IdeaDetailSerializer
 from .models import Idea, UploadedDocument
 
 User = get_user_model()
@@ -170,3 +170,14 @@ class ReportIdeaView(APIView):
             )
 
         return Response({"message": "Idea reported successfully."}, status=status.HTTP_200_OK)
+
+class IdeaDetailView(APIView):
+    def get(self, request, idea_id):
+        try:
+            idea = Idea.objects.select_related('user',      'department', 'closurePeriod') \
+                           .prefetch_related('comments', 'votes', 'documents', 'categories') \
+                           .get(pk=idea_id)
+            serializer = IdeaDetailSerializer(idea)
+            return Response(serializer.data)
+        except Idea.DoesNotExist:
+            return Response({"error": "Idea not found"},        status=status.HTTP_404_NOT_FOUND)

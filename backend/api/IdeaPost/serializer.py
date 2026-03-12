@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from .models import Idea, UploadedDocument
 from api.models import Category
+from api.interaction.models import Comment, Vote
+from api.interaction.serializers import CommentSerializer, VoteSerializer
 
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -60,3 +62,36 @@ class IdeaListSerializer(serializers.ModelSerializer):
         full_name = f"{first_name} {last_name}".strip()
         return full_name or obj.user.username
 
+class IdeaDetailSerializer(serializers.ModelSerializer):
+    comments = CommentSerializer(many=True, read_only=True)
+    documents = DocumentSerializer(many=True, read_only=True)
+    
+    user_name = serializers.ReadOnlyField(source='user.username')
+    department_name = serializers.ReadOnlyField(source='department.dept_name')
+    closure_info = serializers.ReadOnlyField(source='closurePeriod.name')
+    category_names = serializers.SlugRelatedField(
+        many=True, read_only=True, slug_field='category_name', source='categories'
+    )
+
+    # Counts
+    upvote_count = serializers.SerializerMethodField()
+    downvote_count = serializers.SerializerMethodField()
+    comment_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Idea
+        fields = [
+            'idea_id', 'idea_title', 'idea_content', 'anonymous_status', 
+            'submit_datetime', 'user_name', 'department_name', 'category_names',
+            'closure_info', 'upvote_count', 'downvote_count', 
+            'comment_count', 'documents', 'comments'
+        ]
+
+    def get_upvote_count(self, obj):
+        return obj.votes.filter(vote_type='UP').count()
+
+    def get_downvote_count(self, obj):
+        return obj.votes.filter(vote_type='DOWN').count()
+
+    def get_comment_count(self, obj):
+        return obj.comments.count()

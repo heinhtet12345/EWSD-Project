@@ -41,6 +41,7 @@ urlpatterns = [
     path('analytics/', include('api.analytics.urls')),
     path('closure-period/', include('api.closure_period.urls')),
     path('ideas/', include('api.IdeaPost.urls')),
+    path('interaction/', include('api.interaction.urls')),
 ]
 
 
