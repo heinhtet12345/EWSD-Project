@@ -18,7 +18,20 @@ type Idea = {
   closure_period_academic_year?: string
   poster_username?: string | null
   poster_name?: string | null
+  upvote_count?: number
+  downvote_count?: number
+  comment_count?: number
+  user_vote?: 'UP' | 'DOWN' | null
   documents: { doc_id: number; file: string; file_name: string; upload_time: string }[]
+}
+
+type Comment = {
+  cmt_id: number
+  cmt_content: string
+  anonymous_status: boolean
+  cmt_datetime: string
+  user: string
+  idea: number
 }
 
 const StaffAllIdeaPage = () => {
@@ -36,6 +49,10 @@ const StaffAllIdeaPage = () => {
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
   const [isCheckingAccount, setIsCheckingAccount] = useState(false)
   const [actionMessage, setActionMessage] = useState('')
+  const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set())
+  const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
+  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
+  const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
 
   const itemsPerPage = 5
 
@@ -230,6 +247,96 @@ const StaffAllIdeaPage = () => {
       } else {
         setError('Failed to report idea.')
       }
+    }
+  }
+
+  const fetchComments = async (ideaId: number) => {
+    try {
+      const response = await axios.get(`/api/interaction/idea/${ideaId}/comments/`, getAuthConfig())
+      const data = Array.isArray(response.data?.results) ? response.data.results : []
+      setCommentsByIdea((prev) => ({ ...prev, [ideaId]: data }))
+      if (typeof response.data?.comment_count === 'number') {
+        setIdeas((prev) =>
+          prev.map((idea) =>
+            idea.idea_id === ideaId ? { ...idea, comment_count: response.data.comment_count } : idea,
+          ),
+        )
+      }
+    } catch {
+      // ignore comment fetch errors
+    }
+  }
+
+  const toggleComments = (ideaId: number) => {
+    setOpenCommentIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(ideaId)) {
+        next.delete(ideaId)
+      } else {
+        next.add(ideaId)
+        if (!commentsByIdea[ideaId]) {
+          fetchComments(ideaId)
+        }
+      }
+      return next
+    })
+  }
+
+  const handleVote = async (ideaId: number, voteType: 'UP' | 'DOWN') => {
+    try {
+      const response = await axios.post(
+        `/api/interaction/idea/${ideaId}/vote/`,
+        { vote_type: voteType },
+        getAuthConfig(),
+      )
+      const data = response.data as { upvote_count?: number; downvote_count?: number; user_vote?: 'UP' | 'DOWN' | null }
+      setIdeas((prev) =>
+        prev.map((idea) =>
+          idea.idea_id === ideaId
+            ? {
+                ...idea,
+                upvote_count: typeof data.upvote_count === 'number' ? data.upvote_count : idea.upvote_count,
+                downvote_count: typeof data.downvote_count === 'number' ? data.downvote_count : idea.downvote_count,
+                user_vote: data.user_vote ?? null,
+              }
+            : idea,
+        ),
+      )
+    } catch {
+      // ignore vote errors for now
+    }
+  }
+
+  const handleSubmitComment = async (ideaId: number) => {
+    const content = (commentDrafts[ideaId] || '').trim()
+    if (!content) return
+    try {
+      const response = await axios.post(
+        `/api/interaction/idea/${ideaId}/comments/`,
+        {
+          cmt_content: content,
+          anonymous_status: Boolean(commentAnon[ideaId]),
+        },
+        getAuthConfig(),
+      )
+      const data = response.data as { comment?: Comment; comment_count?: number }
+      if (data.comment) {
+        setCommentsByIdea((prev) => ({
+          ...prev,
+          [ideaId]: [...(prev[ideaId] || []), data.comment as Comment],
+        }))
+      }
+      if (typeof data.comment_count === 'number') {
+        setIdeas((prev) =>
+          prev.map((idea) =>
+            idea.idea_id === ideaId ? { ...idea, comment_count: data.comment_count } : idea,
+          ),
+        )
+      }
+      setCommentDrafts((prev) => ({ ...prev, [ideaId]: '' }))
+      setCommentAnon((prev) => ({ ...prev, [ideaId]: false }))
+    } catch {
+      // ignore comment submit errors
     }
   }
 
@@ -434,14 +541,34 @@ const StaffAllIdeaPage = () => {
                       )}
 
                       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-                          <ThumbsUp className="h-4 w-4" /> Upvote
+                        <button
+                          type="button"
+                          onClick={() => handleVote(idea.idea_id, 'UP')}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                            idea.user_vote === 'UP'
+                              ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <ThumbsUp className="h-4 w-4" /> Upvote {idea.upvote_count ?? 0}
                         </button>
-                        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-                          <ThumbsDown className="h-4 w-4" /> Downvote
+                        <button
+                          type="button"
+                          onClick={() => handleVote(idea.idea_id, 'DOWN')}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                            idea.user_vote === 'DOWN'
+                              ? 'border-rose-300 bg-rose-50 text-rose-700'
+                              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <ThumbsDown className="h-4 w-4" /> Downvote {idea.downvote_count ?? 0}
                         </button>
-                        <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-                          <MessageCircle className="h-4 w-4" /> Comment
+                        <button
+                          type="button"
+                          onClick={() => toggleComments(idea.idea_id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                        >
+                          <MessageCircle className="h-4 w-4" /> Comment {idea.comment_count ?? 0}
                         </button>
                         {canModerateView && (
                           <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">
@@ -449,6 +576,56 @@ const StaffAllIdeaPage = () => {
                           </span>
                         )}
                       </div>
+                      {openCommentIds.has(idea.idea_id) && (
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                          <div className="space-y-3">
+                            {(commentsByIdea[idea.idea_id] || []).length === 0 ? (
+                              <p className="text-sm text-slate-500">No comments yet.</p>
+                            ) : (
+                              (commentsByIdea[idea.idea_id] || []).map((comment) => (
+                                <div key={comment.cmt_id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                                  <p className="text-xs text-slate-500">
+                                    {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
+                                    {new Date(comment.cmt_datetime).toLocaleString()}
+                                  </p>
+                                  <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                          <div className="mt-4 space-y-2">
+                            <textarea
+                              rows={2}
+                              value={commentDrafts[idea.idea_id] || ''}
+                              onChange={(event) =>
+                                setCommentDrafts((prev) => ({ ...prev, [idea.idea_id]: event.target.value }))
+                              }
+                              placeholder="Write a comment..."
+                              className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400"
+                              style={{ resize: 'none' }}
+                            />
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center gap-2 text-xs text-slate-600">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(commentAnon[idea.idea_id])}
+                                  onChange={(event) =>
+                                    setCommentAnon((prev) => ({ ...prev, [idea.idea_id]: event.target.checked }))
+                                  }
+                                />
+                                Post anonymously
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => handleSubmitComment(idea.idea_id)}
+                                className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800"
+                              >
+                                Add Comment
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </article>
                   ))}
                 </div>

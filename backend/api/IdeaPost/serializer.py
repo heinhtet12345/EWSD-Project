@@ -31,12 +31,17 @@ class IdeaListSerializer(serializers.ModelSerializer):
     documents = DocumentSerializer(many=True, read_only=True)
     poster_username = serializers.SerializerMethodField()
     poster_name = serializers.SerializerMethodField()
+    upvote_count = serializers.SerializerMethodField()
+    downvote_count = serializers.SerializerMethodField()
+    comment_count = serializers.SerializerMethodField()
+    user_vote = serializers.SerializerMethodField()
     
     class Meta:
         model = Idea
         fields = [
             'idea_id', 'idea_title', 'idea_content', 
-            'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'department_name', 'closurePeriod', 'closure_period_academic_year', 'documents', 'poster_username', 'poster_name'
+            'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'department_name', 'closurePeriod', 'closure_period_academic_year', 'documents', 'poster_username', 'poster_name',
+            'upvote_count', 'downvote_count', 'comment_count', 'user_vote'
         ]
     
     def get_category_ids(self, obj):
@@ -61,6 +66,22 @@ class IdeaListSerializer(serializers.ModelSerializer):
         last_name = (obj.user.last_name or '').strip()
         full_name = f"{first_name} {last_name}".strip()
         return full_name or obj.user.username
+
+    def get_upvote_count(self, obj):
+        return obj.votes.filter(vote_type='UP').count()
+
+    def get_downvote_count(self, obj):
+        return obj.votes.filter(vote_type='DOWN').count()
+
+    def get_comment_count(self, obj):
+        return obj.comments.count()
+
+    def get_user_vote(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user or not request.user.is_authenticated:
+            return None
+        vote = obj.votes.filter(user=request.user).first()
+        return vote.vote_type if vote else None
 
 class IdeaDetailSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True, read_only=True)
