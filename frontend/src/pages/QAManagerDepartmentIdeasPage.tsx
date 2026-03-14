@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
+import { useLocation } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, MessageCircle, Paperclip, ShieldCheck, ThumbsDown, ThumbsUp, XCircle } from 'lucide-react'
 
 type Idea = {
@@ -36,9 +37,11 @@ type Comment = {
 
 export default function QAManagerDepartmentIdeasPage() {
   const [ideas, setIdeas] = useState<Idea[]>([])
+  const [closurePeriods, setClosurePeriods] = useState<Array<{ id: number; academic_year: string; is_active: boolean }>>([])
   const [categoryMap, setCategoryMap] = useState<Record<number, string>>({})
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [openFilter, setOpenFilter] = useState<'all' | 'open' | 'closed'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
@@ -48,6 +51,28 @@ export default function QAManagerDepartmentIdeasPage() {
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
+
+  const location = useLocation()
+  const highlightIdeaIdFromQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    const rawId = params.get('highlightIdeaId')
+    const parsed = Number(rawId)
+    return Number.isFinite(parsed) ? parsed : null
+  }, [location.search])
+
+  const [highlightIdeaId, setHighlightIdeaId] = useState<number | null>(null)
+  const highlightRef = React.useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    setHighlightIdeaId(highlightIdeaIdFromQuery)
+  }, [highlightIdeaIdFromQuery])
+
+  useEffect(() => {
+    if (!highlightIdeaId) return
+
+    const timeoutId = window.setTimeout(() => setHighlightIdeaId(null), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [highlightIdeaId])
 
   const itemsPerPage = 5
 
@@ -98,9 +123,15 @@ export default function QAManagerDepartmentIdeasPage() {
       const matchesCategory =
         !selectedCategory || idea.category_ids.includes(Number(selectedCategory))
 
-      return matchesSearch && matchesCategory
+      const ideaOpen = idea.closure_period_idea_open !== false
+      const matchesOpenFilter =
+        openFilter === 'all' ||
+        (openFilter === 'open' && ideaOpen) ||
+        (openFilter === 'closed' && !ideaOpen)
+
+      return matchesSearch && matchesCategory && matchesOpenFilter
     })
-  }, [ideas, searchTerm, selectedCategory])
+  }, [ideas, searchTerm, selectedCategory, openFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredIdeas.length / itemsPerPage))
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -115,29 +146,97 @@ export default function QAManagerDepartmentIdeasPage() {
     [categoryMap],
   )
 
+  const parseAcademicYearStart = (academicYear?: string) => {
+    if (!academicYear) return 0
+    const match = academicYear.match(/(\d{4})/)
+    if (!match) return 0
+    return Number(match[1])
+  }
+
   const groupedByClosure = useMemo(() => {
-    const groups: Record<string, { ideas: Idea[]; commentOpen: boolean }> = {}
-    currentIdeas.forEach((idea) => {
-      const key = idea.closure_period_academic_year || `Closure Period #${idea.closurePeriod}`
-      if (!groups[key]) {
-        groups[key] = { ideas: [], commentOpen: Boolean(idea.closure_period_comment_open) }
-      }
-      groups[key].ideas.push(idea)
-      if (idea.closure_period_comment_open) {
-        groups[key].commentOpen = true
+    type Group = {
+      title: string
+      closureId: number
+      ideas: Idea[]
+      commentOpen: boolean
+      ideaOpen: boolean
+      sortKey: number
+    }
+
+    const groups: Record<number, Group> = {}
+
+    // Ensure every known closure period is represented, even when it has no ideas yet.
+    closurePeriods.forEach((cp) => {
+      const title = cp.academic_year || `Closure Period #${cp.id}`
+      const sortKey = parseAcademicYearStart(cp.academic_year)
+      groups[cp.id] = {
+        title,
+        closureId: cp.id,
+        ideas: [],
+        commentOpen: Boolean(cp.is_active),
+        ideaOpen: Boolean(cp.is_active),
+        sortKey,
       }
     })
-    return groups
-  }, [currentIdeas])
+
+    currentIdeas.forEach((idea) => {
+      const closureId = idea.closurePeriod
+      const group = groups[closureId]
+      const ideaOpen = Boolean(idea.closure_period_idea_open)
+      const commentOpen = Boolean(idea.closure_period_comment_open)
+
+      if (group) {
+        group.ideas.push(idea)
+        group.ideaOpen = group.ideaOpen || ideaOpen
+        group.commentOpen = group.commentOpen || commentOpen
+      } else {
+        const title = idea.closure_period_academic_year || `Closure Period #${closureId}`
+        const sortKey = parseAcademicYearStart(idea.closure_period_academic_year)
+        groups[closureId] = {
+          title,
+          closureId,
+          ideas: [idea],
+          commentOpen,
+          ideaOpen,
+          sortKey,
+        }
+      }
+    })
+
+    return Object.values(groups).sort((a, b) => {
+      const aOpen = a.ideaOpen ? 1 : 0
+      const bOpen = b.ideaOpen ? 1 : 0
+      if (aOpen !== bOpen) return bOpen - aOpen
+      return b.sortKey - a.sortKey
+    })
+  }, [currentIdeas, closurePeriods])
 
   useEffect(() => {
     fetchIdeas()
     fetchCategories()
+    fetchClosurePeriods()
   }, [])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, selectedCategory])
+  }, [searchTerm, selectedCategory, openFilter])
+
+  useEffect(() => {
+    if (!highlightIdeaId || filteredIdeas.length === 0) return
+    const highlightIndex = filteredIdeas.findIndex((idea) => idea.idea_id === highlightIdeaId)
+    if (highlightIndex < 0) return
+    const targetPage = Math.floor(highlightIndex / itemsPerPage) + 1
+    if (targetPage !== currentPage) {
+      setCurrentPage(targetPage)
+    }
+  }, [highlightIdeaId, filteredIdeas, currentPage])
+
+  useEffect(() => {
+    if (!highlightIdeaId) return
+    const element = highlightRef.current
+    if (!element) return
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightIdeaId, currentPage])
 
   useEffect(() => {
     if (!actionMessage) return
@@ -156,6 +255,17 @@ export default function QAManagerDepartmentIdeasPage() {
       setError('Failed to load department ideas')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchClosurePeriods = async () => {
+    try {
+      const response = await axios.get('/api/closure-period/', getAuthConfig())
+      const data = Array.isArray(response.data) ? response.data : response.data?.results
+      if (!Array.isArray(data)) return
+      setClosurePeriods(data)
+    } catch {
+      // ignore
     }
   }
 
@@ -332,7 +442,7 @@ export default function QAManagerDepartmentIdeasPage() {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-3">
           <input
             type="text"
             value={searchTerm}
@@ -350,6 +460,15 @@ export default function QAManagerDepartmentIdeasPage() {
               <option key={category.id} value={category.id}>{category.name}</option>
             ))}
           </select>
+          <select
+            value={openFilter}
+            onChange={(event) => setOpenFilter(event.target.value as 'all' | 'open' | 'closed')}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
+          >
+            <option value="all">All status</option>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+          </select>
         </div>
       </div>
 
@@ -357,17 +476,21 @@ export default function QAManagerDepartmentIdeasPage() {
       {actionMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{actionMessage}</div>}
       {loading && <p className="text-sm text-slate-500">Loading ideas...</p>}
 
-      {filteredIdeas.length === 0 && !loading ? (
+      {(!loading && filteredIdeas.length === 0 && (searchTerm.trim() || selectedCategory)) ? (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
           <p className="text-sm text-slate-500">No department ideas match your filters</p>
         </div>
+      ) : (!loading && filteredIdeas.length === 0 && closurePeriods.length === 0) ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
+          <p className="text-sm text-slate-500">No department ideas yet</p>
+        </div>
       ) : (
         <div className="space-y-4">
-          {Object.entries(groupedByClosure).map(([closureTitle, group]) => (
-            <div key={closureTitle} className="space-y-3">
+          {groupedByClosure.map((group) => (
+            <div key={group.title} className="space-y-3">
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-700">Closure Period: {closureTitle}</p>
+                  <p className="text-sm font-semibold text-slate-700">Closure Period: {group.title}</p>
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                       group.commentOpen
@@ -380,52 +503,55 @@ export default function QAManagerDepartmentIdeasPage() {
                 </div>
               </div>
 
-              {group.ideas.map((idea) => {
-                const commentOpen = idea.closure_period_comment_open !== false
-                return (
-                <article key={idea.idea_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {idea.poster_name
-                          ? `Posted by ${idea.poster_name}`
-                          : idea.anonymous_status
-                            ? 'Posted anonymously'
-                            : `Posted by User #${idea.user}`} • {new Date(idea.submit_datetime).toLocaleString()}
-                      </p>
+                  {group.ideas.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-5 text-sm text-slate-500">
+                      No ideas yet for this closure period.
                     </div>
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
-                      {idea.department_name || `Department #${idea.department}`}
-                    </span>
-                  </div>
+                  ) : (
+                    group.ideas.map((idea) => {
+                      const commentOpen = idea.closure_period_comment_open !== false
+                      return (
+                      <article
+                        key={idea.idea_id}
+                        ref={highlightIdeaId === idea.idea_id ? highlightRef : undefined}
+                        className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
+                          highlightIdeaId === idea.idea_id
+                            ? 'border-amber-300 ring-2 ring-amber-200'
+                            : 'border-slate-200'
+                        }`}
+                      >
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div>
+                            <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {idea.poster_name
+                                ? `Posted by ${idea.poster_name}`
+                                : idea.anonymous_status
+                                  ? 'Posted anonymously'
+                                  : `Posted by User #${idea.user}`} • {new Date(idea.submit_datetime).toLocaleString()}
+                            </p>
+                          </div>
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                            {idea.department_name || `Department #${idea.department}`}
+                          </span>
+                        </div>
 
-                  {idea.category_ids.length > 0 && (
-                    <div className="mb-3 flex flex-wrap gap-2">
-                      {idea.category_ids.map((catId) => (
-                        <span key={`${idea.idea_id}-${catId}`} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                          {categoryMap[catId] || `Category #${catId}`}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <p
-                    className="whitespace-pre-wrap text-sm leading-6 text-slate-700"
-                    style={
-                      expandedIdeaIds.has(idea.idea_id)
-                        ? undefined
-                        : {
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
+                        <p
+                          className="whitespace-pre-wrap text-sm leading-6 text-slate-700"
+                          style={
+                            expandedIdeaIds.has(idea.idea_id)
+                              ? undefined
+                              : {
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                }
                           }
-                    }
-                  >
-                    {idea.idea_content}
-                  </p>
-                  {shouldShowDescriptionToggle(idea.idea_content) && (
+                        >
+                          {idea.idea_content}
+                        </p>
+                        {shouldShowDescriptionToggle(idea.idea_content) && (
                     <button
                       type="button"
                       onClick={() => toggleIdeaContent(idea.idea_id)}
@@ -551,18 +677,18 @@ export default function QAManagerDepartmentIdeasPage() {
                   )}
                 </article>
               )
-              })}
+            }))}
             </div>
           ))}
 
-          {totalPages > 1 && (
+          {filteredIdeas.length > 0 && (
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
               <div className="flex flex-1 justify-between sm:hidden">
                 <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                 <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
               </div>
               <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-700">Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredIdeas.length)}</span> of <span className="font-medium">{filteredIdeas.length}</span> results</p>
+                <p className="text-sm text-slate-700">Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredIdeas.length)}</span> of <span className="font-medium">{filteredIdeas.length}</span> results</p>
                 <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                   <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><span className="sr-only">Previous</span><ChevronLeft className="h-5 w-5" /></button>
                   {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (

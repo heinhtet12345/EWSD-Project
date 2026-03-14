@@ -36,15 +36,23 @@ type Comment = {
   idea: number
 }
 
+type ClosurePeriod = {
+  id: number
+  academic_year: string
+  is_active: boolean
+}
+
 const StaffAllIdeaPage = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [isAdding, setIsAdding] = useState(false)
   const [ideas, setIdeas] = useState<Idea[]>([])
+  const [closurePeriods] = useState<ClosurePeriod[]>([])
   const [categoryMap, setCategoryMap] = useState<Record<number, string>>({})
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState('')
+  const [openFilter, setOpenFilter] = useState<'all' | 'open' | 'closed'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -99,9 +107,15 @@ const StaffAllIdeaPage = () => {
       const matchesDepartment =
         !selectedDepartment || departmentLabel === selectedDepartment
 
-      return matchesSearch && matchesCategory && matchesDepartment
+      const ideaOpen = idea.closure_period_idea_open !== false
+      const matchesOpenFilter =
+        openFilter === 'all' ||
+        (openFilter === 'open' && ideaOpen) ||
+        (openFilter === 'closed' && !ideaOpen)
+
+      return matchesSearch && matchesCategory && matchesDepartment && matchesOpenFilter
     })
-  }, [ideas, searchTerm, selectedCategory, selectedDepartment])
+  }, [ideas, searchTerm, selectedCategory, selectedDepartment, openFilter])
 
   const currentRole = useMemo(() => {
     try {
@@ -128,12 +142,29 @@ const StaffAllIdeaPage = () => {
     }
   }, [])
 
-  const highlightIdeaId = useMemo(() => {
+  const highlightIdeaIdFromQuery = useMemo(() => {
     const params = new URLSearchParams(location.search)
     const rawId = params.get('highlightIdeaId')
     const parsed = Number(rawId)
     return Number.isFinite(parsed) ? parsed : null
   }, [location.search])
+
+  const [highlightIdeaId, setHighlightIdeaId] = useState<number | null>(null)
+
+  // Keep a local highlight state so we can clear it after a short duration.
+  useEffect(() => {
+    setHighlightIdeaId(highlightIdeaIdFromQuery)
+  }, [highlightIdeaIdFromQuery])
+
+  useEffect(() => {
+    if (!highlightIdeaId) return
+
+    const handle = window.setTimeout(() => {
+      setHighlightIdeaId(null)
+    }, 5000)
+
+    return () => window.clearTimeout(handle)
+  }, [highlightIdeaId])
 
 
   const totalPages = Math.max(1, Math.ceil(filteredIdeas.length / itemsPerPage))
@@ -157,20 +188,70 @@ const StaffAllIdeaPage = () => {
     [ideas],
   )
 
+  const parseAcademicYearStart = (academicYear?: string) => {
+    if (!academicYear) return 0
+    const match = academicYear.match(/(\d{4})/)
+    if (!match) return 0
+    return Number(match[1])
+  }
+
   const groupedByClosure = useMemo(() => {
-    const groups: Record<string, { ideas: Idea[]; commentOpen: boolean }> = {}
-    currentIdeas.forEach((idea) => {
-      const key = idea.closure_period_academic_year || `Closure Period #${idea.closurePeriod}`
-      if (!groups[key]) {
-        groups[key] = { ideas: [], commentOpen: Boolean(idea.closure_period_comment_open) }
-      }
-      groups[key].ideas.push(idea)
-      if (idea.closure_period_comment_open) {
-        groups[key].commentOpen = true
+    type Group = {
+      title: string
+      closureId: number
+      ideas: Idea[]
+      commentOpen: boolean
+      ideaOpen: boolean
+      sortKey: number
+    }
+
+    const groups: Record<number, Group> = {}
+
+    // Ensure every known closure period is represented, even if it has no ideas yet.
+    closurePeriods.forEach((cp) => {
+      const title = cp.academic_year || `Closure Period #${cp.id}`
+      const sortKey = parseAcademicYearStart(cp.academic_year)
+      groups[cp.id] = {
+        title,
+        closureId: cp.id,
+        ideas: [],
+        commentOpen: Boolean(cp.is_active),
+        ideaOpen: Boolean(cp.is_active),
+        sortKey,
       }
     })
-    return groups
-  }, [currentIdeas])
+
+    currentIdeas.forEach((idea) => {
+      const closureId = idea.closurePeriod
+      const group = groups[closureId]
+      const ideaOpen = Boolean(idea.closure_period_idea_open)
+      const commentOpen = Boolean(idea.closure_period_comment_open)
+
+      if (group) {
+        group.ideas.push(idea)
+        group.ideaOpen = group.ideaOpen || ideaOpen
+        group.commentOpen = group.commentOpen || commentOpen
+      } else {
+        const title = idea.closure_period_academic_year || `Closure Period #${closureId}`
+        const sortKey = parseAcademicYearStart(idea.closure_period_academic_year)
+        groups[closureId] = {
+          title,
+          closureId,
+          ideas: [idea],
+          commentOpen,
+          ideaOpen,
+          sortKey,
+        }
+      }
+    })
+
+    return Object.values(groups).sort((a, b) => {
+      const aOpen = a.ideaOpen ? 1 : 0
+      const bOpen = b.ideaOpen ? 1 : 0
+      if (aOpen !== bOpen) return bOpen - aOpen
+      return b.sortKey - a.sortKey
+    })
+  }, [currentIdeas, closurePeriods])
 
   useEffect(() => {
     if (!isAdding) {
@@ -450,7 +531,7 @@ const StaffAllIdeaPage = () => {
       {!isAdding && (
         <div className="space-y-2">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
               <input
                 type="text"
                 value={searchTerm}
@@ -478,6 +559,15 @@ const StaffAllIdeaPage = () => {
                   <option key={department} value={department}>{department}</option>
                 ))}
               </select>
+              <select
+                value={openFilter}
+                onChange={(event) => setOpenFilter(event.target.value as 'all' | 'open' | 'closed')}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
+              >
+                <option value="all">All status</option>
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+              </select>
             </div>
           </div>
 
@@ -485,17 +575,17 @@ const StaffAllIdeaPage = () => {
           {actionMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{actionMessage}</div>}
           {loading && <p className="text-sm text-slate-500">Loading ideas...</p>}
 
-          {filteredIdeas.length === 0 && !loading ? (
+          {filteredIdeas.length === 0 && !loading && (searchTerm.trim() || selectedCategory || selectedDepartment || openFilter !== 'all') ? (
             <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
               <p className="text-sm text-slate-500">No ideas match your filters</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {Object.entries(groupedByClosure).map(([closureTitle, group]) => (
-                <div key={closureTitle} className="space-y-3">
+              {groupedByClosure.map((group) => (
+                <div key={group.closureId} className="space-y-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-slate-700">Closure Period: {closureTitle}</p>
+                      <p className="text-sm font-semibold text-slate-700">Closure Period: {group.title}</p>
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                           group.commentOpen
@@ -726,14 +816,16 @@ const StaffAllIdeaPage = () => {
                 </div>
               ))}
 
-              {totalPages > 1 && (
+              {filteredIdeas.length > 0 && (
                 <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
                   <div className="flex flex-1 justify-between sm:hidden">
                     <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                     <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
                   </div>
                   <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                    <p className="text-sm text-slate-700">Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredIdeas.length)}</span> of <span className="font-medium">{filteredIdeas.length}</span> results</p>
+                    <p className="text-sm text-slate-700">
+                      Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredIdeas.length)}</span> of <span className="font-medium">{filteredIdeas.length}</span> results
+                    </p>
                     <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                       <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
                         <span className="sr-only">Previous</span><ChevronLeft className="h-5 w-5" />

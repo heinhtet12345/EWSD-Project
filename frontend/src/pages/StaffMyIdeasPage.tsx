@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { ChevronLeft, ChevronRight, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
+import AddIdeaSubmissionForm from '../forms/AddIdeaSubmissionForm'
 
 type Idea = {
   idea_id: number
@@ -34,11 +35,16 @@ type Comment = {
 
 const StaffMyIdeasPage = () => {
   const [ideas, setIdeas] = useState<Idea[]>([])
+  const [closurePeriods, setClosurePeriods] = useState<Array<{ id: number; academic_year: string; is_active: boolean }>>([])
   const [categoryMap, setCategoryMap] = useState<Record<number, string>>({})
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedDepartment, setSelectedDepartment] = useState('')
+  const [openFilter, setOpenFilter] = useState<'all' | 'open' | 'closed'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
+  const [isCheckingAccount, setIsCheckingAccount] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
   const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set())
@@ -82,14 +88,32 @@ const StaffMyIdeasPage = () => {
       const matchesCategory =
         !selectedCategory || idea.category_ids.includes(Number(selectedCategory))
 
-      return matchesSearch && matchesCategory
+      const departmentLabel = idea.department_name || `Department #${idea.department}`
+      const matchesDepartment =
+        !selectedDepartment || departmentLabel === selectedDepartment
+
+      const ideaOpen = idea.closure_period_idea_open !== false
+      const matchesOpenFilter =
+        openFilter === 'all' ||
+        (openFilter === 'open' && ideaOpen) ||
+        (openFilter === 'closed' && !ideaOpen)
+
+      return matchesSearch && matchesCategory && matchesDepartment && matchesOpenFilter
     })
-  }, [ideas, searchTerm, selectedCategory])
+  }, [ideas, searchTerm, selectedCategory, selectedDepartment, openFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredIdeas.length / itemsPerPage))
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const currentIdeas = filteredIdeas.slice(startIndex, endIndex)
+
+  const departmentOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(ideas.map((idea) => idea.department_name || `Department #${idea.department}`)),
+      ).sort((a, b) => a.localeCompare(b)),
+    [ideas],
+  )
 
   const categoryOptions = useMemo(
     () =>
@@ -99,29 +123,98 @@ const StaffMyIdeasPage = () => {
     [categoryMap],
   )
 
+  const parseAcademicYearStart = (academicYear?: string) => {
+    if (!academicYear) return 0
+    const match = academicYear.match(/(\d{4})/)
+    if (!match) return 0
+    return Number(match[1])
+  }
+
   const groupedByClosure = useMemo(() => {
-    const groups: Record<string, { ideas: Idea[]; commentOpen: boolean }> = {}
-    currentIdeas.forEach((idea) => {
-      const key = idea.closure_period_academic_year || `Closure Period #${idea.closurePeriod}`
-      if (!groups[key]) {
-        groups[key] = { ideas: [], commentOpen: Boolean(idea.closure_period_comment_open) }
-      }
-      groups[key].ideas.push(idea)
-      if (idea.closure_period_comment_open) {
-        groups[key].commentOpen = true
+    type Group = {
+      title: string
+      closureId: number
+      ideas: Idea[]
+      commentOpen: boolean
+      ideaOpen: boolean
+      sortKey: number
+    }
+
+    const groups: Record<number, Group> = {}
+
+    // Ensure every known closure period is represented, even if it has no ideas yet.
+    closurePeriods.forEach((cp) => {
+      const title = cp.academic_year || `Closure Period #${cp.id}`
+      const sortKey = parseAcademicYearStart(cp.academic_year)
+      groups[cp.id] = {
+        title,
+        closureId: cp.id,
+        ideas: [],
+        commentOpen: Boolean(cp.is_active),
+        ideaOpen: Boolean(cp.is_active),
+        sortKey,
       }
     })
-    return groups
-  }, [currentIdeas])
+
+    currentIdeas.forEach((idea) => {
+      const closureId = idea.closurePeriod
+      const group = groups[closureId]
+      const ideaOpen = Boolean(idea.closure_period_idea_open)
+      const commentOpen = Boolean(idea.closure_period_comment_open)
+
+      if (group) {
+        group.ideas.push(idea)
+        group.ideaOpen = group.ideaOpen || ideaOpen
+        group.commentOpen = group.commentOpen || commentOpen
+      } else {
+        const title = idea.closure_period_academic_year || `Closure Period #${closureId}`
+        const sortKey = parseAcademicYearStart(idea.closure_period_academic_year)
+        groups[closureId] = {
+          title,
+          closureId,
+          ideas: [idea],
+          commentOpen,
+          ideaOpen,
+          sortKey,
+        }
+      }
+    })
+
+    return Object.values(groups).sort((a, b) => {
+      const aOpen = a.ideaOpen ? 1 : 0
+      const bOpen = b.ideaOpen ? 1 : 0
+      if (aOpen !== bOpen) return bOpen - aOpen
+      return b.sortKey - a.sortKey
+    })
+  }, [currentIdeas, closurePeriods])
 
   useEffect(() => {
     fetchIdeas()
     fetchCategories()
+    fetchClosurePeriods()
   }, [])
+
+  const handleAddIdeaClick = async () => {
+    setError('')
+    setIsCheckingAccount(true)
+    try {
+      const response = await axios.get('/api/profile/me/', getAuthConfig())
+      const activeStatus = Boolean(response.data?.active_status)
+      if (!activeStatus) {
+        setError('User cannot use this feature when account is disabled.')
+        return
+      }
+      setIsAdding(true)
+    } catch {
+      setError('Unable to verify account status. Please try again.')
+    } finally {
+      setIsCheckingAccount(false)
+    }
+  }
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, selectedCategory])
+  }, [searchTerm, selectedCategory, selectedDepartment, openFilter])
 
   const fetchIdeas = async () => {
     setLoading(true)
@@ -134,6 +227,17 @@ const StaffMyIdeasPage = () => {
       setError('Failed to load ideas')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchClosurePeriods = async () => {
+    try {
+      const response = await axios.get('/api/closure-period/', getAuthConfig())
+      const data = Array.isArray(response.data) ? response.data : response.data?.results
+      if (!Array.isArray(data)) return
+      setClosurePeriods(data)
+    } catch {
+      // ignore
     }
   }
 
@@ -291,45 +395,91 @@ const StaffMyIdeasPage = () => {
           <h1 className="text-2xl font-semibold text-black">My Ideas</h1>
           <p className="text-sm text-slate-500">Only your submitted ideas, grouped by closure period.</p>
         </div>
+        {!isAdding && (
+          <button
+            type="button"
+            onClick={handleAddIdeaClick}
+            disabled={isCheckingAccount}
+            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-800"
+          >
+            {isCheckingAccount ? 'Checking...' : 'Add New Idea'}
+          </button>
+        )}
       </div>
 
-      <div className="space-y-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="grid gap-3 md:grid-cols-2">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search title or content..."
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
-            />
-            <select
-              value={selectedCategory}
-              onChange={(event) => setSelectedCategory(event.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
-            >
-              <option value="">All Categories</option>
-              {categoryOptions.map((category) => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
-            </select>
-          </div>
+      {isAdding && (
+        <div className="w-full max-w-2xl space-y-3">
+          <AddIdeaSubmissionForm
+            onCancel={() => setIsAdding(false)}
+            onSubmit={() => {
+              setIsAdding(false)
+              fetchIdeas()
+            }}
+          />
         </div>
+      )}
+
+      {!isAdding && (
+        <div className="space-y-2">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search title or content..."
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
+                />
+              <select
+                value={selectedCategory}
+                onChange={(event) => setSelectedCategory(event.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
+              >
+                <option value="">All Categories</option>
+                {categoryOptions.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+              <select
+                value={selectedDepartment}
+                onChange={(event) => setSelectedDepartment(event.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
+              >
+                <option value="">All Departments</option>
+                {departmentOptions.map((department) => (
+                  <option key={department} value={department}>{department}</option>
+                ))}
+              </select>
+              <select
+                value={openFilter}
+                onChange={(event) => setOpenFilter(event.target.value as 'all' | 'open' | 'closed')}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
+              >
+                <option value="all">All Status</option>
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+          </div>
 
         {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
         {loading && <p className="text-sm text-slate-500">Loading ideas...</p>}
 
-        {filteredIdeas.length === 0 && !loading ? (
+        {(!loading && filteredIdeas.length === 0 && (searchTerm.trim() || selectedCategory || selectedDepartment || openFilter !== 'all')) ? (
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
             <p className="text-sm text-slate-500">No ideas match your filters</p>
           </div>
+        ) : (!loading && filteredIdeas.length === 0 && closurePeriods.length === 0) ? (
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
+            <p className="text-sm text-slate-500">No ideas yet</p>
+          </div>
         ) : (
           <div className="space-y-4">
-            {Object.entries(groupedByClosure).map(([closureTitle, group]) => (
-              <div key={closureTitle} className="space-y-3">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-slate-700">Closure Period: {closureTitle}</p>
+{groupedByClosure.map((group) => (
+            <div key={group.title} className="space-y-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-700">Closure Period: {group.title}</p>
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                         group.commentOpen
@@ -342,176 +492,184 @@ const StaffMyIdeasPage = () => {
                   </div>
                 </div>
 
-                {group.ideas.map((idea) => {
-                  const commentOpen = idea.closure_period_comment_open !== false
-                  return (
-                  <article key={idea.idea_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div>
-                        <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
-                        <p className="mt-1 text-xs text-slate-500">{new Date(idea.submit_datetime).toLocaleString()}</p>
-                      </div>
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
-                        {idea.department_name || `Department #${idea.department}`}
-                      </span>
-                    </div>
-
-                    {idea.category_ids.length > 0 && (
-                      <div className="mb-3 flex flex-wrap gap-2">
-                        {idea.category_ids.map((catId) => (
-                          <span key={`${idea.idea_id}-${catId}`} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                            {categoryMap[catId] || `Category #${catId}`}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <p
-                      className="whitespace-pre-wrap text-sm leading-6 text-slate-700"
-                      style={
-                        expandedIdeaIds.has(idea.idea_id)
-                          ? undefined
-                          : {
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }
-                      }
-                    >
-                      {idea.idea_content}
-                    </p>
-                    {shouldShowDescriptionToggle(idea.idea_content) && (
-                      <button
-                        type="button"
-                        onClick={() => toggleIdeaContent(idea.idea_id)}
-                        className="mt-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
-                      >
-                        {expandedIdeaIds.has(idea.idea_id) ? 'Show less' : 'See more'}
-                      </button>
-                    )}
-
-                    {idea.documents.length > 0 && (
-                      <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
-                        {idea.documents.map((doc) => (
-                          <a key={doc.doc_id} href={resolveDocumentUrl(doc.file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
-                            <Paperclip className="h-4 w-4" /> {doc.file_name}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                      <button
-                        type="button"
-                        disabled={!commentOpen}
-                        onClick={() => handleVote(idea.idea_id, 'UP')}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
-                          idea.user_vote === 'UP'
-                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                        } ${commentOpen ? '' : 'opacity-60 cursor-not-allowed'}`}
-                      >
-                        <ThumbsUp className="h-4 w-4" /> Upvote {idea.upvote_count ?? 0}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!commentOpen}
-                        onClick={() => handleVote(idea.idea_id, 'DOWN')}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
-                          idea.user_vote === 'DOWN'
-                            ? 'border-rose-300 bg-rose-50 text-rose-700'
-                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                        } ${commentOpen ? '' : 'opacity-60 cursor-not-allowed'}`}
-                      >
-                        <ThumbsDown className="h-4 w-4" /> Downvote {idea.downvote_count ?? 0}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleComments(idea.idea_id)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                      >
-                        <MessageCircle className="h-4 w-4" /> Comment {idea.comment_count ?? 0}
-                      </button>
-                    </div>
-                    {openCommentIds.has(idea.idea_id) && (
-                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="space-y-3">
-                          {(commentsByIdea[idea.idea_id] || []).length === 0 ? (
-                            <p className="text-sm text-slate-500">No comments yet.</p>
-                          ) : (
-                            (commentsByIdea[idea.idea_id] || []).map((comment) => (
-                              <div key={comment.cmt_id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                                <p className="text-xs text-slate-500">
-                                  {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
-                                  {new Date(comment.cmt_datetime).toLocaleString()}
-                                </p>
-                                <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                        <div className="mt-4 space-y-2">
-                          {!commentOpen && (
-                            <p className="text-xs font-semibold text-rose-600">
-                              Commenting is closed for this closure period.
-                            </p>
-                          )}
-                          <textarea
-                            rows={2}
-                            value={commentDrafts[idea.idea_id] || ''}
-                            onChange={(event) =>
-                              setCommentDrafts((prev) => ({ ...prev, [idea.idea_id]: event.target.value }))
-                            }
-                            placeholder="Write a comment..."
-                            disabled={!commentOpen}
-                            className={`w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400 ${
-                              commentOpen ? '' : 'cursor-not-allowed bg-slate-100 text-slate-400'
-                            }`}
-                            style={{ resize: 'none' }}
-                          />
-                          <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 text-xs text-slate-600">
-                              <input
-                                type="checkbox"
-                                checked={Boolean(commentAnon[idea.idea_id])}
-                                onChange={(event) =>
-                                  setCommentAnon((prev) => ({ ...prev, [idea.idea_id]: event.target.checked }))
-                                }
-                                disabled={!commentOpen}
-                              />
-                              Post anonymously
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => handleSubmitComment(idea.idea_id)}
-                              disabled={!commentOpen}
-                              className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white ${
-                                commentOpen
-                                  ? 'bg-blue-700 hover:bg-blue-800'
-                                  : 'cursor-not-allowed bg-slate-400'
-                              }`}
-                            >
-                              Add Comment
-                            </button>
+                {group.ideas.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-5 text-sm text-slate-500">
+                    No ideas yet for this closure period.
+                  </div>
+                ) : (
+                  group.ideas.map((idea) => {
+                    const commentOpen = idea.closure_period_comment_open !== false
+                    return (
+                      <article key={idea.idea_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div>
+                            <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
+                            <p className="mt-1 text-xs text-slate-500">{new Date(idea.submit_datetime).toLocaleString()}</p>
                           </div>
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                            {idea.department_name || `Department #${idea.department}`}
+                          </span>
                         </div>
-                      </div>
-                    )}
-                  </article>
-                )
-                })}
+
+                        {idea.category_ids.length > 0 && (
+                          <div className="mb-3 flex flex-wrap gap-2">
+                            {idea.category_ids.map((catId) => (
+                              <span key={`${idea.idea_id}-${catId}`} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                                {categoryMap[catId] || `Category #${catId}`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <p
+                          className="whitespace-pre-wrap text-sm leading-6 text-slate-700"
+                          style={
+                            expandedIdeaIds.has(idea.idea_id)
+                              ? undefined
+                              : {
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                }
+                          }
+                        >
+                          {idea.idea_content}
+                        </p>
+                        {shouldShowDescriptionToggle(idea.idea_content) && (
+                          <button
+                            type="button"
+                            onClick={() => toggleIdeaContent(idea.idea_id)}
+                            className="mt-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                          >
+                            {expandedIdeaIds.has(idea.idea_id) ? 'Show less' : 'See more'}
+                          </button>
+                        )}
+
+                        {idea.documents.length > 0 && (
+                          <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                            {idea.documents.map((doc) => (
+                              <a key={doc.doc_id} href={resolveDocumentUrl(doc.file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
+                                <Paperclip className="h-4 w-4" /> {doc.file_name}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                          <button
+                            type="button"
+                            disabled={!commentOpen}
+                            onClick={() => handleVote(idea.idea_id, 'UP')}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                              idea.user_vote === 'UP'
+                                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                                : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                            } ${commentOpen ? '' : 'opacity-60 cursor-not-allowed'}`}
+                          >
+                            <ThumbsUp className="h-4 w-4" /> Upvote {idea.upvote_count ?? 0}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!commentOpen}
+                            onClick={() => handleVote(idea.idea_id, 'DOWN')}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                              idea.user_vote === 'DOWN'
+                                ? 'border-rose-300 bg-rose-50 text-rose-700'
+                                : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                            } ${commentOpen ? '' : 'opacity-60 cursor-not-allowed'}`}
+                          >
+                            <ThumbsDown className="h-4 w-4" /> Downvote {idea.downvote_count ?? 0}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleComments(idea.idea_id)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                          >
+                            <MessageCircle className="h-4 w-4" /> Comment {idea.comment_count ?? 0}
+                          </button>
+                        </div>
+                        {openCommentIds.has(idea.idea_id) && (
+                          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="space-y-3">
+                              {(commentsByIdea[idea.idea_id] || []).length === 0 ? (
+                                <p className="text-sm text-slate-500">No comments yet.</p>
+                              ) : (
+                                (commentsByIdea[idea.idea_id] || []).map((comment) => (
+                                  <div key={comment.cmt_id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                                    <p className="text-xs text-slate-500">
+                                      {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
+                                      {new Date(comment.cmt_datetime).toLocaleString()}
+                                    </p>
+                                    <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                            <div className="mt-4 space-y-2">
+                              {!commentOpen && (
+                                <p className="text-xs font-semibold text-rose-600">
+                                  Commenting is closed for this closure period.
+                                </p>
+                              )}
+                              <textarea
+                                rows={2}
+                                value={commentDrafts[idea.idea_id] || ''}
+                                onChange={(event) =>
+                                  setCommentDrafts((prev) => ({ ...prev, [idea.idea_id]: event.target.value }))
+                                }
+                                placeholder="Write a comment..."
+                                disabled={!commentOpen}
+                                className={`w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400 ${
+                                  commentOpen ? '' : 'cursor-not-allowed bg-slate-100 text-slate-400'
+                                }`}
+                                style={{ resize: 'none' }}
+                              />
+                              <div className="flex items-center justify-between">
+                                <label className="flex items-center gap-2 text-xs text-slate-600">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(commentAnon[idea.idea_id])}
+                                    onChange={(event) =>
+                                      setCommentAnon((prev) => ({ ...prev, [idea.idea_id]: event.target.checked }))
+                                    }
+                                    disabled={!commentOpen}
+                                  />
+                                  Post anonymously
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSubmitComment(idea.idea_id)}
+                                  disabled={!commentOpen}
+                                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white ${
+                                    commentOpen
+                                      ? 'bg-blue-700 hover:bg-blue-800'
+                                      : 'cursor-not-allowed bg-slate-400'
+                                  }`}
+                                >
+                                  Add Comment
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })
+                )}
               </div>
             ))}
 
-            {totalPages > 1 && (
+            {filteredIdeas.length > 0 && (
               <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
                 <div className="flex flex-1 justify-between sm:hidden">
                   <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                   <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
                 </div>
                 <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                  <p className="text-sm text-slate-700">Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredIdeas.length)}</span> of <span className="font-medium">{filteredIdeas.length}</span> results</p>
+                  <p className="text-sm text-slate-700">
+                    Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredIdeas.length)}</span> of <span className="font-medium">{filteredIdeas.length}</span> results
+                  </p>
                   <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                     <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><span className="sr-only">Previous</span><ChevronLeft className="h-5 w-5" /></button>
                     {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
@@ -525,6 +683,7 @@ const StaffMyIdeasPage = () => {
           </div>
         )}
       </div>
+      )}
     </section>
   )
 }

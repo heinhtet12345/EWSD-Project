@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { MultiSelect } from 'primereact/multiselect'
-import { Checkbox, CheckboxChangeEvent } from 'primereact/checkbox'
 import { ArrowLeft, X, Tag, Layers } from 'lucide-react'
 import axios from 'axios'
 
@@ -345,14 +344,12 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
         {/* Checkbox Options */}
         <div className="space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200">
           <div className="flex items-start gap-3 group hover:bg-white p-2 rounded-lg transition-colors">
-            <Checkbox
-              inputId="anonymous"
+            <input
+              id="anonymous"
+              type="checkbox"
               checked={anonymous}
-              onChange={(e: CheckboxChangeEvent) => setAnonymous(!!e.checked)}
-              className="mt-0.5"
-              pt={{
-                root: { className: '!border-2 !rounded !w-4 !h-4' }
-              }}
+              onChange={(e) => setAnonymous(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
             <div className="flex flex-col">
               <label htmlFor="anonymous" className="text-sm font-medium text-slate-700 cursor-pointer group-hover:text-blue-600">
@@ -363,15 +360,13 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
           </div>
 
           <div className="flex items-start gap-3 group hover:bg-white p-2 rounded-lg transition-colors">
-            <Checkbox
-              inputId="terms"
+            <input
+              id="terms"
+              type="checkbox"
               checked={termsAccepted}
-              onChange={(e: CheckboxChangeEvent) => setTermsAccepted(!!e.checked)}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
               required
-              className="mt-0.5"
-              pt={{
-                root: { className: '!border-2 !rounded !w-4 !h-4' }
-              }}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
             <div className="flex flex-col">
               <label htmlFor="terms" className="text-sm font-medium text-slate-700 cursor-pointer group-hover:text-blue-600">
