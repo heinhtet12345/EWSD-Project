@@ -1,9 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .models import Comment, Vote
-from .serializers import CommentSerializer, VoteSerializer
+from .models import Comment, Vote, Report
+from .serializers import CommentSerializer, VoteSerializer, ReportSerializer
 from api.IdeaPost.models import Idea
+from api.views.admin_views import _normalized_role
 
 class CommentListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -20,6 +21,11 @@ class CommentListCreateView(APIView):
         )
 
     def post(self, request, idea_id):
+        if not bool(getattr(request.user, "active_status", True)):
+            return Response(
+                {"error": "Your account is disabled. You cannot comment."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         # Ensure the idea exists before commenting
         try:
             idea = Idea.objects.get(pk=idea_id)
@@ -40,6 +46,11 @@ class VoteToggleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, idea_id):
+        if not bool(getattr(request.user, "active_status", True)):
+            return Response(
+                {"error": "Your account is disabled. You cannot vote."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         vote_type = request.data.get('vote_type') # 'UP' or 'DOWN'
         if vote_type not in ['UP', 'DOWN']:
             return Response({"error": "Invalid vote type"}, status=status.HTTP_400_BAD_REQUEST)
@@ -74,3 +85,16 @@ class VoteToggleView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class ReportListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        role = _normalized_role(request.user)
+        if role not in {"admin", "qa_manager"}:
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        reports = Report.objects.select_related("reporter", "idea").order_by("-created_at")
+        serializer = ReportSerializer(reports, many=True)
+        return Response({"results": serializer.data}, status=status.HTTP_200_OK)

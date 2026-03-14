@@ -6,6 +6,7 @@ from django.core.mail import BadHeaderError
 from django.contrib.auth import get_user_model
 from api.closure_period.models import ClosurePeriod
 from api.models import Notification
+from api.interaction.models import Report
 from .serializer import IdeaCreateSerializer, IdeaListSerializer, IdeaDetailSerializer
 from .models import Idea, UploadedDocument
 
@@ -147,12 +148,30 @@ class ReportIdeaView(APIView):
         role = _normalized_role(request.user)
         if role != "staff":
             return Response({"message": "Only staff can report ideas."}, status=status.HTTP_403_FORBIDDEN)
+        if not bool(getattr(request.user, "active_status", True)):
+            return Response(
+                {"message": "Your account is disabled. You cannot report ideas."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         idea = Idea.objects.filter(idea_id=idea_id).select_related("department", "user").first()
         if not idea:
             return Response({"message": "Idea not found."}, status=status.HTTP_404_NOT_FOUND)
         if idea.user_id == request.user.user_id:
             return Response({"message": "You cannot report your own idea."}, status=status.HTTP_400_BAD_REQUEST)
+
+        reason = str(request.data.get("reason", "")).strip().upper()
+        details = str(request.data.get("details", "")).strip()
+        allowed_reasons = {choice[0] for choice in Report.Reason.choices}
+        if reason not in allowed_reasons:
+            return Response({"message": "Report reason is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        Report.objects.get_or_create(
+            reporter=request.user,
+            idea=idea,
+            reason=reason,
+            defaults={"details": details},
+        )
 
         recipients = [
             user
@@ -164,7 +183,7 @@ class ReportIdeaView(APIView):
             Notification.objects.create(
                 recipient=recipient,
                 title="Idea reported",
-                message=f'"{idea.idea_title}" was reported by {request.user.username}.',
+                message=f'"{idea.idea_title}" was reported by {request.user.username}. Reason: {reason}.',
                 notification_type="idea_reported",
                 idea=idea,
             )

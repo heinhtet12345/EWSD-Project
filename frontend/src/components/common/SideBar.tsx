@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  ShieldAlert,
   ShieldCheck,
   User,
   Users,
@@ -28,6 +29,7 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Users", to: "/admin/users", icon: User},
     { label: "Manage Closure Period", to: "/admin/closure-period", icon: Calendar },
     { label: "Activities", to: "/admin/analytics", icon: BarChart3 },
+    { label: "Reports", to: "/admin/reports", icon: ShieldAlert },
   ], 
   "qa_manager": [
     { label: "Dashboard", to: "/qa_manager", icon: LayoutDashboard },
@@ -35,6 +37,7 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "All Ideas", to: "/qa_manager/all-ideas", icon: FileText },
     { label: "Closure Period", to: "/qa_manager/closure-period", icon: ShieldCheck },
     { label: "Categories", to: "/qa_manager/categories", icon: FileText },
+    { label: "Reports", to: "/qa_manager/reports", icon: ShieldAlert },
   ],
   "qa_coordinator": [
     { label: "Dashboard", to: "/qa_coordinator", icon: LayoutDashboard },

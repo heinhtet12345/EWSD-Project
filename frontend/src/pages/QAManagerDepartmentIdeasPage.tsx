@@ -74,6 +74,17 @@ export default function QAManagerDepartmentIdeasPage() {
     }
   }
 
+  const isAccountActive = () => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      if (!raw) return true
+      const parsed = JSON.parse(raw) as { active_status?: boolean }
+      return parsed.active_status !== false
+    } catch {
+      return true
+    }
+  }
+
   const filteredIdeas = useMemo(() => {
     const search = searchTerm.trim().toLowerCase()
     return ideas.filter((idea) => {
@@ -234,6 +245,10 @@ export default function QAManagerDepartmentIdeasPage() {
   }
 
   const handleVote = async (ideaId: number, voteType: 'UP' | 'DOWN') => {
+    if (!isAccountActive()) {
+      setError('Your account is disabled. You cannot vote or comment.')
+      return
+    }
     try {
       const response = await axios.post(
         `/api/interaction/idea/${ideaId}/vote/`,
@@ -259,6 +274,10 @@ export default function QAManagerDepartmentIdeasPage() {
   }
 
   const handleSubmitComment = async (ideaId: number) => {
+    if (!isAccountActive()) {
+      setError('Your account is disabled. You cannot vote or comment.')
+      return
+    }
     const content = (commentDrafts[ideaId] || '').trim()
     if (!content) return
     try {

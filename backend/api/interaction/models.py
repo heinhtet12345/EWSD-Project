@@ -59,3 +59,34 @@ class Vote(models.Model):
 
     def __str__(self):
         return f"{self.vote_type} by {self.user} on Idea {self.idea.idea_id}"
+
+
+class Report(models.Model):
+    class Reason(models.TextChoices):
+        SWEARING = "SWEARING", "Swearing"
+        LIBEL = "LIBEL", "Libel"
+        SPAM = "SPAM", "Spam"
+        HARASSMENT = "HARASSMENT", "Harassment"
+        OTHER = "OTHER", "Other"
+
+    report_id = models.AutoField(primary_key=True)
+    reason = models.CharField(max_length=20, choices=Reason.choices)
+    details = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="idea_reports",
+    )
+    idea = models.ForeignKey(
+        "IdeaPost.Idea",
+        on_delete=models.CASCADE,
+        related_name="reports",
+    )
+
+    class Meta:
+        unique_together = ("reporter", "idea", "reason")
+
+    def __str__(self):
+        return f"Report {self.report_id} ({self.reason}) on Idea {self.idea.idea_id}"

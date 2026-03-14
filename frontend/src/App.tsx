@@ -10,6 +10,7 @@ import QAManagerDepartmentIdeasPage from "./pages/QAManagerDepartmentIdeasPage";
 import QAManagerCategoriesPage from "./pages/QAManagerCategoriesPage";
 import ClosurePeriodPage from "./pages/ClosurePeriodPage";
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
+import ReportListPage from "./pages/ReportListPage";
 
 
 import StaffDashboard from "./pages/StaffDashboard";
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="admin/users" element={<ViewUserTable />} />
         <Route path="admin/closure-period" element={<ClosurePeriodPage />} />
         <Route path="admin/analytics" element={<AdminAnalyticsPage />} />
+        <Route path="admin/reports" element={<ReportListPage />} />
         <Route path="qa_coordinator" element={<QACoordDashboard />} />
         <Route path="qa_coordinator/all-ideas" element={<StaffAllIdeaPage />} />
         <Route path="qa_coordinator/my-department" element={<QAManagerDepartmentIdeasPage />} />
@@ -39,6 +41,7 @@ export default function App() {
         <Route path="qa_manager/all-ideas" element={<QAManagerAllIdeasPage />} />
         <Route path="qa_manager/users" element={<ViewUserTable />} />
         <Route path="qa_manager/categories" element={<QAManagerCategoriesPage />} />
+        <Route path="qa_manager/reports" element={<ReportListPage />} />
         <Route path="qa_manager/closure-period" element={<ClosurePeriodPage />} />
         <Route path="qa_manager/profile" element={<UserProfilePage />} />
         <Route path="qa_coordinator/profile" element={<UserProfilePage />} />

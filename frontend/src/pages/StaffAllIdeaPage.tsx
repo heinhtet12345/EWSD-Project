@@ -53,6 +53,9 @@ const StaffAllIdeaPage = () => {
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
+  const [reportIdeaId, setReportIdeaId] = useState<number | null>(null)
+  const [reportReason, setReportReason] = useState('')
+  const [reportDetails, setReportDetails] = useState('')
 
   const itemsPerPage = 5
 
@@ -65,6 +68,17 @@ const StaffAllIdeaPage = () => {
       return { headers: { Authorization: `Bearer ${parsed.token}` } }
     } catch {
       return undefined
+    }
+  }
+
+  const isAccountActive = () => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      if (!raw) return true
+      const parsed = JSON.parse(raw) as { active_status?: boolean }
+      return parsed.active_status !== false
+    } catch {
+      return true
     }
   }
 
@@ -231,15 +245,20 @@ const StaffAllIdeaPage = () => {
     }
   }
 
-  const handleReportIdea = async (ideaId: number) => {
-    const shouldReport = window.confirm('Report this idea to QA Manager and Admin?')
-    if (!shouldReport) return
-
+  const handleReportIdea = async () => {
+    if (!reportIdeaId) return
     setError('')
     setActionMessage('')
     try {
-      const response = await axios.post(`/api/ideas/${ideaId}/report/`, {}, getAuthConfig())
+      const response = await axios.post(
+        `/api/ideas/${reportIdeaId}/report/`,
+        { reason: reportReason, details: reportDetails },
+        getAuthConfig(),
+      )
       setActionMessage((response.data as { message?: string })?.message || 'Idea reported successfully.')
+      setReportIdeaId(null)
+      setReportReason('')
+      setReportDetails('')
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const data = err.response?.data as { message?: string; detail?: string } | undefined
@@ -283,6 +302,10 @@ const StaffAllIdeaPage = () => {
   }
 
   const handleVote = async (ideaId: number, voteType: 'UP' | 'DOWN') => {
+    if (!isAccountActive()) {
+      setError('Your account is disabled. You cannot vote or comment.')
+      return
+    }
     try {
       const response = await axios.post(
         `/api/interaction/idea/${ideaId}/vote/`,
@@ -308,6 +331,10 @@ const StaffAllIdeaPage = () => {
   }
 
   const handleSubmitComment = async (ideaId: number) => {
+    if (!isAccountActive()) {
+      setError('Your account is disabled. You cannot vote or comment.')
+      return
+    }
     const content = (commentDrafts[ideaId] || '').trim()
     if (!content) return
     try {
@@ -485,7 +512,11 @@ const StaffAllIdeaPage = () => {
                           {isStaff && idea.user !== currentUserId && (
                             <button
                               type="button"
-                              onClick={() => handleReportIdea(idea.idea_id)}
+                              onClick={() => {
+                                setReportIdeaId(idea.idea_id)
+                                setReportReason('')
+                                setReportDetails('')
+                              }}
                               className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
                             >
                               <Flag className="h-4 w-4" /> Report
@@ -655,6 +686,64 @@ const StaffAllIdeaPage = () => {
               )}
             </div>
           )}
+        </div>
+      )}
+      {reportIdeaId && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-slate-900">Report Idea</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Select a reason for reporting this idea.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Reason</label>
+                <select
+                  value={reportReason}
+                  onChange={(event) => setReportReason(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400"
+                >
+                  <option value="">Select reason</option>
+                  <option value="SWEARING">Swearing</option>
+                  <option value="LIBEL">Libel</option>
+                  <option value="SPAM">Spam</option>
+                  <option value="HARASSMENT">Harassment</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Details (optional)</label>
+                <textarea
+                  rows={3}
+                  value={reportDetails}
+                  onChange={(event) => setReportDetails(event.target.value)}
+                  className="mt-1 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400"
+                  style={{ resize: 'none' }}
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setReportIdeaId(null)
+                  setReportReason('')
+                  setReportDetails('')
+                }}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleReportIdea}
+                disabled={!reportReason}
+                className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Submit Report
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>

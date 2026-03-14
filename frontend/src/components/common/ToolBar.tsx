@@ -74,7 +74,7 @@ const getAuthConfig = () => {
   }
 };
 
-export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
+export default function ToolBar({ userName = "" }: ToolBarProps) {
   const navigate = useNavigate();
   const [user, setUser] = useState<{ id?: string | number; name: string; profileimg?: string } | null>(
     () => getStoredUser()
@@ -172,7 +172,7 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  const displayName = user?.name || userName;
+  const displayName = user?.name || userName || "User";
 
   const handleGoToProfile = () => {
     const role = getStoredRole();
@@ -198,6 +198,7 @@ export default function ToolBar({ userName = "Bo Nay Toe" }: ToolBarProps) {
 
   const handleLogout = async () => {
     setIsUserMenuOpen(false);
+    setUser(null);
     let accessToken: string | undefined;
     let refreshToken: string | undefined;
 
