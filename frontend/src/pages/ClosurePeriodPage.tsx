@@ -48,14 +48,29 @@ const getAuthConfig = () => {
   }
 }
 
-const normalizeClosurePeriod = (item: ClosurePeriodApiItem, fallbackId: number): ClosurePeriod => ({
-  id: item.id ?? item.closure_period_id ?? fallbackId,
-  startDate: item.start_date ?? item.startDate ?? '',
-  ideaClosureDate: item.idea_closure_date ?? item.ideaClosureDate ?? '',
-  commentClosureDate: item.comment_closure_date ?? item.commentClosureDate ?? '',
-  isActive: item.is_active ?? item.isActive ?? true,
-  academicYear: item.academic_year ?? item.academicYear ?? '',
-})
+const normalizeClosurePeriod = (item: ClosurePeriodApiItem, fallbackId: number): ClosurePeriod => {
+  const startDate = item.start_date ?? item.startDate ?? ''
+  const ideaClosureDate = item.idea_closure_date ?? item.ideaClosureDate ?? ''
+  const commentClosureDate = item.comment_closure_date ?? item.commentClosureDate ?? ''
+
+  const fallbackActive = (() => {
+    if (!commentClosureDate) return true
+    const [year, month, day] = commentClosureDate.split('-').map((part) => Number(part))
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return true
+    const closeDate = new Date(year, month - 1, day)
+    const now = new Date()
+    return now.getTime() < closeDate.getTime()
+  })()
+
+  return {
+    id: item.id ?? item.closure_period_id ?? fallbackId,
+    startDate,
+    ideaClosureDate,
+    commentClosureDate,
+    isActive: item.is_active ?? item.isActive ?? fallbackActive,
+    academicYear: item.academic_year ?? item.academicYear ?? '',
+  }
+}
 
 const extractApiErrorMessage = (error: unknown, fallback: string): string => {
   if (!axios.isAxiosError(error)) return fallback
@@ -86,7 +101,7 @@ const ClosurePeriodPage = () => {
   const dashboardPath = location.pathname.startsWith('/admin') ? '/admin' : '/qa_manager'
   const [isAdding, setIsAdding] = useState(false)
   const [periods, setPeriods] = useState<ClosurePeriod[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [formError, setFormError] = useState('')
@@ -272,7 +287,7 @@ const ClosurePeriodPage = () => {
             </div>
           )}
           {isLoading && <p className="text-sm text-slate-500">Loading closure periods...</p>}
-          <ViewClosurePeriodTable periods={periods} />
+          {!isLoading && <ViewClosurePeriodTable periods={periods} />}
         </div>
       )}
     </section>

@@ -31,6 +31,11 @@ class CommentListCreateView(APIView):
             idea = Idea.objects.get(pk=idea_id)
         except Idea.DoesNotExist:
             return Response({"error": "Idea not found"}, status=status.HTTP_404_NOT_FOUND)
+        if not getattr(idea.closurePeriod, "is_comment_open", True):
+            return Response(
+                {"error": "Commenting is closed for this closure period."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
@@ -49,6 +54,14 @@ class VoteToggleView(APIView):
         if not bool(getattr(request.user, "active_status", True)):
             return Response(
                 {"error": "Your account is disabled. You cannot vote."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        idea = Idea.objects.filter(pk=idea_id).select_related("closurePeriod").first()
+        if not idea:
+            return Response({"error": "Idea not found"}, status=status.HTTP_404_NOT_FOUND)
+        if not getattr(idea.closurePeriod, "is_comment_open", True):
+            return Response(
+                {"error": "Voting is closed for this closure period."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         vote_type = request.data.get('vote_type') # 'UP' or 'DOWN'

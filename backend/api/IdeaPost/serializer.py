@@ -31,6 +31,8 @@ class IdeaListSerializer(serializers.ModelSerializer):
     documents = DocumentSerializer(many=True, read_only=True)
     poster_username = serializers.SerializerMethodField()
     poster_name = serializers.SerializerMethodField()
+    closure_period_idea_open = serializers.SerializerMethodField()
+    closure_period_comment_open = serializers.SerializerMethodField()
     upvote_count = serializers.SerializerMethodField()
     downvote_count = serializers.SerializerMethodField()
     comment_count = serializers.SerializerMethodField()
@@ -41,7 +43,8 @@ class IdeaListSerializer(serializers.ModelSerializer):
         fields = [
             'idea_id', 'idea_title', 'idea_content', 
             'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'department_name', 'closurePeriod', 'closure_period_academic_year', 'documents', 'poster_username', 'poster_name',
-            'upvote_count', 'downvote_count', 'comment_count', 'user_vote'
+            'upvote_count', 'downvote_count', 'comment_count', 'user_vote',
+            'closure_period_idea_open', 'closure_period_comment_open'
         ]
     
     def get_category_ids(self, obj):
@@ -82,6 +85,12 @@ class IdeaListSerializer(serializers.ModelSerializer):
             return None
         vote = obj.votes.filter(user=request.user).first()
         return vote.vote_type if vote else None
+
+    def get_closure_period_idea_open(self, obj):
+        return bool(getattr(obj.closurePeriod, "is_idea_open", True))
+
+    def get_closure_period_comment_open(self, obj):
+        return bool(getattr(obj.closurePeriod, "is_comment_open", True))
 
 class IdeaDetailSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True, read_only=True)

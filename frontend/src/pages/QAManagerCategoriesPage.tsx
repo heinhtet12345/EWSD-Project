@@ -56,7 +56,7 @@ function QAManagerCategoriesPage() {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [formError, setFormError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
   const breadcrumbItems = useMemo<MenuItem[]>(() => {
@@ -283,7 +283,9 @@ function QAManagerCategoriesPage() {
       ) : (
         <div className="w-full max-w-7xl space-y-2">
           {isLoading && <p className="text-sm text-slate-500 text-center">Loading categories...</p>}
-          <ViewCategoryTable categories={filteredCategories} onDelete={handleDeleteCategory} />
+          {!isLoading && (
+            <ViewCategoryTable categories={filteredCategories} onDelete={handleDeleteCategory} />
+          )}
         </div>
       )}
     </section>

@@ -5,6 +5,7 @@ from django.core.mail import send_mail
 from django.core.mail import BadHeaderError
 from django.contrib.auth import get_user_model
 from api.closure_period.models import ClosurePeriod
+from django.utils import timezone
 from api.models import Notification
 from api.interaction.models import Report
 from .serializer import IdeaCreateSerializer, IdeaListSerializer, IdeaDetailSerializer
@@ -29,7 +30,12 @@ class PostIdeaView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        active_period = ClosurePeriod.objects.filter(is_active=True).first()
+        today = timezone.now().date()
+        active_period = (
+            ClosurePeriod.objects.filter(start_date__lte=today, comment_closure_date__gt=today)
+            .order_by("-start_date")
+            .first()
+        )
         
         if not active_period or not active_period.is_idea_open:
             return Response(

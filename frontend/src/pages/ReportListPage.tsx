@@ -28,7 +28,7 @@ const getAuthConfig = () => {
 export default function ReportListPage() {
   const navigate = useNavigate();
   const [reports, setReports] = useState<ReportItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 

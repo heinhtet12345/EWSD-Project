@@ -14,6 +14,8 @@ type Idea = {
   department_name?: string
   closurePeriod: number
   closure_period_academic_year?: string
+  closure_period_idea_open?: boolean
+  closure_period_comment_open?: boolean
   upvote_count?: number
   downvote_count?: number
   comment_count?: number
@@ -35,7 +37,7 @@ const StaffMyIdeasPage = () => {
   const [categoryMap, setCategoryMap] = useState<Record<number, string>>({})
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
@@ -98,11 +100,16 @@ const StaffMyIdeasPage = () => {
   )
 
   const groupedByClosure = useMemo(() => {
-    const groups: Record<string, Idea[]> = {}
+    const groups: Record<string, { ideas: Idea[]; commentOpen: boolean }> = {}
     currentIdeas.forEach((idea) => {
       const key = idea.closure_period_academic_year || `Closure Period #${idea.closurePeriod}`
-      if (!groups[key]) groups[key] = []
-      groups[key].push(idea)
+      if (!groups[key]) {
+        groups[key] = { ideas: [], commentOpen: Boolean(idea.closure_period_comment_open) }
+      }
+      groups[key].ideas.push(idea)
+      if (idea.closure_period_comment_open) {
+        groups[key].commentOpen = true
+      }
     })
     return groups
   }, [currentIdeas])
@@ -209,6 +216,11 @@ const StaffMyIdeasPage = () => {
       setError('Your account is disabled. You cannot vote or comment.')
       return
     }
+    const idea = ideas.find((item) => item.idea_id === ideaId)
+    if (idea && idea.closure_period_comment_open === false) {
+      setError('Commenting and voting are closed for this closure period.')
+      return
+    }
     try {
       const response = await axios.post(
         `/api/interaction/idea/${ideaId}/vote/`,
@@ -236,6 +248,11 @@ const StaffMyIdeasPage = () => {
   const handleSubmitComment = async (ideaId: number) => {
     if (!isAccountActive()) {
       setError('Your account is disabled. You cannot vote or comment.')
+      return
+    }
+    const idea = ideas.find((item) => item.idea_id === ideaId)
+    if (idea && idea.closure_period_comment_open === false) {
+      setError('Commenting is closed for this closure period.')
       return
     }
     const content = (commentDrafts[ideaId] || '').trim()
@@ -308,13 +325,26 @@ const StaffMyIdeasPage = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {Object.entries(groupedByClosure).map(([closureTitle, groupIdeas]) => (
+            {Object.entries(groupedByClosure).map(([closureTitle, group]) => (
               <div key={closureTitle} className="space-y-3">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
-                  <p className="text-sm font-semibold text-slate-700">{closureTitle}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-700">Closure Period: {closureTitle}</p>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        group.commentOpen
+                          ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border border-rose-200 bg-rose-50 text-rose-700"
+                      }`}
+                    >
+                      {group.commentOpen ? "Comments Open" : "Comments Closed"}
+                    </span>
+                  </div>
                 </div>
 
-                {groupIdeas.map((idea) => (
+                {group.ideas.map((idea) => {
+                  const commentOpen = idea.closure_period_comment_open !== false
+                  return (
                   <article key={idea.idea_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
                     <div className="mb-3 flex items-start justify-between gap-3">
                       <div>
@@ -374,23 +404,25 @@ const StaffMyIdeasPage = () => {
                     <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
                       <button
                         type="button"
+                        disabled={!commentOpen}
                         onClick={() => handleVote(idea.idea_id, 'UP')}
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
                           idea.user_vote === 'UP'
                             ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                             : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
+                        } ${commentOpen ? '' : 'opacity-60 cursor-not-allowed'}`}
                       >
                         <ThumbsUp className="h-4 w-4" /> Upvote {idea.upvote_count ?? 0}
                       </button>
                       <button
                         type="button"
+                        disabled={!commentOpen}
                         onClick={() => handleVote(idea.idea_id, 'DOWN')}
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
                           idea.user_vote === 'DOWN'
                             ? 'border-rose-300 bg-rose-50 text-rose-700'
                             : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
+                        } ${commentOpen ? '' : 'opacity-60 cursor-not-allowed'}`}
                       >
                         <ThumbsDown className="h-4 w-4" /> Downvote {idea.downvote_count ?? 0}
                       </button>
@@ -420,6 +452,11 @@ const StaffMyIdeasPage = () => {
                           )}
                         </div>
                         <div className="mt-4 space-y-2">
+                          {!commentOpen && (
+                            <p className="text-xs font-semibold text-rose-600">
+                              Commenting is closed for this closure period.
+                            </p>
+                          )}
                           <textarea
                             rows={2}
                             value={commentDrafts[idea.idea_id] || ''}
@@ -427,7 +464,10 @@ const StaffMyIdeasPage = () => {
                               setCommentDrafts((prev) => ({ ...prev, [idea.idea_id]: event.target.value }))
                             }
                             placeholder="Write a comment..."
-                            className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400"
+                            disabled={!commentOpen}
+                            className={`w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400 ${
+                              commentOpen ? '' : 'cursor-not-allowed bg-slate-100 text-slate-400'
+                            }`}
                             style={{ resize: 'none' }}
                           />
                           <div className="flex items-center justify-between">
@@ -438,13 +478,19 @@ const StaffMyIdeasPage = () => {
                                 onChange={(event) =>
                                   setCommentAnon((prev) => ({ ...prev, [idea.idea_id]: event.target.checked }))
                                 }
+                                disabled={!commentOpen}
                               />
                               Post anonymously
                             </label>
                             <button
                               type="button"
                               onClick={() => handleSubmitComment(idea.idea_id)}
-                              className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800"
+                              disabled={!commentOpen}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white ${
+                                commentOpen
+                                  ? 'bg-blue-700 hover:bg-blue-800'
+                                  : 'cursor-not-allowed bg-slate-400'
+                              }`}
                             >
                               Add Comment
                             </button>
@@ -453,7 +499,8 @@ const StaffMyIdeasPage = () => {
                       </div>
                     )}
                   </article>
-                ))}
+                )
+                })}
               </div>
             ))}
 

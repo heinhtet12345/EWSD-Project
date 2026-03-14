@@ -3,6 +3,8 @@ from .models import ClosurePeriod
 
 
 class ClosurePeriodSerializer(serializers.ModelSerializer):
+    is_active = serializers.SerializerMethodField()
+
     class Meta:
         model = ClosurePeriod
         fields = [
@@ -11,8 +13,12 @@ class ClosurePeriodSerializer(serializers.ModelSerializer):
             "idea_closure_date",
             "comment_closure_date",
             "academic_year",
+            "is_active",
         ]
         read_only_fields = ["id", "start_date"]
+
+    def get_is_active(self, obj):
+        return bool(getattr(obj, "is_comment_open", True))
 
     def validate(self, data):
         start_date = data.get("start_date")

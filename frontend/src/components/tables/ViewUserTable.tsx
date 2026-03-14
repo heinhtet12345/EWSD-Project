@@ -45,7 +45,7 @@ export default function ViewUserTable() {
   const canResetPassword = currentRole === "admin";
 
   const [users, setUsers] = useState<AppUser[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [searchTerm, setSearchTerm] = useState("");

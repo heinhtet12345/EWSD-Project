@@ -22,7 +22,7 @@ type ActivityLogsResponse = {
 
 export default function AdminAnalyticsPage() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [eventType, setEventType] = useState("");
