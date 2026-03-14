@@ -29,6 +29,7 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Users", to: "/admin/users", icon: User},
     { label: "Manage Closure Period", to: "/admin/closure-period", icon: Calendar },
     { label: "Activities", to: "/admin/analytics", icon: BarChart3 },
+    { label: "All Ideas", to: "/admin/all-ideas", icon: FileText },
     { label: "Reports", to: "/admin/reports", icon: ShieldAlert },
   ], 
   "qa_manager": [

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 type ReportItem = {
   report_id: number;
@@ -25,6 +26,7 @@ const getAuthConfig = () => {
 };
 
 export default function ReportListPage() {
+  const navigate = useNavigate();
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -79,6 +81,10 @@ export default function ReportListPage() {
   }, [reports, search]);
 
   const title = currentRole === "qa_manager" ? "Reported Ideas" : "Reports";
+  const handleOpenIdea = (ideaId: number) => {
+    const basePath = currentRole === "qa_manager" ? "/qa_manager/all-ideas" : "/admin/all-ideas";
+    navigate(`${basePath}?highlightIdeaId=${ideaId}`);
+  };
 
   return (
     <section className="space-y-4">
@@ -119,7 +125,11 @@ export default function ReportListPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredReports.map((report) => (
-                <tr key={report.report_id}>
+                <tr
+                  key={report.report_id}
+                  onClick={() => handleOpenIdea(report.idea)}
+                  className="cursor-pointer transition hover:bg-amber-50/60"
+                >
                   <td className="px-4 py-3 text-sm text-slate-700">{report.idea_title || `Idea #${report.idea}`}</td>
                   <td className="px-4 py-3 text-sm text-slate-700">{report.reporter_username || `User #${report.reporter}`}</td>
                   <td className="px-4 py-3 text-sm text-slate-700">{report.reason}</td>
