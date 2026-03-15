@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  ShieldAlert,
   ShieldCheck,
   User,
   Users,
@@ -25,24 +26,30 @@ type RoleTab = {
 const ROLE_TABS: Record<Role, RoleTab[]> = {
   admin: [
     { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
-    { label: "Manage Closure Period", to: "/008", icon: Calendar },
-    { label: "Manage Staffs", to: "/007", icon: Users },
+    { label: "Users", to: "/admin/users", icon: User},
+    { label: "Manage Closure Period", to: "/admin/closure-period", icon: Calendar },
+    { label: "Activities", to: "/admin/analytics", icon: BarChart3 },
+    { label: "All Ideas", to: "/admin/all-ideas", icon: FileText },
+    { label: "Reports", to: "/admin/reports", icon: ShieldAlert },
+  ], 
+  "qa_manager": [
+    { label: "Dashboard", to: "/qa_manager", icon: LayoutDashboard },
+    { label: "Users", to: "/qa_manager/users", icon: User},
+    { label: "All Ideas", to: "/qa_manager/all-ideas", icon: FileText },
+    { label: "Closure Period", to: "/qa_manager/closure-period", icon: ShieldCheck },
+    { label: "Categories", to: "/qa_manager/categories", icon: FileText },
+    { label: "Reports", to: "/qa_manager/reports", icon: ShieldAlert },
   ],
   "qa_coordinator": [
     { label: "Dashboard", to: "/qa_coordinator", icon: LayoutDashboard },
-    { label: "All Ideas", to: "/006", icon: FileText },
-    { label: "Review and Moderate Ideas", to: "/005", icon: ShieldCheck },
-  ],
-  "qa_manager": [
-    { label: "Dashboard", to: "/qa_manager", icon: LayoutDashboard },
-    { label: "All Ideas", to: "/003", icon: FileText },
-    { label: "Categories", to: "/qa_manager/categories", icon: FileText },
-    { label: "Statistical Analysis", to: "/004", icon: BarChart3 },
+    { label: "All Ideas", to: "/qa_coordinator/all-ideas", icon: FileText },
+    { label: "My Department", to: "/qa_coordinator/my-department", icon: ShieldCheck },
+
   ],
   staff: [
     { label: "Dashboard", to: "/staff", icon: LayoutDashboard },
-    { label: "All Ideas", to: "/001", icon: FileText },
-    { label: "My Ideas", to: "/002", icon: User },
+    { label: "All Ideas", to: "/staff/all-ideas", icon: FileText },
+    { label: "My Ideas", to: "/staff/my-ideas", icon: User },
   ],
 };
 
@@ -107,7 +114,7 @@ export default function SideBar({ role = "staff" }: SideBarProps) {
   }, []);
 
   return (
-    <aside className="h-screen">
+    <aside className="sticky top-0 h-screen shrink-0">
       <nav
         className={`h-full flex flex-col shadow-sm text-white transition-[width] duration-200 ${
           isCollapsed ? "w-16" : "w-[250px]"

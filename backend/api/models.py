@@ -20,7 +20,10 @@ class Role(models.Model):
 class User(AbstractUser):
     user_id = models.AutoField(primary_key=True)
     dob = models.DateField(null=True, blank=True)
-    address = models.CharField(max_length=256, blank=True)
+    address_line_1 = models.CharField(max_length=256, blank=True)
+    township = models.CharField(max_length=100, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     hire_date = models.DateField(null=True, blank=True)
     active_status = models.BooleanField(default=True)
@@ -41,7 +44,7 @@ class User(AbstractUser):
     )
 
     profile_image = models.ImageField(
-        upload_to='profile_images/',
+        upload_to='profile_image/',
         null=True,
         blank=True
     )
@@ -56,6 +59,33 @@ class Category(models.Model):
 
     def __str__(self):
         return self.category_name
+
+
+class Notification(models.Model):
+    notification_id = models.AutoField(primary_key=True)
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications'
+    )
+    title = models.CharField(max_length=120)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=50, default='general')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    idea = models.ForeignKey(
+        'IdeaPost.Idea',
+        on_delete=models.CASCADE,
+        related_name='notifications',
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} -> {self.recipient}"
 
 
 

@@ -38,7 +38,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         if errors:
             raise serializers.ValidationError(errors)
 
-        # Also apply Django validators
+        # Django validators
         try:
             validate_password(value, self.context['request'].user)
         except DjangoValidationError as e:

@@ -10,10 +10,35 @@ class CustomUserAdmin(UserAdmin):
     # Add custom fields to the admin form
     fieldsets = UserAdmin.fieldsets + (
         ("Custom Info", {
-            "fields": ("dob", "address", "phone", "hire_date", "active_status", "role", "department", "profile_image"),
+            "fields": (
+                "dob",
+                "address_line_1",
+                "township",
+                "city",
+                "postal_code",
+                "phone",
+                "hire_date",
+                "active_status",
+                "role",
+                "department",
+                "profile_image",
+            ),
         }),
     )
-    list_display = ["username", "email", "dob", "address", "phone", "hire_date", "active_status", "role", "department"]
+    list_display = [
+        "username",
+        "email",
+        "dob",
+        "address_line_1",
+        "township",
+        "city",
+        "postal_code",
+        "phone",
+        "hire_date",
+        "active_status",
+        "role",
+        "department",
+    ]
 
 admin.site.register(User, CustomUserAdmin)
 admin.site.register(Role)

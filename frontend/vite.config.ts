@@ -10,6 +10,18 @@ export default defineConfig({
         target: "http://localhost:8000",
         changeOrigin: true,
       },
+      "/closure-period": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/ideas": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/media": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
     },
   },
 });
