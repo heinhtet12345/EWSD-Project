@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { ChevronLeft, ChevronRight, Flag, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -527,6 +527,10 @@ const StaffAllIdeaPage = () => {
     navigate(`${basePath}?userId=${userId}`)
   }
 
+  const handleHighlightRef = (element: HTMLDivElement | null) => {
+  setHighlightElement(element);
+  };
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -625,7 +629,7 @@ const StaffAllIdeaPage = () => {
                   {group.ideas.map((idea) => (
                     <article
                       key={idea.idea_id}
-                      ref={String(highlightIdeaId) === String(idea.idea_id) ? setHighlightElement : undefined}
+                      ref={String(highlightIdeaId) === String(idea.idea_id) ? handleHighlightRef : undefined}
                       tabIndex={-1}
                       className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
                         String(highlightIdeaId) === String(idea.idea_id)
