@@ -34,9 +34,10 @@ class ViewClosurePeriodView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        closureperiod = ClosurePeriod.objects.all()
+        # Show newest closure periods first (by creation/start_date).
+        closureperiod = ClosurePeriod.objects.order_by('-start_date', '-id')
         serializer = ClosurePeriodSerializer(closureperiod, many=True)
 
         return Response({
             "results": serializer.data
-        }) 
+        })

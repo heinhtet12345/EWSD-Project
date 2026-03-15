@@ -82,7 +82,16 @@ export default function ReportListPage() {
 
   const title = currentRole === "qa_manager" ? "Reported Ideas" : "Reports";
   const handleOpenIdea = (ideaId: number) => {
-    const basePath = currentRole === "qa_manager" ? "/qa_manager/all-ideas" : "/admin/all-ideas";
+    let basePath = "/staff/all-ideas";
+    if (currentRole === "qa_manager") {
+      basePath = "/qa_manager/all-ideas";
+    } else if (currentRole === "admin") {
+      basePath = "/admin/all-ideas";
+    } else if (currentRole === "qa_coordinator") {
+      // QA coordinators work from their department view.
+      basePath = "/qa_coordinator/my-department";
+    }
+
     navigate(`${basePath}?highlightIdeaId=${ideaId}`);
   };
 

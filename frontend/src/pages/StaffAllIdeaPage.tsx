@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { ChevronLeft, ChevronRight, Flag, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -150,6 +150,7 @@ const StaffAllIdeaPage = () => {
   }, [location.search])
 
   const [highlightIdeaId, setHighlightIdeaId] = useState<number | null>(null)
+  const [highlightElement, setHighlightElement] = useState<HTMLDivElement | null>(null)
 
   // Keep a local highlight state so we can clear it after a short duration.
   useEffect(() => {
@@ -283,13 +284,25 @@ const StaffAllIdeaPage = () => {
 
   useEffect(() => {
     if (!highlightIdeaId || filteredIdeas.length === 0) return
-    const highlightIndex = filteredIdeas.findIndex((idea) => idea.idea_id === highlightIdeaId)
+    const highlightIndex = filteredIdeas.findIndex(
+      (idea) => Number(idea.idea_id) === Number(highlightIdeaId),
+    )
     if (highlightIndex < 0) return
     const targetPage = Math.floor(highlightIndex / itemsPerPage) + 1
     if (targetPage !== currentPage) {
       setCurrentPage(targetPage)
     }
   }, [highlightIdeaId, filteredIdeas, currentPage])
+
+  useEffect(() => {
+    if (!highlightIdeaId || !highlightElement) return
+
+    // Ensure the element is rendered in the DOM before scrolling.
+    requestAnimationFrame(() => {
+      highlightElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      highlightElement.focus({ preventScroll: true })
+    })
+  }, [highlightIdeaId, currentPage, highlightElement])
 
 
   const fetchIdeas = async () => {
@@ -612,9 +625,11 @@ const StaffAllIdeaPage = () => {
                   {group.ideas.map((idea) => (
                     <article
                       key={idea.idea_id}
+                      ref={String(highlightIdeaId) === String(idea.idea_id) ? setHighlightElement : undefined}
+                      tabIndex={-1}
                       className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
-                        highlightIdeaId === idea.idea_id
-                          ? 'border-amber-300 ring-2 ring-amber-200'
+                        String(highlightIdeaId) === String(idea.idea_id)
+                          ? 'border-amber-300 ring-2 ring-amber-200 bg-amber-50'
                           : 'border-slate-200'
                       }`}
                     >
