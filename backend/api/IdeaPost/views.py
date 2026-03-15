@@ -140,7 +140,10 @@ class ListIdeasView(APIView):
         else:
             # QA Managers and Admins can see all ideas
             ideas = active_ideas
-        
+
+        # Order ideas from newest to oldest by submission time.
+        ideas = ideas.order_by('-submit_datetime')
+
         serializer = IdeaListSerializer(ideas, many=True, context={"request": request, "viewer_role": role})
         return Response({
             "results": serializer.data

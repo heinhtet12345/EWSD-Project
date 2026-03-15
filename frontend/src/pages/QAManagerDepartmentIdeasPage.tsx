@@ -204,9 +204,20 @@ export default function QAManagerDepartmentIdeasPage() {
     })
 
     return Object.values(groups).sort((a, b) => {
-      const aOpen = a.ideaOpen ? 1 : 0
-      const bOpen = b.ideaOpen ? 1 : 0
-      if (aOpen !== bOpen) return bOpen - aOpen
+      // Prioritize closure periods where commenting is open, then where ideas are open.
+      const aCommentOpen = a.commentOpen ? 1 : 0
+      const bCommentOpen = b.commentOpen ? 1 : 0
+      if (aCommentOpen !== bCommentOpen) return bCommentOpen - aCommentOpen
+
+      const aIdeaOpen = a.ideaOpen ? 1 : 0
+      const bIdeaOpen = b.ideaOpen ? 1 : 0
+      if (aIdeaOpen !== bIdeaOpen) return bIdeaOpen - aIdeaOpen
+
+      // For closed periods, show newest first (newer closed periods above older ones).
+      const closed = !a.commentOpen && !a.ideaOpen
+      const closedOther = !b.commentOpen && !b.ideaOpen
+      if (closed && closedOther) return b.sortKey - a.sortKey
+
       return b.sortKey - a.sortKey
     })
   }, [currentIdeas, closurePeriods])

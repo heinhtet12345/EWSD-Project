@@ -21,6 +21,6 @@ class Idea(models.Model):
 class UploadedDocument(models.Model):
     doc_id = models.AutoField(primary_key=True)
     file = models.FileField(upload_to='idea_documents/')
-    file_name = models.CharField(max_length=50)
+    file_name = models.TextField()
     upload_time = models.DateTimeField(auto_now_add=True)
     idea = models.ForeignKey(Idea, on_delete=models.CASCADE, related_name='documents')
