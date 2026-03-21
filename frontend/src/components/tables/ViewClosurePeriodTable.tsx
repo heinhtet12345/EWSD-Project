@@ -12,6 +12,13 @@ export type ClosurePeriod = {
 
 type ViewClosurePeriodTableProps = {
 	periods: ClosurePeriod[]
+	showDownload?: boolean
+	onDownloadAll?: () => void
+	isDownloading?: boolean
+	onDownloadPeriod?: (period: ClosurePeriod) => void
+	downloadingPeriodId?: number | null
+	searchTerm?: string
+	onSearchChange?: (value: string) => void
 }
 
 const formatDate = (value: string) => {
@@ -39,9 +46,43 @@ const formatDate = (value: string) => {
 	return value
 }
 
-const ViewClosurePeriodTable = ({ periods }: ViewClosurePeriodTableProps) => {
+const ViewClosurePeriodTable = ({
+	periods,
+	showDownload = false,
+	onDownloadAll,
+	isDownloading,
+	onDownloadPeriod,
+	downloadingPeriodId = null,
+	searchTerm = '',
+	onSearchChange,
+}: ViewClosurePeriodTableProps) => {
 	return (
 		<div className="qa-closure-table overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+			{showDownload && (
+				<div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+					<div className="w-full sm:max-w-xs">
+						<label className="sr-only" htmlFor="closure-search">
+							Search closure periods
+						</label>
+						<input
+							id="closure-search"
+							type="text"
+							value={searchTerm}
+							onChange={(e) => onSearchChange?.(e.target.value)}
+							placeholder="Search academic year..."
+							className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						/>
+					</div>
+					<button
+						type="button"
+						onClick={onDownloadAll}
+						disabled={isDownloading}
+						className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+					>
+						{isDownloading ? 'Preparing…' : 'Download All Data'}
+					</button>
+				</div>
+			)}
 			<table className="min-w-full divide-y divide-slate-200">
 				<thead className="qa-closure-table-head bg-slate-50">
 					<tr>
@@ -95,12 +136,24 @@ const ViewClosurePeriodTable = ({ periods }: ViewClosurePeriodTableProps) => {
 									</span>
 								</td>
 								<td className="px-4 py-3 text-center text-sm text-slate-700 dark:text-[#000490]">
-									<button
-										type="button"
-										className="qa-closure-edit-button rounded-md bg-[#DADEFF] px-3 py-1 text-xs text-[#0e139e] transition hover:bg-blue-700 hover:text-white font-bold"
-									>
-										Edit
-									</button>
+									<div className="flex items-center justify-center gap-2">
+										<button
+											type="button"
+											className="qa-closure-edit-button rounded-md bg-[#DADEFF] px-3 py-1 text-xs text-[#0e139e] transition hover:bg-blue-700 hover:text-white font-bold"
+										>
+											Edit
+										</button>
+										{onDownloadPeriod && (
+											<button
+												type="button"
+												onClick={() => onDownloadPeriod(period)}
+												disabled={downloadingPeriodId === period.id}
+												className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+											>
+												{downloadingPeriodId === period.id ? 'Downloading…' : 'Download'}
+											</button>
+										)}
+									</div>
 								</td>
 							</tr>
 						))

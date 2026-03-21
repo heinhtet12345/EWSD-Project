@@ -25,6 +25,7 @@ type ClosurePeriodApiItem = {
 
 const CLOSURE_PERIOD_CREATE_PATH = '/api/closure-period/create/'
 const CLOSURE_PERIOD_LIST_PATH = '/api/closure-period/list/'
+const DOWNLOAD_ALL_DATA_PATH = '/api/ideas/download/all/'
 
 const getAuthConfig = () => {
   try {
@@ -99,12 +100,17 @@ const ClosurePeriodPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const dashboardPath = location.pathname.startsWith('/admin') ? '/admin' : '/qa_manager'
+  const isQaManagerView = location.pathname.startsWith('/qa_manager')
   const [isAdding, setIsAdding] = useState(false)
   const [periods, setPeriods] = useState<ClosurePeriod[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [formError, setFormError] = useState('')
+  const [downloadError, setDownloadError] = useState('')
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadingPeriodId, setDownloadingPeriodId] = useState<number | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     let isMounted = true
@@ -238,6 +244,78 @@ const ClosurePeriodPage = () => {
 
   const breadcrumbSeparator = <ChevronRight className="h-4 w-4 text-slate-400" />
 
+  const handleDownloadAll = async () => {
+    setDownloadError('')
+    setIsDownloading(true)
+    setDownloadingPeriodId(null)
+    try {
+      const response = await axios.get(DOWNLOAD_ALL_DATA_PATH, {
+        ...getAuthConfig(),
+        responseType: 'blob',
+      })
+
+      const blob = new Blob([response.data], { type: 'application/zip' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const disposition = response.headers?.['content-disposition'] as string | undefined
+      const match = disposition?.match(/filename="?([^";]+)"?/)
+      link.href = url
+      link.download = match?.[1] || 'Data_Report.zip'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      setDownloadError(extractApiErrorMessage(error, 'Unable to download data.'))
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  const handleDownloadPeriod = async (period: ClosurePeriod) => {
+    setDownloadError('')
+    setIsDownloading(true)
+    setDownloadingPeriodId(period.id)
+    try {
+      const response = await axios.get(DOWNLOAD_ALL_DATA_PATH, {
+        ...getAuthConfig(),
+        responseType: 'blob',
+        params: { closure_period_id: period.id },
+      })
+
+      const blob = new Blob([response.data], { type: 'application/zip' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const disposition = response.headers?.['content-disposition'] as string | undefined
+      const match = disposition?.match(/filename="?([^";]+)"?/)
+      link.href = url
+      const safeYear = period.academicYear?.trim().replace(/\s+/g, '_') || `closure_${period.id}`
+      link.download = match?.[1] || `Data_Report_${safeYear}.zip`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      setDownloadError(extractApiErrorMessage(error, 'Unable to download data.'))
+    } finally {
+      setIsDownloading(false)
+      setDownloadingPeriodId(null)
+    }
+  }
+
+  const filteredPeriods = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    if (!term) return periods
+    return periods.filter((p) => {
+      return (
+        p.academicYear.toLowerCase().includes(term) ||
+        p.startDate.toLowerCase().includes(term) ||
+        p.ideaClosureDate.toLowerCase().includes(term) ||
+        p.commentClosureDate.toLowerCase().includes(term)
+      )
+    })
+  }, [periods, searchTerm])
+
   return (
     <section className="space-y-4">
       <BreadCrumb
@@ -287,7 +365,23 @@ const ClosurePeriodPage = () => {
             </div>
           )}
           {isLoading && <p className="text-sm text-slate-500">Loading closure periods...</p>}
-          {!isLoading && <ViewClosurePeriodTable periods={periods} />}
+          {downloadError && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {downloadError}
+            </div>
+          )}
+          {!isLoading && (
+            <ViewClosurePeriodTable
+              periods={filteredPeriods}
+              showDownload={isQaManagerView}
+              onDownloadAll={handleDownloadAll}
+              isDownloading={isDownloading}
+              onDownloadPeriod={isQaManagerView ? handleDownloadPeriod : undefined}
+              downloadingPeriodId={downloadingPeriodId}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
+          )}
         </div>
       )}
     </section>
