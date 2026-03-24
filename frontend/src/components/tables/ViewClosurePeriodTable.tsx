@@ -1,4 +1,3 @@
-import React from 'react'
 import { FolderOpen } from 'lucide-react'
 
 export type ClosurePeriod = {
@@ -8,17 +7,20 @@ export type ClosurePeriod = {
 	commentClosureDate: string
 	isActive: boolean
 	academicYear: string
+	canExtendIdeaDeadline?: boolean
+	canExtendCommentDeadline?: boolean
 }
 
 type ViewClosurePeriodTableProps = {
 	periods: ClosurePeriod[]
 	showDownload?: boolean
-	onDownloadAll?: () => void
 	isDownloading?: boolean
-	onDownloadPeriod?: (period: ClosurePeriod) => void
+	onDownloadAll?: () => void
+	onEditPeriod?: (period: ClosurePeriod) => void
 	downloadingPeriodId?: number | null
 	searchTerm?: string
 	onSearchChange?: (value: string) => void
+	onOpenDownloadOptions?: (period?: ClosurePeriod) => void
 }
 
 const formatDate = (value: string) => {
@@ -49,12 +51,13 @@ const formatDate = (value: string) => {
 const ViewClosurePeriodTable = ({
 	periods,
 	showDownload = false,
-	onDownloadAll,
 	isDownloading,
-	onDownloadPeriod,
+	onDownloadAll,
+	onEditPeriod,
 	downloadingPeriodId = null,
 	searchTerm = '',
 	onSearchChange,
+	onOpenDownloadOptions,
 }: ViewClosurePeriodTableProps) => {
 	return (
 		<div className="qa-closure-table overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -79,14 +82,14 @@ const ViewClosurePeriodTable = ({
 						disabled={isDownloading}
 						className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
 					>
-						{isDownloading ? 'Preparing…' : 'Download All Data'}
+						{isDownloading ? 'Preparing...' : 'Download All'}
 					</button>
 				</div>
 			)}
 			<table className="min-w-full divide-y divide-slate-200">
 				<thead className="qa-closure-table-head bg-slate-50">
 					<tr>
-                        <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+						<th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
 							Academic Year
 						</th>
 						<th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -102,8 +105,8 @@ const ViewClosurePeriodTable = ({
 							Status
 						</th>
 						<th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
-                            Action
-                        </th>
+							Action
+						</th>
 					</tr>
 				</thead>
 				<tbody className="qa-closure-table-body divide-y divide-slate-100 bg-white">
@@ -120,11 +123,11 @@ const ViewClosurePeriodTable = ({
 					) : (
 						periods.map((period) => (
 							<tr key={period.id}>
-								<td className="px-4 py-3 text-sm text-slate-700 text-center">{period.academicYear}</td>
-								<td className="px-4 py-3 text-sm text-slate-700 text-center">{formatDate(period.startDate)}</td>
-								<td className="px-4 py-3 text-sm text-slate-700 text-center">{formatDate(period.ideaClosureDate)}</td>
-								<td className="px-4 py-3 text-sm text-slate-700 text-center">{formatDate(period.commentClosureDate)}</td>
-								<td className="px-4 py-3 text-sm text-slate-700 text-center">
+								<td className="px-4 py-3 text-center text-sm text-slate-700">{period.academicYear}</td>
+								<td className="px-4 py-3 text-center text-sm text-slate-700">{formatDate(period.startDate)}</td>
+								<td className="px-4 py-3 text-center text-sm text-slate-700">{formatDate(period.ideaClosureDate)}</td>
+								<td className="px-4 py-3 text-center text-sm text-slate-700">{formatDate(period.commentClosureDate)}</td>
+								<td className="px-4 py-3 text-center text-sm text-slate-700">
 									<span
 										className={`inline-flex items-center rounded-full px-4 py-1 text-xs font-bold ${
 											period.isActive
@@ -135,22 +138,26 @@ const ViewClosurePeriodTable = ({
 										{period.isActive ? 'Open' : 'Closed'}
 									</span>
 								</td>
-								<td className="px-4 py-3 text-center text-sm text-slate-700 dark:text-[#000490]">
+								<td className="px-4 py-3 text-center text-sm text-slate-700">
 									<div className="flex items-center justify-center gap-2">
-										{/* <button
-											type="button"
-											className="qa-closure-edit-button rounded-md bg-[#DADEFF] px-3 py-1 text-xs text-[#0e139e] transition hover:bg-blue-700 hover:text-white font-bold"
-										>
-											Edit
-										</button> */}
-										{onDownloadPeriod && (
+										{onEditPeriod && (
 											<button
 												type="button"
-												onClick={() => onDownloadPeriod(period)}
+												onClick={() => onEditPeriod(period)}
+												disabled={!period.canExtendIdeaDeadline && !period.canExtendCommentDeadline}
+												className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+											>
+												Extend
+											</button>
+										)}
+										{showDownload && (
+											<button
+												type="button"
+												onClick={() => onOpenDownloadOptions?.(period)}
 												disabled={downloadingPeriodId === period.id}
 												className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
 											>
-												{downloadingPeriodId === period.id ? 'Downloading…' : 'Download'}
+												{downloadingPeriodId === period.id ? 'Downloading...' : 'Export Options'}
 											</button>
 										)}
 									</div>

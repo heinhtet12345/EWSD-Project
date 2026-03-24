@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight, House } from 'lucide-react'
 import axios from 'axios'
 
+import Modal from '../components/common/Modal'
 import { AddClosurePeriodForm } from '../forms/AddClosurePeriodForm'
 import ViewClosurePeriodTable, { type ClosurePeriod } from '../components/tables/ViewClosurePeriodTable'
 
@@ -21,11 +22,16 @@ type ClosurePeriodApiItem = {
   commentClosureDate?: string
   isActive?: boolean
   academicYear?: string
+  can_extend_idea_deadline?: boolean
+  can_extend_comment_deadline?: boolean
+  canExtendIdeaDeadline?: boolean
+  canExtendCommentDeadline?: boolean
 }
 
 const CLOSURE_PERIOD_CREATE_PATH = '/api/closure-period/create/'
 const CLOSURE_PERIOD_LIST_PATH = '/api/closure-period/list/'
 const DOWNLOAD_ALL_DATA_PATH = '/api/ideas/download/all/'
+type ExportType = 'all' | 'report' | 'documents'
 
 const getAuthConfig = () => {
   try {
@@ -70,6 +76,8 @@ const normalizeClosurePeriod = (item: ClosurePeriodApiItem, fallbackId: number):
     commentClosureDate,
     isActive: item.is_active ?? item.isActive ?? fallbackActive,
     academicYear: item.academic_year ?? item.academicYear ?? '',
+    canExtendIdeaDeadline: item.can_extend_idea_deadline ?? item.canExtendIdeaDeadline ?? fallbackActive,
+    canExtendCommentDeadline: item.can_extend_comment_deadline ?? item.canExtendCommentDeadline ?? fallbackActive,
   }
 }
 
@@ -111,6 +119,12 @@ const ClosurePeriodPage = () => {
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadingPeriodId, setDownloadingPeriodId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [downloadTarget, setDownloadTarget] = useState<ClosurePeriod | null | undefined>(undefined)
+  const [selectedExportType, setSelectedExportType] = useState<ExportType>('all')
+  const [editingPeriod, setEditingPeriod] = useState<ClosurePeriod | null>(null)
+  const [editIdeaClosureDate, setEditIdeaClosureDate] = useState('')
+  const [editCommentClosureDate, setEditCommentClosureDate] = useState('')
+  const [isUpdatingPeriod, setIsUpdatingPeriod] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -244,7 +258,7 @@ const ClosurePeriodPage = () => {
 
   const breadcrumbSeparator = <ChevronRight className="h-4 w-4 text-slate-400" />
 
-  const handleDownloadAll = async () => {
+  const handleDownloadAll = async (exportType: ExportType) => {
     setDownloadError('')
     setIsDownloading(true)
     setDownloadingPeriodId(null)
@@ -252,15 +266,24 @@ const ClosurePeriodPage = () => {
       const response = await axios.get(DOWNLOAD_ALL_DATA_PATH, {
         ...getAuthConfig(),
         responseType: 'blob',
+        params: { export_type: exportType },
       })
 
-      const blob = new Blob([response.data], { type: 'application/zip' })
+      const blob = new Blob([response.data], {
+        type: exportType === 'report' ? 'text/csv' : 'application/zip',
+      })
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       const disposition = response.headers?.['content-disposition'] as string | undefined
       const match = disposition?.match(/filename="?([^";]+)"?/)
       link.href = url
-      link.download = match?.[1] || 'Data_Report.zip'
+      const fallbackName =
+        exportType === 'report'
+          ? 'all_closure_periods_report.csv'
+          : exportType === 'documents'
+            ? 'all_closure_periods_documents.zip'
+            : 'Data_Report.zip'
+      link.download = match?.[1] || fallbackName
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -272,7 +295,44 @@ const ClosurePeriodPage = () => {
     }
   }
 
-  const handleDownloadPeriod = async (period: ClosurePeriod) => {
+  const openEditPeriod = (period: ClosurePeriod) => {
+    setFormError('')
+    setEditingPeriod(period)
+    setEditIdeaClosureDate(period.ideaClosureDate)
+    setEditCommentClosureDate(period.commentClosureDate)
+  }
+
+  const handleUpdateClosurePeriod = async () => {
+    if (!editingPeriod) return
+
+    setFormError('')
+    setIsUpdatingPeriod(true)
+    try {
+      const payload: Record<string, string> = {}
+      if (editingPeriod.canExtendIdeaDeadline) {
+        payload.idea_closure_date = editIdeaClosureDate
+      }
+      if (editingPeriod.canExtendCommentDeadline) {
+        payload.comment_closure_date = editCommentClosureDate
+      }
+
+      const response = await axios.patch(
+        `/api/closure-period/${editingPeriod.id}/update/`,
+        payload,
+        getAuthConfig(),
+      )
+
+      const updated = normalizeClosurePeriod(response.data ?? {}, editingPeriod.id)
+      setPeriods((prev) => prev.map((period) => (period.id === editingPeriod.id ? updated : period)))
+      setEditingPeriod(null)
+    } catch (error) {
+      setFormError(extractApiErrorMessage(error, 'Unable to update closure period.'))
+    } finally {
+      setIsUpdatingPeriod(false)
+    }
+  }
+
+  const handleDownloadPeriod = async (period: ClosurePeriod, exportType: ExportType) => {
     setDownloadError('')
     setIsDownloading(true)
     setDownloadingPeriodId(period.id)
@@ -280,17 +340,25 @@ const ClosurePeriodPage = () => {
       const response = await axios.get(DOWNLOAD_ALL_DATA_PATH, {
         ...getAuthConfig(),
         responseType: 'blob',
-        params: { closure_period_id: period.id },
+        params: { closure_period_id: period.id, export_type: exportType },
       })
 
-      const blob = new Blob([response.data], { type: 'application/zip' })
+      const blob = new Blob([response.data], {
+        type: exportType === 'report' ? 'text/csv' : 'application/zip',
+      })
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       const disposition = response.headers?.['content-disposition'] as string | undefined
       const match = disposition?.match(/filename="?([^";]+)"?/)
       link.href = url
       const safeYear = period.academicYear?.trim().replace(/\s+/g, '_') || `closure_${period.id}`
-      link.download = match?.[1] || `Data_Report_${safeYear}.zip`
+      const fallbackName =
+        exportType === 'report'
+          ? `${safeYear}_report.csv`
+          : exportType === 'documents'
+            ? `${safeYear}_documents.zip`
+            : `${safeYear}_all.zip`
+      link.download = match?.[1] || fallbackName
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -301,6 +369,21 @@ const ClosurePeriodPage = () => {
       setIsDownloading(false)
       setDownloadingPeriodId(null)
     }
+  }
+
+  const handleConfirmDownload = async (exportType: ExportType) => {
+    const target = downloadTarget
+    setDownloadTarget(undefined)
+    if (target) {
+      await handleDownloadPeriod(target, exportType)
+      return
+    }
+    await handleDownloadAll(exportType)
+  }
+
+  const openDownloadOptions = (period?: ClosurePeriod) => {
+    setSelectedExportType('all')
+    setDownloadTarget(period ?? null)
   }
 
   const filteredPeriods = useMemo(() => {
@@ -329,61 +412,200 @@ const ClosurePeriodPage = () => {
           <h1 className="qa-closure-title text-2xl font-semibold text-black">Closure Periods</h1>
           <p className="qa-closure-subtitle text-sm text-slate-500">Manage submission and comment windows.</p>
         </div>
-        {!isAdding && (
-          <button
-            type="button"
-            onClick={() => setIsAdding(true)}
-            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-800"
-          >
-            Add Closure Period
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setIsAdding(true)}
+          className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-800"
+        >
+          Add Closure Period
+        </button>
       </div>
 
-      {isAdding && (
-        <div className="w-full max-w-2xl space-y-3">
-          {formError && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {formError}
-            </div>
-          )}
-          <AddClosurePeriodForm
-            onCancel={() => {
-              setIsAdding(false)
-            }}
-            onSubmit={handleAddClosurePeriod}
-          />
-          {isSaving && <p className="text-sm text-slate-500">Saving closure period...</p>}
-        </div>
-      )}
-
-      {!isAdding && (
-        <div className="space-y-2">
-          {loadError && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {loadError}
-            </div>
-          )}
-          {isLoading && <p className="text-sm text-slate-500">Loading closure periods...</p>}
-          {downloadError && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              {downloadError}
-            </div>
-          )}
-          {!isLoading && (
-            <ViewClosurePeriodTable
-              periods={filteredPeriods}
-              showDownload={isQaManagerView}
-              onDownloadAll={handleDownloadAll}
-              isDownloading={isDownloading}
-              onDownloadPeriod={isQaManagerView ? handleDownloadPeriod : undefined}
-              downloadingPeriodId={downloadingPeriodId}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
+      <Modal
+        isOpen={isAdding}
+        onClose={() => setIsAdding(false)}
+        maxWidthClassName="max-w-3xl"
+      >
+        {isAdding && (
+          <div className="space-y-3">
+            {formError && (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {formError}
+              </div>
+            )}
+            <AddClosurePeriodForm
+              onCancel={() => {
+                setIsAdding(false)
+              }}
+              onSubmit={handleAddClosurePeriod}
             />
-          )}
-        </div>
-      )}
+            {isSaving && <p className="text-sm text-slate-500">Saving closure period...</p>}
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(editingPeriod)}
+        onClose={() => setEditingPeriod(null)}
+        maxWidthClassName="max-w-2xl"
+      >
+        {editingPeriod && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-slate-900">Extend Closure Period</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              You can only extend dates that have not passed yet for {editingPeriod.academicYear}.
+            </p>
+            {formError && (
+              <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {formError}
+              </div>
+            )}
+            <div className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">Idea closure date</label>
+                <input
+                  type="date"
+                  value={editIdeaClosureDate}
+                  onChange={(event) => setEditIdeaClosureDate(event.target.value)}
+                  disabled={!editingPeriod.canExtendIdeaDeadline}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                />
+                {!editingPeriod.canExtendIdeaDeadline && (
+                  <p className="text-xs font-medium text-rose-600">Idea closure date has already passed and cannot be changed.</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">Comment closure date</label>
+                <input
+                  type="date"
+                  value={editCommentClosureDate}
+                  onChange={(event) => setEditCommentClosureDate(event.target.value)}
+                  disabled={!editingPeriod.canExtendCommentDeadline}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                />
+                {!editingPeriod.canExtendCommentDeadline && (
+                  <p className="text-xs font-medium text-rose-600">Comment closure date has already passed and cannot be changed.</p>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingPeriod(null)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateClosurePeriod}
+                disabled={isUpdatingPeriod}
+                className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isUpdatingPeriod ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={downloadTarget !== undefined}
+        onClose={() => setDownloadTarget(undefined)}
+        maxWidthClassName="max-w-lg"
+      >
+        {downloadTarget !== undefined && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-slate-900">Choose Export Type</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              {downloadTarget
+                ? `Select what to export for ${downloadTarget.academicYear}.`
+                : 'Select what to export for all closure periods.'}
+            </p>
+            <div className="mt-5 grid gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedExportType('report')}
+                className={`rounded-xl border px-4 py-3 text-left transition ${
+                  selectedExportType === 'report'
+                    ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100'
+                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                }`}
+              >
+                <span className="block text-sm font-semibold text-slate-900">Report only</span>
+                <span className="block text-xs text-slate-500">Download the CSV report without attached documents.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedExportType('documents')}
+                className={`rounded-xl border px-4 py-3 text-left transition ${
+                  selectedExportType === 'documents'
+                    ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100'
+                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                }`}
+              >
+                <span className="block text-sm font-semibold text-slate-900">Documents only</span>
+                <span className="block text-xs text-slate-500">Download only the uploaded document ZIP content.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedExportType('all')}
+                className={`rounded-xl border px-4 py-3 text-left transition ${
+                  selectedExportType === 'all'
+                    ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100'
+                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                }`}
+              >
+                <span className="block text-sm font-semibold text-slate-900">All</span>
+                <span className="block text-xs text-slate-500">Download the full export with report and documents.</span>
+              </button>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDownloadTarget(undefined)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConfirmDownload(selectedExportType)}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                Download
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <div className="space-y-2">
+        {loadError && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {loadError}
+          </div>
+        )}
+        {isLoading && <p className="text-sm text-slate-500">Loading closure periods...</p>}
+        {downloadError && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {downloadError}
+          </div>
+        )}
+        {!isLoading && (
+          <ViewClosurePeriodTable
+            periods={filteredPeriods}
+            showDownload={isQaManagerView}
+            onDownloadAll={() => handleDownloadAll('all')}
+            onEditPeriod={isQaManagerView ? openEditPeriod : undefined}
+            isDownloading={isDownloading}
+            downloadingPeriodId={downloadingPeriodId}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onOpenDownloadOptions={openDownloadOptions}
+          />
+        )}
+      </div>
     </section>
   )
 }

@@ -72,7 +72,7 @@ export default function AddUserForm({ roles, departments, isSubmitting = false, 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <form onSubmit={handleSubmit} className="mx-auto w-full space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">Add User</h2>
       </div>

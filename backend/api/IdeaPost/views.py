@@ -8,6 +8,7 @@ from api.closure_period.models import ClosurePeriod
 from django.utils import timezone
 from api.models import Notification
 from api.interaction.models import Report
+from api.interaction.views import _notify_managers_about_report
 from .serializer import IdeaCreateSerializer, IdeaListSerializer, IdeaDetailSerializer
 from .models import Idea, UploadedDocument
 
@@ -186,23 +187,16 @@ class ReportIdeaView(APIView):
             reporter=request.user,
             idea=idea,
             reason=reason,
-            defaults={"details": details},
+            defaults={"details": details, "target_type": Report.TargetType.POST},
         )
 
-        recipients = [
-            user
-            for user in User.objects.select_related("role")
-            if _normalized_role(user) in {"admin", "qa_manager"}
-        ]
-
-        for recipient in recipients:
-            Notification.objects.create(
-                recipient=recipient,
-                title="Idea reported",
-                message=f'"{idea.idea_title}" was reported by {request.user.username}. Reason: {reason}.',
-                notification_type="idea_reported",
-                idea=idea,
-            )
+        _notify_managers_about_report(
+            target_label=idea.idea_title,
+            report_reason=reason,
+            reporter_username=request.user.username,
+            idea=idea,
+            target_type="idea",
+        )
 
         return Response({"message": "Idea reported successfully."}, status=status.HTTP_200_OK)
 
@@ -228,6 +222,23 @@ class DownloadAllIdeasDataView(APIView):
 
         closure_period_id = request.query_params.get("closure_period_id")
         academic_year = request.query_params.get("academic_year")
+        export_type = str(request.query_params.get("export_type", "all")).strip().lower()
+        if export_type not in {"all", "report", "documents"}:
+            return Response({"message": "Invalid export type."}, status=status.HTTP_400_BAD_REQUEST)
+
+        filename_label = None
+        if academic_year:
+            filename_label = academic_year
+        elif closure_period_id:
+            filename_label = (
+                ClosurePeriod.objects.filter(id=closure_period_id).values_list("academic_year", flat=True).first()
+                or f"closure_{closure_period_id}"
+            )
+        safe_filename_label = (
+            str(filename_label).strip().replace(" ", "_").replace("/", "-")
+            if filename_label
+            else None
+        )
 
         ideas = (
             Idea.objects.select_related("user", "department", "closurePeriod")
@@ -244,6 +255,63 @@ class DownloadAllIdeasDataView(APIView):
             ideas = ideas.filter(closurePeriod_id=closure_period_id)
         if academic_year:
             ideas = ideas.filter(closurePeriod__academic_year=academic_year)
+
+        if export_type == "report":
+            csv_io = StringIO()
+            writer = csv.writer(csv_io)
+            writer.writerow(
+                [
+                    "Idea ID",
+                    "Title",
+                    "Content",
+                    "Anonymous",
+                    "Submit Datetime",
+                    "Poster Username",
+                    "Department",
+                    "Closure Period",
+                    "Categories",
+                    "Start Date",
+                    "Idea Closure Date",
+                    "Comment Closure Date",
+                    "Upvote Count",
+                    "Downvote Count",
+                    "Comment Count",
+                    "URL_Document (Optional)",
+                ]
+            )
+            for idea in ideas:
+                category_names = ", ".join(idea.categories.values_list("category_name", flat=True))
+                closure = idea.closurePeriod
+                doc_urls = [
+                    doc.file.url
+                    for doc in UploadedDocument.objects.filter(idea=idea)
+                    if getattr(doc, "file", None)
+                ]
+                writer.writerow(
+                    [
+                        idea.idea_id,
+                        idea.idea_title,
+                        idea.idea_content,
+                        idea.anonymous_status,
+                        idea.submit_datetime,
+                        getattr(idea.user, "username", ""),
+                        getattr(idea.department, "dept_name", ""),
+                        getattr(closure, "academic_year", ""),
+                        category_names,
+                        getattr(closure, "start_date", ""),
+                        getattr(closure, "idea_closure_date", ""),
+                        getattr(closure, "comment_closure_date", ""),
+                        getattr(idea, "upvote_count", 0),
+                        getattr(idea, "downvote_count", 0),
+                        getattr(idea, "comment_count", 0),
+                        "; ".join(doc_urls),
+                    ]
+                )
+
+            response = HttpResponse(csv_io.getvalue(), content_type="text/csv")
+            filename = f"{safe_filename_label}_report.csv" if safe_filename_label else "Report_Only.csv"
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
 
         # Closure periods to include in ZIP:
         if closure_period_id or academic_year:
@@ -271,6 +339,7 @@ class DownloadAllIdeasDataView(APIView):
 
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zipf:
+            flatten_documents_zip = export_type == "documents" and len(closure_periods) == 1
             # Group ideas by closure period and create foldered bundles.
             for closure_period in closure_periods:
                 closure_id = closure_period.id
@@ -278,85 +347,93 @@ class DownloadAllIdeasDataView(APIView):
                 academic_label = getattr(closure_period, "academic_year", "") or f"Closure_{closure_id or 'unknown'}"
                 folder_name = academic_label.replace(" ", "_").replace("/", "-")
 
-                # CSV per closure period
-                csv_io = StringIO()
-                writer = csv.writer(csv_io)
-                writer.writerow(
-                    [
-                        "Idea ID",
-                        "Title",
-                        "Content",
-                        "Anonymous",
-                        "Submit Datetime",
-                        "Poster Username",
-                        "Department",
-                        "Closure Period",
-                        "Categories",
-                        "Start Date",
-                        "Idea Closure Date",
-                        "Comment Closure Date",
-                        "Upvote Count",
-                        "Downvote Count",
-                        "Comment Count",
-                        "URL_Document (Optional)",
-                    ]
-                )
-                for idea in closure_ideas:
-                    category_names = ", ".join(idea.categories.values_list("category_name", flat=True))
-                    closure = idea.closurePeriod
-                    doc_urls = [
-                        doc.file.url
-                        for doc in UploadedDocument.objects.filter(idea=idea)
-                        if getattr(doc, "file", None)
-                    ]
+                if export_type == "all":
+                    csv_io = StringIO()
+                    writer = csv.writer(csv_io)
                     writer.writerow(
                         [
-                            idea.idea_id,
-                            idea.idea_title,
-                            idea.idea_content,
-                            idea.anonymous_status,
-                            idea.submit_datetime,
-                            getattr(idea.user, "username", ""),
-                            getattr(idea.department, "dept_name", ""),
-                            getattr(closure, "academic_year", ""),
-                            category_names,
-                            getattr(closure, "start_date", ""),
-                            getattr(closure, "idea_closure_date", ""),
-                            getattr(closure, "comment_closure_date", ""),
-                            getattr(idea, "upvote_count", 0),
-                            getattr(idea, "downvote_count", 0),
-                            getattr(idea, "comment_count", 0),
-                            "; ".join(doc_urls),
+                            "Idea ID",
+                            "Title",
+                            "Content",
+                            "Anonymous",
+                            "Submit Datetime",
+                            "Poster Username",
+                            "Department",
+                            "Closure Period",
+                            "Categories",
+                            "Start Date",
+                            "Idea Closure Date",
+                            "Comment Closure Date",
+                            "Upvote Count",
+                            "Downvote Count",
+                            "Comment Count",
+                            "URL_Document (Optional)",
                         ]
                     )
-                csv_filename = f"{academic_label.replace('/', '-')} (Report).csv"
-                zipf.writestr(os.path.join(folder_name, csv_filename), csv_io.getvalue())
+                    for idea in closure_ideas:
+                        category_names = ", ".join(idea.categories.values_list("category_name", flat=True))
+                        closure = idea.closurePeriod
+                        doc_urls = [
+                            doc.file.url
+                            for doc in UploadedDocument.objects.filter(idea=idea)
+                            if getattr(doc, "file", None)
+                        ]
+                        writer.writerow(
+                            [
+                                idea.idea_id,
+                                idea.idea_title,
+                                idea.idea_content,
+                                idea.anonymous_status,
+                                idea.submit_datetime,
+                                getattr(idea.user, "username", ""),
+                                getattr(idea.department, "dept_name", ""),
+                                getattr(closure, "academic_year", ""),
+                                category_names,
+                                getattr(closure, "start_date", ""),
+                                getattr(closure, "idea_closure_date", ""),
+                                getattr(closure, "comment_closure_date", ""),
+                                getattr(idea, "upvote_count", 0),
+                                getattr(idea, "downvote_count", 0),
+                                getattr(idea, "comment_count", 0),
+                                "; ".join(doc_urls),
+                            ]
+                        )
+                    csv_filename = f"{academic_label.replace('/', '-')} (Report).csv"
+                    zipf.writestr(os.path.join(folder_name, csv_filename), csv_io.getvalue())
 
-                # Documents under each closure folder
-                documents = UploadedDocument.objects.select_related("idea").filter(idea__in=closure_ideas)
-                for document in documents:
-                    try:
-                        file_path = document.file.path
-                    except (ValueError, AttributeError):
-                        continue
-                    if not os.path.exists(file_path):
-                        continue
-                    arcname = os.path.join(
-                        folder_name, "documents", f"{document.doc_id}_{os.path.basename(document.file.name)}"
-                    )
-                    with open(file_path, "rb") as f:
-                        zipf.writestr(arcname, f.read())
+                if export_type in {"all", "documents"}:
+                    documents = UploadedDocument.objects.select_related("idea").filter(idea__in=closure_ideas)
+                    for document in documents:
+                        try:
+                            file_path = document.file.path
+                        except (ValueError, AttributeError):
+                            continue
+                        if not os.path.exists(file_path):
+                            continue
+                        if flatten_documents_zip:
+                            arcname = f"{document.doc_id}_{os.path.basename(document.file.name)}"
+                        else:
+                            arcname = os.path.join(
+                                folder_name, "documents", f"{document.doc_id}_{os.path.basename(document.file.name)}"
+                            )
+                        with open(file_path, "rb") as f:
+                            zipf.writestr(arcname, f.read())
 
         zip_buffer.seek(0)
-        base_name = "Data_Report"
-        filename_suffix = ""
-        if academic_year:
-            filename_suffix = f"_{academic_year.replace(' ', '_')}"
-        elif closure_period_id:
-            filename_suffix = f"_closure_{closure_period_id}"
+        if export_type == "documents" and safe_filename_label:
+            filename = f"{safe_filename_label}_documents.zip"
+        elif export_type == "all" and safe_filename_label:
+            filename = f"{safe_filename_label}_all.zip"
+        else:
+            export_base_names = {
+                "all": "Data_Report",
+                "documents": "Documents_Only",
+            }
+            base_name = export_base_names.get(export_type, "Data_Report")
+            filename = f"{base_name}.zip"
 
         response = HttpResponse(zip_buffer.getvalue(), content_type="application/zip")
-        response["Content-Disposition"] = f'attachment; filename=\"{base_name}{filename_suffix}.zip\"'
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
 

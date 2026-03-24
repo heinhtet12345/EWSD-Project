@@ -27,7 +27,7 @@ export const AddClosurePeriodForm = ({ onSubmit, onCancel }: AddClosurePeriodFor
   }
 
   return (
-    <div className="qa-add-closure-form w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="qa-add-closure-form mx-auto w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-slate-900">Add Closure Period</h2>
       </div>

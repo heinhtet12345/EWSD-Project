@@ -62,6 +62,11 @@ class Vote(models.Model):
 
 
 class Report(models.Model):
+    class TargetType(models.TextChoices):
+        POST = "POST", "Post"
+        COMMENT = "COMMENT", "Comment"
+        USER = "USER", "User"
+
     class Reason(models.TextChoices):
         SWEARING = "SWEARING", "Swearing"
         LIBEL = "LIBEL", "Libel"
@@ -69,9 +74,24 @@ class Report(models.Model):
         HARASSMENT = "HARASSMENT", "Harassment"
         OTHER = "OTHER", "Other"
 
+    class Status(models.TextChoices):
+        IN_REVIEW = "IN_REVIEW", "In Review"
+        ACCEPTED = "ACCEPTED", "Accepted"
+        REJECTED = "REJECTED", "Rejected"
+        RESOLVED = "RESOLVED", "Resolved"
+
     report_id = models.AutoField(primary_key=True)
+    target_type = models.CharField(
+        max_length=20,
+        choices=TargetType.choices,
+    )
     reason = models.CharField(max_length=20, choices=Reason.choices)
     details = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.IN_REVIEW,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     reporter = models.ForeignKey(
@@ -83,10 +103,40 @@ class Report(models.Model):
         "IdeaPost.Idea",
         on_delete=models.CASCADE,
         related_name="reports",
+        null=True,
+        blank=True,
+    )
+    comment = models.ForeignKey(
+        "interaction.Comment",
+        on_delete=models.CASCADE,
+        related_name="reports",
+        null=True,
+        blank=True,
     )
 
     class Meta:
-        unique_together = ("reporter", "idea", "reason")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["reporter", "idea", "reason"],
+                condition=models.Q(idea__isnull=False),
+                name="unique_idea_report_per_reason",
+            ),
+            models.UniqueConstraint(
+                fields=["reporter", "comment", "reason"],
+                condition=models.Q(comment__isnull=False),
+                name="unique_comment_report_per_reason",
+            ),
+        ]
 
     def __str__(self):
-        return f"Report {self.report_id} ({self.reason}) on Idea {self.idea.idea_id}"
+        target = f"Idea {self.idea.idea_id}" if self.idea else f"Comment {self.comment_id}"
+        return f"Report {self.report_id} ({self.reason}) on {target}"
+
+    def save(self, *args, **kwargs):
+        if self.comment_id:
+            self.target_type = self.TargetType.COMMENT
+        elif self.idea_id:
+            self.target_type = self.TargetType.POST
+        elif not self.target_type:
+            self.target_type = self.TargetType.USER
+        super().save(*args, **kwargs)

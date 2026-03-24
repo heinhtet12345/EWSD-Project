@@ -1,10 +1,53 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from django.contrib.auth import get_user_model
+from django.core.mail import BadHeaderError, send_mail
+from api.models import Notification
 from .models import Comment, Vote, Report
 from .serializers import CommentSerializer, VoteSerializer, ReportSerializer
 from api.IdeaPost.models import Idea
 from api.views.admin_views import _normalized_role
+
+User = get_user_model()
+
+
+def _manager_recipients():
+    return [
+        user
+        for user in User.objects.select_related("role")
+        if _normalized_role(user) == "qa_manager"
+    ]
+
+
+def _notify_managers_about_report(*, target_label, report_reason, reporter_username, idea, target_type):
+    notification_title = "Comment reported" if target_type == "comment" else "Idea reported"
+    notification_message = (
+        f'{target_type.title()} "{target_label}" was reported by {reporter_username}. '
+        f"Reason: {report_reason}."
+    )
+
+    for recipient in _manager_recipients():
+        Notification.objects.create(
+            recipient=recipient,
+            title=notification_title,
+            message=notification_message,
+            notification_type=f"{target_type}_reported",
+            idea=idea,
+        )
+
+        if recipient.email:
+            try:
+                send_mail(
+                    subject=notification_title,
+                    message=notification_message,
+                    from_email="system@ewsd.edu",
+                    recipient_list=[recipient.email],
+                    fail_silently=True,
+                )
+            except (BadHeaderError, OSError):
+                continue
+
 
 class CommentListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -108,6 +151,87 @@ class ReportListView(APIView):
         if role not in {"admin", "qa_manager"}:
             return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
 
-        reports = Report.objects.select_related("reporter", "idea").order_by("-created_at")
+        reports = Report.objects.select_related("reporter", "idea", "comment", "comment__idea").order_by("-created_at")
         serializer = ReportSerializer(reports, many=True)
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        role = _normalized_role(request.user)
+        if role not in {"admin", "qa_manager"}:
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        report_id = request.data.get("report_id")
+        next_status = str(request.data.get("status", "")).strip().upper()
+        allowed_statuses = {choice[0] for choice in Report.Status.choices}
+
+        if not report_id:
+            return Response({"message": "Report ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if next_status not in allowed_statuses:
+            return Response({"message": "Valid report status is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        report = Report.objects.filter(report_id=report_id).first()
+        if not report:
+            return Response({"message": "Report not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        report.status = next_status
+        report.save(update_fields=["status"])
+
+        serializer = ReportSerializer(report)
+        return Response(
+            {"message": "Report status updated.", "report": serializer.data},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ReportCommentView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, comment_id):
+        role = _normalized_role(request.user)
+        if role != "staff":
+            return Response({"message": "Only staff can report comments."}, status=status.HTTP_403_FORBIDDEN)
+        if not bool(getattr(request.user, "active_status", True)):
+            return Response(
+                {"message": "Your account is disabled. You cannot report comments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        comment = Comment.objects.filter(cmt_id=comment_id).select_related("idea", "user").first()
+        if not comment:
+            return Response({"message": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+        if comment.user_id == request.user.user_id:
+            return Response({"message": "You cannot report your own comment."}, status=status.HTTP_400_BAD_REQUEST)
+
+        reason = str(request.data.get("reason", "")).strip().upper()
+        details = str(request.data.get("details", "")).strip()
+        allowed_reasons = {choice[0] for choice in Report.Reason.choices}
+        if reason not in allowed_reasons:
+            return Response({"message": "Report reason is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        report, created = Report.objects.get_or_create(
+            reporter=request.user,
+            comment=comment,
+            reason=reason,
+            defaults={
+                "details": details,
+                "idea": comment.idea,
+                "target_type": Report.TargetType.COMMENT,
+            },
+        )
+
+        if not created and details and report.details != details:
+            report.details = details
+            report.save(update_fields=["details"])
+
+        preview = (comment.cmt_content or "").strip()
+        if len(preview) > 80:
+            preview = f"{preview[:77]}..."
+        _notify_managers_about_report(
+            target_label=preview or f"Comment #{comment.cmt_id}",
+            report_reason=reason,
+            reporter_username=request.user.username,
+            idea=comment.idea,
+            target_type="comment",
+        )
+
+        return Response({"message": "Comment reported successfully."}, status=status.HTTP_200_OK)

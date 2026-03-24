@@ -181,8 +181,22 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
   };
 
   const getNotificationTargetPath = (item: NotificationItem) => {
-    if (!item.idea) return null;
     const role = getStoredRole();
+
+    if (item.notification_type === "closure_period_created" || item.notification_type === "closure_period_extended") {
+      if (role === "qa_manager") {
+        return "/qa_manager/all-ideas";
+      }
+      if (role === "admin") {
+        return "/admin/all-ideas";
+      }
+      if (role === "qa_coordinator") {
+        return "/qa_coordinator/all-ideas";
+      }
+      return "/staff/all-ideas";
+    }
+
+    if (!item.idea) return null;
 
     if (role === "qa_manager") {
       return `/qa_manager/all-ideas?highlightIdeaId=${item.idea}`;
