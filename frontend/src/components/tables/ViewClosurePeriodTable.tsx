@@ -137,12 +137,12 @@ const ViewClosurePeriodTable = ({
 								</td>
 								<td className="px-4 py-3 text-center text-sm text-slate-700 dark:text-[#000490]">
 									<div className="flex items-center justify-center gap-2">
-										<button
+										{/* <button
 											type="button"
 											className="qa-closure-edit-button rounded-md bg-[#DADEFF] px-3 py-1 text-xs text-[#0e139e] transition hover:bg-blue-700 hover:text-white font-bold"
 										>
 											Edit
-										</button>
+										</button> */}
 										{onDownloadPeriod && (
 											<button
 												type="button"

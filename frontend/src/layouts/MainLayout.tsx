@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import SideBar from "../components/common/SideBar";
 import ToolBar from "../components/common/ToolBar";
 
@@ -13,6 +13,18 @@ type LoginNotice = {
   lastLoginAt?: string | null;
 };
 
+function getStoredRole(): Role | null {
+  try {
+    const raw = localStorage.getItem("authUser");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { role?: string };
+    const role = String(parsed?.role || "").trim().toLowerCase();
+    return ROLE_PREFIXES.includes(role as Role) ? (role as Role) : null;
+  } catch {
+    return null;
+  }
+}
+
 function getRoleFromPath(pathname: string): Role | null {
   const firstSegment = pathname.split("/").filter(Boolean)[0];
   if (!firstSegment) {
@@ -23,21 +35,28 @@ function getRoleFromPath(pathname: string): Role | null {
 
 export default function MainLayout() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const role = getRoleFromPath(pathname);
-  const [loginNotice, setLoginNotice] = useState<LoginNotice | null>(null);
+  const [loginNotice, setLoginNotice] = useState<LoginNotice | null>(() => {
+    try {
+      const raw = sessionStorage.getItem("loginNotice");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as LoginNotice;
+      sessionStorage.removeItem("loginNotice");
+      return parsed;
+    } catch {
+      return null;
+    }
+  });
   const lastTrackedPathRef = useRef<string | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("loginNotice");
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as LoginNotice;
-      setLoginNotice(parsed);
-      sessionStorage.removeItem("loginNotice");
-    } catch {
-      // Ignore malformed session notice payload.
+    if (!role) return;
+    const storedRole = getStoredRole();
+    if (!storedRole || storedRole !== role) {
+      navigate("/", { replace: true });
     }
-  }, []);
+  }, [navigate, role]);
 
   useEffect(() => {
     if (!role) return;
