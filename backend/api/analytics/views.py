@@ -7,6 +7,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import ActivityLog
+from django.contrib.auth import get_user_model
+from .models import Idea
+from django.db.models import Max
+from django.db.models import Count, Q, F, IntegerField, ExpressionWrapper
+
 
 
 def _normalized_role(user) -> str:
@@ -218,3 +223,211 @@ class AdminActivityLogsView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+User = get_user_model()
+class ActiveUserCountAPIView(APIView):
+    def get(self, request):
+        count = User.objects.filter(is_active=True).count()
+        return Response({
+            "active_user_count": count
+        })
+    
+class IdeaCountAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        count = Idea.objects.count()
+        return Response({
+            "total_idea_count": count
+        })
+class IdeaCountByDepartmentAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        data = (
+            Idea.objects
+            .values('department__dept_name')
+            .annotate(idea_count=Count('idea_id'))
+            .order_by('department__dept_name')
+        )
+
+        result = [
+            {
+                "department": item['department__dept_name'],
+                "idea_count": item['idea_count']
+            }
+            for item in data
+        ]
+
+        return Response(result)
+
+class IdeaPercentageByDepartmentAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        total_ideas = Idea.objects.count()
+
+        data = (
+            Idea.objects
+            .values('department__dept_name')
+            .annotate(idea_count=Count('idea_id'))
+            .order_by('department__dept_name')
+        )
+
+        result = []
+        for item in data:
+            percentage = 0
+            if total_ideas > 0:
+                percentage = round((item['idea_count'] / total_ideas) * 100, 2)
+
+            result.append({
+                "department": item['department__dept_name'],
+                "idea_count": item['idea_count'],
+                "percentage": percentage
+            })
+
+        return Response(result)
+
+class ContributorsByDepartmentAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        data = (
+            Idea.objects
+            .values('department__dept_name')
+            .annotate(contributor_count=Count('user', distinct=True))
+            .order_by('department__dept_name')
+        )
+
+        result = [
+            {
+                "department": item['department__dept_name'],
+                "contributor_count": item['contributor_count']
+            }
+            for item in data
+        ]
+
+        return Response(result)
+
+class LatestIdeaByDepartmentAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Get latest idea per department
+        departments_latest = (
+            Idea.objects
+            .values('department__dept_name')
+            .annotate(latest_submit=Max('submit_datetime'))
+            .order_by('department__dept_name')
+        )
+
+        result = []
+        for item in departments_latest:
+            latest_idea = Idea.objects.filter(
+                department__dept_name=item['department__dept_name'],
+                submit_datetime=item['latest_submit']
+            ).first()
+            
+            if latest_idea:
+                result.append({
+                    "department": item['department__dept_name'],
+                    "idea_id": latest_idea.idea_id,
+                    "idea_title": latest_idea.idea_title,
+                    "submit_datetime": latest_idea.submit_datetime
+                })
+
+        return Response(result)
+
+
+class PopularIdeaByDepartmentAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        result = []
+
+        # Get all departments that have ideas
+        departments = Idea.objects.values_list('department__dept_name', flat=True).distinct()
+
+        for dept_name in departments:
+            # Annotate net votes for each idea: upvotes - downvotes
+            idea = (
+                Idea.objects.filter(department__dept_name=dept_name)
+                .annotate(
+                    upvote_count=Count('votes', filter=Q(votes__vote_type='UP')),
+                    downvote_count=Count('votes', filter=Q(votes__vote_type='DOWN')),
+                    net_votes=ExpressionWrapper(
+                        F('votes__count'),  # placeholder, will override below
+                        output_field=IntegerField()
+                    )
+                )
+            )
+
+            # Calculate net_votes = upvotes - downvotes
+            idea = idea.annotate(
+                net_votes=F('upvote_count') - F('downvote_count')
+            ).order_by('-net_votes', '-submit_datetime').first()  # latest if tie
+
+            if idea:
+                result.append({
+                    "department": dept_name,
+                    "idea_id": idea.idea_id,
+                    "idea_title": idea.idea_title,
+                    "submit_datetime": idea.submit_datetime
+                })
+
+        return Response(result)
+    
+class IdeasWithoutCommentsAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Annotate comment count per idea
+        ideas = (
+            Idea.objects.annotate(comment_count=Count('comments'))
+            .filter(comment_count=0)
+            .order_by('-submit_datetime')
+        )
+
+        result = [
+            {
+                "idea_id": idea.idea_id,
+                "idea_title": idea.idea_title,
+                "submit_datetime": idea.submit_datetime,
+                "department": idea.department.dept_name if idea.department else None,
+                "user": idea.user.username if idea.user else None,
+            }
+            for idea in ideas
+        ]
+
+        return Response(result)
+class AnonymousIdeasWithCommentsAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Get all anonymous ideas
+        ideas = (
+            Idea.objects.filter(anonymous_status=True)
+            .prefetch_related('comments')  # fetch related comments
+            .order_by('-submit_datetime')
+        )
+
+        result = []
+        for idea in ideas:
+            result.append({
+                "idea_id": idea.idea_id,
+                "idea_title": idea.idea_title,
+                "submit_datetime": idea.submit_datetime,
+                "department": idea.department.dept_name if idea.department else None,
+                "comments": [
+                    {
+                        "comment_id": c.comment_id,
+                        "comment_text": c.comment_text,
+                        "user": c.user.username if c.user else None,
+                        "submit_datetime": c.submit_datetime
+                    }
+                    for c in idea.comments.all()
+                ]
+            })
+
+        return Response(result)

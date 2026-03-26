@@ -2,16 +2,30 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+type ReportStatus = "IN_REVIEW" | "ACCEPTED" | "REJECTED" | "RESOLVED";
+
 type ReportItem = {
   report_id: number;
   reason: string;
   details: string;
+  status: ReportStatus;
   created_at: string;
   reporter: number;
   reporter_username?: string | null;
-  idea: number;
+  idea?: number | null;
   idea_title?: string | null;
+  comment?: number | null;
+  comment_content?: string | null;
+  target_type: "POST" | "COMMENT" | "USER";
+  target_label?: string | null;
 };
+
+const STATUS_OPTIONS: { value: ReportStatus; label: string }[] = [
+  { value: "IN_REVIEW", label: "In Review" },
+  { value: "ACCEPTED", label: "Accepted" },
+  { value: "REJECTED", label: "Rejected" },
+  { value: "RESOLVED", label: "Resolved" },
+];
 
 const getAuthConfig = () => {
   try {
@@ -25,12 +39,22 @@ const getAuthConfig = () => {
   }
 };
 
+const formatStatus = (status: ReportStatus) =>
+  STATUS_OPTIONS.find((option) => option.value === status)?.label || status;
+
+const formatReportedType = (targetType: ReportItem["target_type"]) => {
+  if (targetType === "POST") return "Post";
+  if (targetType === "COMMENT") return "Comment";
+  return "User";
+};
+
 export default function ReportListPage() {
   const navigate = useNavigate();
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [savingReportId, setSavingReportId] = useState<number | null>(null);
 
   const currentRole = useMemo(() => {
     try {
@@ -71,19 +95,65 @@ export default function ReportListPage() {
     if (!normalized) return reports;
     return reports.filter((report) => {
       const reporter = report.reporter_username || "";
-      const title = report.idea_title || "";
+      const label = report.target_label || "";
       return (
         reporter.toLowerCase().includes(normalized) ||
-        title.toLowerCase().includes(normalized) ||
-        report.reason.toLowerCase().includes(normalized)
+        label.toLowerCase().includes(normalized) ||
+        report.reason.toLowerCase().includes(normalized) ||
+        report.status.toLowerCase().includes(normalized) ||
+        formatReportedType(report.target_type).toLowerCase().includes(normalized)
       );
     });
   }, [reports, search]);
 
-  const title = currentRole === "qa_manager" ? "Reported Ideas" : "Reports";
-  const handleOpenIdea = (ideaId: number) => {
-    const basePath = currentRole === "qa_manager" ? "/qa_manager/all-ideas" : "/admin/all-ideas";
-    navigate(`${basePath}?highlightIdeaId=${ideaId}`);
+  const title = currentRole === "qa_manager" ? "Reported Content" : "Reports";
+
+  const handleOpenTarget = (report: ReportItem) => {
+    const ideaId = report.idea;
+    if (!ideaId) return;
+
+    let basePath = "/staff/all-ideas";
+    if (currentRole === "qa_manager") {
+      basePath = "/qa_manager/all-ideas";
+    } else if (currentRole === "admin") {
+      basePath = "/admin/all-ideas";
+    } else if (currentRole === "qa_coordinator") {
+      basePath = "/qa_coordinator/my-department";
+    }
+
+    const params = new URLSearchParams({ highlightIdeaId: String(ideaId) });
+    if (report.target_type === "COMMENT" && report.comment) {
+      params.set("highlightCommentId", String(report.comment));
+    }
+
+    navigate(`${basePath}?${params.toString()}`);
+  };
+
+  const handleStatusChange = async (reportId: number, nextStatus: ReportStatus) => {
+    setSavingReportId(reportId);
+    setError("");
+    try {
+      const response = await axios.patch(
+        "/api/interaction/reports/",
+        { report_id: reportId, status: nextStatus },
+        getAuthConfig(),
+      );
+      const updated = response.data?.report as ReportItem | undefined;
+      setReports((prev) =>
+        prev.map((report) =>
+          report.report_id === reportId ? { ...report, status: updated?.status || nextStatus } : report,
+        ),
+      );
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined;
+        setError(data?.message || data?.detail || "Failed to update report status.");
+      } else {
+        setError("Failed to update report status.");
+      }
+    } finally {
+      setSavingReportId(null);
+    }
   };
 
   return (
@@ -91,14 +161,14 @@ export default function ReportListPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-black">{title}</h1>
-          <p className="text-sm text-slate-500">Review reported ideas and reasons.</p>
+          <p className="text-sm text-slate-500">Review reported ideas and comments, then update their status.</p>
         </div>
         <div className="w-full max-w-xs">
           <input
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by reporter, reason, idea..."
+            placeholder="Search by target, reporter, reason..."
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
           />
         </div>
@@ -116,25 +186,49 @@ export default function ReportListPage() {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Idea</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Reported Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Target</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Reporter</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Reason</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Details</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredReports.map((report) => (
-                <tr
-                  key={report.report_id}
-                  onClick={() => handleOpenIdea(report.idea)}
-                  className="cursor-pointer transition hover:bg-amber-50/60"
-                >
-                  <td className="px-4 py-3 text-sm text-slate-700">{report.idea_title || `Idea #${report.idea}`}</td>
+                <tr key={report.report_id} className="transition hover:bg-amber-50/40">
+                  <td className="px-4 py-3 text-sm text-slate-700">{formatReportedType(report.target_type)}</td>
+                  <td className="px-4 py-3 text-sm text-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTarget(report)}
+                      className="text-left text-blue-700 hover:text-blue-800 hover:underline"
+                    >
+                      {report.target_label || (report.target_type === "POST" ? `Idea #${report.idea}` : `Comment #${report.comment}`)}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-700">{report.reporter_username || `User #${report.reporter}`}</td>
                   <td className="px-4 py-3 text-sm text-slate-700">{report.reason}</td>
                   <td className="px-4 py-3 text-sm text-slate-700">{report.details || "-"}</td>
-                  <td className="px-4 py-3 text-sm text-slate-700">{new Date(report.created_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-slate-700">
+                    <select
+                      value={report.status}
+                      onChange={(event) => handleStatusChange(report.report_id, event.target.value as ReportStatus)}
+                      disabled={savingReportId === report.report_id}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      {STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-700">
+                    <div>{new Date(report.created_at).toLocaleString()}</div>
+                    <div className="mt-1 text-xs text-slate-500">{formatStatus(report.status)}</div>
+                  </td>
                 </tr>
               ))}
             </tbody>

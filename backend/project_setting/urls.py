@@ -29,17 +29,14 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
-<<<<<<< HEAD
     path('closure-period/', include('closure_period.urls')),
     path('password-reset/', include('password_reset.urls')),
     path('download-documents/', include('download_doc.urls')),
     path('download-post/', include('download_post.urls')),
     # expose the change-password endpoint at the root as well (avoids redirect on POST)
     path('change_password/', ChangePasswordAPIView.as_view(), name='change_password_root'),
-=======
     path('api/closure-period/', include('api.closure_period.urls')),
     path('api/ideas/', include('api.IdeaPost.urls')),
->>>>>>> 9c8cfdc8c0da12a0b88419beb532e7b38e3f9f44
 
     # API Documentation
     path('api/docs/', RedirectView.as_view(url='/api/docs/swagger/', permanent=False)),

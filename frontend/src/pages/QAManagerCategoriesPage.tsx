@@ -6,6 +6,7 @@ import { ChevronRight, House } from "lucide-react";
 import axios from "axios";
 
 import ViewCategoryTable from "../components/tables/ViewCategoryTable";
+import Modal from "../components/common/Modal";
 import { AddCategoriesFrom } from "../forms/AddCategoriesForm";
 
 type Category = {
@@ -234,60 +235,64 @@ function QAManagerCategoriesPage() {
         className="qa-categories-breadcrumb rounded-xl border border-slate-200 bg-white px-1 py-1 shadow-sm"
       />
 
-      {!isAddingCategory && (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex w-full items-center sm:w-auto">
-              <input
-                type="search"
-                placeholder="Search categories"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 sm:w-64"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsAddingCategory(true)}
-              className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-            >
-              Add Category
-            </button>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex w-full items-center sm:w-auto">
+            <input
+              type="search"
+              placeholder="Search categories"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 sm:w-64"
+            />
           </div>
 
-          {loadError && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {loadError}
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => setIsAddingCategory(true)}
+            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+          >
+            Add Category
+          </button>
         </div>
-      )}
 
-      {isAddingCategory ? (
-        <div className="w-full max-w-4xl space-y-3">
-          {formError && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {formError}
-            </div>
-          )}
-          <AddCategoriesFrom
-            onClose={() => setIsAddingCategory(false)}
-            onCancel={() => setIsAddingCategory(false)}
-            onSubmit={handleAddCategory}
-          />
-          {isSaving && (
-            <p className="text-sm text-slate-500">Saving category...</p>
-          )}
-        </div>
-      ) : (
-        <div className="w-full max-w-7xl space-y-2">
-          {isLoading && <p className="text-sm text-slate-500 text-center">Loading categories...</p>}
-          {!isLoading && (
-            <ViewCategoryTable categories={filteredCategories} onDelete={handleDeleteCategory} />
-          )}
-        </div>
-      )}
+        {loadError && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {loadError}
+          </div>
+        )}
+      </div>
+
+      <Modal
+        isOpen={isAddingCategory}
+        onClose={() => setIsAddingCategory(false)}
+        maxWidthClassName="max-w-3xl"
+      >
+        {isAddingCategory && (
+          <div className="space-y-3">
+            {formError && (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {formError}
+              </div>
+            )}
+            <AddCategoriesFrom
+              onClose={() => setIsAddingCategory(false)}
+              onCancel={() => setIsAddingCategory(false)}
+              onSubmit={handleAddCategory}
+            />
+            {isSaving && (
+              <p className="text-sm text-slate-500">Saving category...</p>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      <div className="w-full max-w-7xl space-y-2">
+        {isLoading && <p className="text-sm text-slate-500 text-center">Loading categories...</p>}
+        {!isLoading && (
+          <ViewCategoryTable categories={filteredCategories} onDelete={handleDeleteCategory} />
+        )}
+      </div>
     </section>
   );
 }

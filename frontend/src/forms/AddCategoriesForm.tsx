@@ -17,7 +17,7 @@ export const AddCategoriesFrom = ({ onCancel, onClose, onSubmit }: AddCategories
   }
 
   return (
-    <div className="qa-add-category-form w-full max-w-1400 rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
+    <div className="qa-add-category-form mx-auto w-full max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Add Category</h2>

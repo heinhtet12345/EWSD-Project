@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { MultiSelect } from 'primereact/multiselect'
 import { ArrowLeft, X, Tag, Layers } from 'lucide-react'
 import axios from 'axios'
@@ -26,6 +26,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [fileName, setFileName] = useState('')
+  const isSubmittingRef = useRef(false)
 
   const getAuthConfig = () => {
     try {
@@ -83,10 +84,15 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Prevent duplicate submissions if the user clicks quickly multiple times.
+    if (isSubmittingRef.current) return
     if (!title || !description || selectedCategories.length === 0 || !termsAccepted) {
       setError('Please fill all required fields and accept terms')
       return
     }
+
+    isSubmittingRef.current = true
     setLoading(true)
     setError('')
     try {
@@ -118,6 +124,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
         'Failed to submit idea'
       setError(backendMessage)
     } finally {
+      isSubmittingRef.current = false
       setLoading(false)
     }
   }

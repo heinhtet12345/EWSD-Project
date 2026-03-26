@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
+import Modal from "../common/Modal";
 import AddUserForm from "../../forms/AddUserForm";
 
 type AppUser = {
@@ -323,15 +324,23 @@ export default function ViewUserTable() {
         )}
       </div>
 
-      {isAddingUser ? (
-        <AddUserForm
-          roles={availableRoles}
-          departments={availableDepartments}
-          isSubmitting={isCreatingUser}
-          onCancel={() => setIsAddingUser(false)}
-          onSubmit={handleCreateUser}
-        />
-      ) : isLoadingUsers ? (
+      <Modal
+        isOpen={isAddingUser}
+        onClose={() => setIsAddingUser(false)}
+        maxWidthClassName="max-w-3xl"
+      >
+        {isAddingUser && (
+          <AddUserForm
+            roles={availableRoles}
+            departments={availableDepartments}
+            isSubmitting={isCreatingUser}
+            onCancel={() => setIsAddingUser(false)}
+            onSubmit={handleCreateUser}
+          />
+        )}
+      </Modal>
+
+      {isLoadingUsers ? (
         <p className="px-2 py-4 text-sm text-slate-500">Loading users...</p>
       ) : (
         <div className="overflow-x-auto">
@@ -411,7 +420,7 @@ export default function ViewUserTable() {
         </div>
       )}
 
-      {!isAddingUser && !isLoadingUsers && filteredUsers.length > 0 && (
+      {!isLoadingUsers && filteredUsers.length > 0 && (
         <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-500">
             Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length}

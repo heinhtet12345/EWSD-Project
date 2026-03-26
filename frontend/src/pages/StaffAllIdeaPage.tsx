@@ -33,6 +33,7 @@ type Comment = {
   anonymous_status: boolean
   cmt_datetime: string
   user: string
+  user_id?: number
   idea: number
 }
 
@@ -63,7 +64,11 @@ const StaffAllIdeaPage = () => {
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
-  const [reportIdeaId, setReportIdeaId] = useState<number | null>(null)
+  const [reportTarget, setReportTarget] = useState<
+    | { type: 'idea'; id: number }
+    | { type: 'comment'; id: number }
+    | null
+  >(null)
   const [reportReason, setReportReason] = useState('')
   const [reportDetails, setReportDetails] = useState('')
 
@@ -149,12 +154,25 @@ const StaffAllIdeaPage = () => {
     return Number.isFinite(parsed) ? parsed : null
   }, [location.search])
 
+  const highlightCommentIdFromQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    const rawId = params.get('highlightCommentId')
+    const parsed = Number(rawId)
+    return Number.isFinite(parsed) ? parsed : null
+  }, [location.search])
+
   const [highlightIdeaId, setHighlightIdeaId] = useState<number | null>(null)
+  const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null)
+  const [highlightElement, setHighlightElement] = useState<HTMLDivElement | null>(null)
 
   // Keep a local highlight state so we can clear it after a short duration.
   useEffect(() => {
     setHighlightIdeaId(highlightIdeaIdFromQuery)
   }, [highlightIdeaIdFromQuery])
+
+  useEffect(() => {
+    setHighlightCommentId(highlightCommentIdFromQuery)
+  }, [highlightCommentIdFromQuery])
 
   useEffect(() => {
     if (!highlightIdeaId) return
@@ -165,6 +183,16 @@ const StaffAllIdeaPage = () => {
 
     return () => window.clearTimeout(handle)
   }, [highlightIdeaId])
+
+  useEffect(() => {
+    if (!highlightCommentId) return
+
+    const handle = window.setTimeout(() => {
+      setHighlightCommentId(null)
+    }, 5000)
+
+    return () => window.clearTimeout(handle)
+  }, [highlightCommentId])
 
 
   const totalPages = Math.max(1, Math.ceil(filteredIdeas.length / itemsPerPage))
@@ -246,9 +274,20 @@ const StaffAllIdeaPage = () => {
     })
 
     return Object.values(groups).sort((a, b) => {
-      const aOpen = a.ideaOpen ? 1 : 0
-      const bOpen = b.ideaOpen ? 1 : 0
-      if (aOpen !== bOpen) return bOpen - aOpen
+      // Prioritize closure periods where commenting is open, then where ideas are open.
+      const aCommentOpen = a.commentOpen ? 1 : 0
+      const bCommentOpen = b.commentOpen ? 1 : 0
+      if (aCommentOpen !== bCommentOpen) return bCommentOpen - aCommentOpen
+
+      const aIdeaOpen = a.ideaOpen ? 1 : 0
+      const bIdeaOpen = b.ideaOpen ? 1 : 0
+      if (aIdeaOpen !== bIdeaOpen) return bIdeaOpen - aIdeaOpen
+
+      // For closed periods, show newest first (newer closed periods above older ones).
+      const closed = !a.commentOpen && !a.ideaOpen
+      const closedOther = !b.commentOpen && !b.ideaOpen
+      if (closed && closedOther) return b.sortKey - a.sortKey
+
       return b.sortKey - a.sortKey
     })
   }, [currentIdeas, closurePeriods])
@@ -272,13 +311,36 @@ const StaffAllIdeaPage = () => {
 
   useEffect(() => {
     if (!highlightIdeaId || filteredIdeas.length === 0) return
-    const highlightIndex = filteredIdeas.findIndex((idea) => idea.idea_id === highlightIdeaId)
+    const highlightIndex = filteredIdeas.findIndex(
+      (idea) => Number(idea.idea_id) === Number(highlightIdeaId),
+    )
     if (highlightIndex < 0) return
     const targetPage = Math.floor(highlightIndex / itemsPerPage) + 1
     if (targetPage !== currentPage) {
       setCurrentPage(targetPage)
     }
   }, [highlightIdeaId, filteredIdeas, currentPage])
+
+  useEffect(() => {
+    if (!highlightCommentId) return
+
+    if (highlightIdeaId) {
+      setOpenCommentIds((prev) => new Set([...prev, highlightIdeaId]))
+      if (!commentsByIdea[highlightIdeaId]) {
+        fetchComments(highlightIdeaId)
+      }
+    }
+  }, [highlightCommentId, highlightIdeaId, commentsByIdea])
+
+  useEffect(() => {
+    if (!highlightIdeaId || !highlightElement) return
+
+    // Ensure the element is rendered in the DOM before scrolling.
+    requestAnimationFrame(() => {
+      highlightElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      highlightElement.focus({ preventScroll: true })
+    })
+  }, [highlightIdeaId, currentPage, highlightElement])
 
 
   const fetchIdeas = async () => {
@@ -333,26 +395,41 @@ const StaffAllIdeaPage = () => {
     }
   }
 
-  const handleReportIdea = async () => {
-    if (!reportIdeaId) return
+  const resetReportModal = () => {
+    setReportTarget(null)
+    setReportReason('')
+    setReportDetails('')
+  }
+
+  const handleSubmitReport = async () => {
+    if (!reportTarget) return
     setError('')
     setActionMessage('')
     try {
+      const endpoint =
+        reportTarget.type === 'idea'
+          ? `/api/ideas/${reportTarget.id}/report/`
+          : `/api/interaction/comment/${reportTarget.id}/report/`
       const response = await axios.post(
-        `/api/ideas/${reportIdeaId}/report/`,
+        endpoint,
         { reason: reportReason, details: reportDetails },
         getAuthConfig(),
       )
-      setActionMessage((response.data as { message?: string })?.message || 'Idea reported successfully.')
-      setReportIdeaId(null)
-      setReportReason('')
-      setReportDetails('')
+      setActionMessage(
+        (response.data as { message?: string })?.message ||
+          `${reportTarget.type === 'idea' ? 'Idea' : 'Comment'} reported successfully.`,
+      )
+      resetReportModal()
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const data = err.response?.data as { message?: string; detail?: string } | undefined
-        setError(data?.message || data?.detail || 'Failed to report idea.')
+        setError(
+          data?.message ||
+            data?.detail ||
+            `Failed to report ${reportTarget.type === 'idea' ? 'idea' : 'comment'}.`,
+        )
       } else {
-        setError('Failed to report idea.')
+        setError(`Failed to report ${reportTarget.type === 'idea' ? 'idea' : 'comment'}.`)
       }
     }
   }
@@ -503,6 +580,10 @@ const StaffAllIdeaPage = () => {
     navigate(`${basePath}?userId=${userId}`)
   }
 
+  const handleHighlightRef = (element: HTMLDivElement | null) => {
+  setHighlightElement(element);
+  };
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -601,9 +682,11 @@ const StaffAllIdeaPage = () => {
                   {group.ideas.map((idea) => (
                     <article
                       key={idea.idea_id}
+                      ref={String(highlightIdeaId) === String(idea.idea_id) ? handleHighlightRef : undefined}
+                      tabIndex={-1}
                       className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
-                        highlightIdeaId === idea.idea_id
-                          ? 'border-amber-300 ring-2 ring-amber-200'
+                        String(highlightIdeaId) === String(idea.idea_id)
+                          ? 'border-amber-300 ring-2 ring-amber-200 bg-amber-50'
                           : 'border-slate-200'
                       }`}
                     >
@@ -648,7 +731,7 @@ const StaffAllIdeaPage = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                setReportIdeaId(idea.idea_id)
+                                setReportTarget({ type: 'idea', id: idea.idea_id })
                                 setReportReason('')
                                 setReportDetails('')
                               }}
@@ -751,12 +834,37 @@ const StaffAllIdeaPage = () => {
                               <p className="text-sm text-slate-500">No comments yet.</p>
                             ) : (
                               (commentsByIdea[idea.idea_id] || []).map((comment) => (
-                                <div key={comment.cmt_id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                                  <p className="text-xs text-slate-500">
-                                    {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
-                                    {new Date(comment.cmt_datetime).toLocaleString()}
-                                  </p>
-                                  <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
+                                <div
+                                  key={comment.cmt_id}
+                                  className={`rounded-lg border bg-white px-3 py-2 ${
+                                    Number(highlightCommentId) === Number(comment.cmt_id)
+                                      ? 'border-amber-300 ring-2 ring-amber-200'
+                                      : 'border-slate-200'
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <p className="text-xs text-slate-500">
+                                        {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
+                                        {new Date(comment.cmt_datetime).toLocaleString()}
+                                      </p>
+                                      <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
+                                    </div>
+                                    {isStaff && comment.user_id !== currentUserId && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setReportTarget({
+                                            type: 'comment',
+                                            id: comment.cmt_id,
+                                          })
+                                        }
+                                        className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                                      >
+                                        <Flag className="h-3.5 w-3.5" /> Report
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               ))
                             )}
@@ -844,12 +952,14 @@ const StaffAllIdeaPage = () => {
           )}
         </div>
       )}
-      {reportIdeaId && (
+      {reportTarget && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-slate-900">Report Idea</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Report {reportTarget.type === 'idea' ? 'Idea' : 'Comment'}
+            </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Select a reason for reporting this idea.
+              Select a reason for reporting this {reportTarget.type}.
             </p>
             <div className="mt-4 space-y-3">
               <div>
@@ -881,18 +991,14 @@ const StaffAllIdeaPage = () => {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setReportIdeaId(null)
-                  setReportReason('')
-                  setReportDetails('')
-                }}
+                onClick={resetReportModal}
                 className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleReportIdea}
+                onClick={handleSubmitReport}
                 disabled={!reportReason}
                 className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
               >
