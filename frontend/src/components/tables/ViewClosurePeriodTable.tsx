@@ -1,4 +1,5 @@
-import { FolderOpen } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react'
 
 export type ClosurePeriod = {
 	id: number
@@ -59,6 +60,33 @@ const ViewClosurePeriodTable = ({
 	onSearchChange,
 	onOpenDownloadOptions,
 }: ViewClosurePeriodTableProps) => {
+	const [currentPage, setCurrentPage] = useState(1)
+	const itemsPerPage = 5
+
+	const totalPages = Math.max(1, Math.ceil(periods.length / itemsPerPage))
+	const safeCurrentPage = Math.min(currentPage, totalPages)
+	const startIndex = (safeCurrentPage - 1) * itemsPerPage
+	const endIndex = startIndex + itemsPerPage
+	const visiblePeriods = useMemo(
+		() => periods.slice(startIndex, endIndex),
+		[periods, startIndex, endIndex],
+	)
+	const visiblePageNumbers = useMemo(() => {
+		const startPage = Math.max(1, safeCurrentPage - 2)
+		const endPage = Math.min(totalPages, safeCurrentPage + 2)
+		return Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index)
+	}, [safeCurrentPage, totalPages])
+
+	useEffect(() => {
+		setCurrentPage(1)
+	}, [searchTerm])
+
+	useEffect(() => {
+		if (currentPage > totalPages) {
+			setCurrentPage(totalPages)
+		}
+	}, [currentPage, totalPages])
+
 	return (
 		<div className="qa-closure-table overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 			{showDownload && (
@@ -121,7 +149,7 @@ const ViewClosurePeriodTable = ({
 							</td>
 						</tr>
 					) : (
-						periods.map((period) => (
+						visiblePeriods.map((period) => (
 							<tr key={period.id}>
 								<td className="px-4 py-3 text-center text-sm text-slate-700">{period.academicYear}</td>
 								<td className="px-4 py-3 text-center text-sm text-slate-700">{formatDate(period.startDate)}</td>
@@ -167,6 +195,62 @@ const ViewClosurePeriodTable = ({
 					)}
 				</tbody>
 			</table>
+			{periods.length > 0 && (
+				<div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
+					<div className="flex flex-1 justify-between sm:hidden">
+						<button
+							onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+							disabled={safeCurrentPage === 1}
+							className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							Previous
+						</button>
+						<button
+							onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+							disabled={safeCurrentPage === totalPages}
+							className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							Next
+						</button>
+					</div>
+					<div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+						<p className="text-sm text-slate-700">
+							Page <span className="font-medium">{safeCurrentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{periods.length === 0 ? 0 : startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, periods.length)}</span> of <span className="font-medium">{periods.length}</span> results
+						</p>
+						<nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+							<button
+								onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+								disabled={safeCurrentPage === 1}
+								className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								<span className="sr-only">Previous</span>
+								<ChevronLeft className="h-5 w-5" />
+							</button>
+							{visiblePageNumbers.map((page) => (
+								<button
+									key={page}
+									onClick={() => setCurrentPage(page)}
+									className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+										page === safeCurrentPage
+											? 'z-10 bg-indigo-600 text-white'
+											: 'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'
+									}`}
+								>
+									{page}
+								</button>
+							))}
+							<button
+								onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+								disabled={safeCurrentPage === totalPages}
+								className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								<span className="sr-only">Next</span>
+								<ChevronRight className="h-5 w-5" />
+							</button>
+						</nav>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }
