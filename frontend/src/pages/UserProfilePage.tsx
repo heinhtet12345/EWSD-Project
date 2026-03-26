@@ -331,8 +331,13 @@ export default function UserProfilePage() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setPasswordError("Password must be at least 8 characters.");
+    if (newPassword.includes(" ")) {
+      setPasswordError("Password must not contain spaces.");
+      return;
+    }
+
+    if (newPassword.length < 8 || newPassword.length > 12) {
+      setPasswordError("Password length must be between 8 and 12 characters.");
       return;
     }
 
@@ -341,8 +346,18 @@ export default function UserProfilePage() {
       return;
     }
 
+    if (!/[a-z]/.test(newPassword)) {
+      setPasswordError("Password must include at least one lowercase letter.");
+      return;
+    }
+
     if (!/\d/.test(newPassword)) {
       setPasswordError("Password must include at least one number.");
+      return;
+    }
+
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      setPasswordError("Password must include at least one special character.");
       return;
     }
 
@@ -607,8 +622,7 @@ export default function UserProfilePage() {
                 Reset Password
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Use a strong password. Minimum 8 characters, with at least 1 uppercase letter and 1 number.
-                14 to 15 characters is strongly recommended.
+                Use 8-12 characters with at least 1 uppercase, 1 lowercase, 1 number, and 1 special character. Spaces are not allowed.
               </p>
             </div>
 

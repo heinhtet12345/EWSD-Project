@@ -3,6 +3,7 @@ import axios from 'axios'
 import { ChevronLeft, ChevronRight, Flag, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AddIdeaSubmissionForm from '../forms/AddIdeaSubmissionForm'
+import { useRef } from 'react'
 
 type Idea = {
   idea_id: number
@@ -43,6 +44,19 @@ type ClosurePeriod = {
   is_active: boolean
 }
 
+type DepartmentOption = {
+  department_id: number
+  department_name: string
+}
+
+type IdeaListResponse = {
+  results?: Idea[]
+  count?: number
+  page?: number
+  total_pages?: number
+  department_options?: DepartmentOption[]
+}
+
 const StaffAllIdeaPage = () => {
   const location = useLocation()
   const navigate = useNavigate()
@@ -54,9 +68,12 @@ const StaffAllIdeaPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [openFilter, setOpenFilter] = useState<'all' | 'open' | 'closed'>('all')
+  const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalIdeas, setTotalIdeas] = useState(0)
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
   const [isCheckingAccount, setIsCheckingAccount] = useState(false)
   const [actionMessage, setActionMessage] = useState('')
@@ -97,30 +114,7 @@ const StaffAllIdeaPage = () => {
     }
   }
 
-  const filteredIdeas = useMemo(() => {
-    const search = searchTerm.trim().toLowerCase()
-    return ideas.filter((idea) => {
-      const matchesSearch =
-        !search ||
-        idea.idea_title.toLowerCase().includes(search) ||
-        idea.idea_content.toLowerCase().includes(search)
-
-      const matchesCategory =
-        !selectedCategory || idea.category_ids.includes(Number(selectedCategory))
-
-      const departmentLabel = idea.department_name || `Department #${idea.department}`
-      const matchesDepartment =
-        !selectedDepartment || departmentLabel === selectedDepartment
-
-      const ideaOpen = idea.closure_period_idea_open !== false
-      const matchesOpenFilter =
-        openFilter === 'all' ||
-        (openFilter === 'open' && ideaOpen) ||
-        (openFilter === 'closed' && !ideaOpen)
-
-      return matchesSearch && matchesCategory && matchesDepartment && matchesOpenFilter
-    })
-  }, [ideas, searchTerm, selectedCategory, selectedDepartment, openFilter])
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
 
   const currentRole = useMemo(() => {
     try {
@@ -164,10 +158,14 @@ const StaffAllIdeaPage = () => {
   const [highlightIdeaId, setHighlightIdeaId] = useState<number | null>(null)
   const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null)
   const [highlightElement, setHighlightElement] = useState<HTMLDivElement | null>(null)
+  const [pendingHighlightIdeaId, setPendingHighlightIdeaId] = useState<number | null>(null)
+  const ideaPageCacheRef = useRef<Record<string, IdeaListResponse>>({})
+  const sectionTopRef = useRef<HTMLElement | null>(null)
 
   // Keep a local highlight state so we can clear it after a short duration.
   useEffect(() => {
     setHighlightIdeaId(highlightIdeaIdFromQuery)
+    setPendingHighlightIdeaId(highlightIdeaIdFromQuery)
   }, [highlightIdeaIdFromQuery])
 
   useEffect(() => {
@@ -194,11 +192,37 @@ const StaffAllIdeaPage = () => {
     return () => window.clearTimeout(handle)
   }, [highlightCommentId])
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim())
+    }, 250)
 
-  const totalPages = Math.max(1, Math.ceil(filteredIdeas.length / itemsPerPage))
+    return () => window.clearTimeout(timeoutId)
+  }, [searchTerm])
+
   const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentIdeas = filteredIdeas.slice(startIndex, endIndex)
+  const endIndex = startIndex + ideas.length
+  const currentIdeas = ideas
+
+  const buildIdeasQueryParams = (page: number) => ({
+    page,
+    page_size: itemsPerPage,
+    search: debouncedSearchTerm || undefined,
+    category_id: selectedCategory || undefined,
+    department_id: selectedDepartment || undefined,
+    open_filter: openFilter,
+    highlight_idea_id: pendingHighlightIdeaId || undefined,
+  })
+
+  const buildIdeasCacheKey = (page: number) =>
+    JSON.stringify({
+      page,
+      search: debouncedSearchTerm || '',
+      category: selectedCategory || '',
+      department: selectedDepartment || '',
+      open: openFilter,
+      highlight: pendingHighlightIdeaId || '',
+    })
 
   const categoryOptions = useMemo(
     () =>
@@ -208,13 +232,11 @@ const StaffAllIdeaPage = () => {
     [categoryMap],
   )
 
-  const departmentOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(ideas.map((idea) => idea.department_name || `Department #${idea.department}`)),
-      ).sort((a, b) => a.localeCompare(b)),
-    [ideas],
-  )
+  const visiblePageNumbers = useMemo(() => {
+    const startPage = Math.max(1, currentPage - 2)
+    const endPage = Math.min(totalPages, currentPage + 2)
+    return Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index)
+  }, [currentPage, totalPages])
 
   const parseAcademicYearStart = (academicYear?: string) => {
     if (!academicYear) return 0
@@ -293,33 +315,27 @@ const StaffAllIdeaPage = () => {
   }, [currentIdeas, closurePeriods])
 
   useEffect(() => {
-    if (!isAdding) {
-      fetchIdeas()
-      fetchCategories()
-    }
-  }, [isAdding])
+    setCurrentPage(1)
+  }, [debouncedSearchTerm, selectedCategory, selectedDepartment, openFilter])
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, selectedCategory, selectedDepartment])
+    ideaPageCacheRef.current = {}
+  }, [debouncedSearchTerm, selectedCategory, selectedDepartment, openFilter])
+
+  useEffect(() => {
+    if (isAdding) return
+    fetchIdeas(currentPage)
+  }, [isAdding, currentPage, debouncedSearchTerm, selectedCategory, selectedDepartment, openFilter, pendingHighlightIdeaId])
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
 
   useEffect(() => {
     if (!actionMessage) return
     const timeoutId = window.setTimeout(() => setActionMessage(''), 3500)
     return () => window.clearTimeout(timeoutId)
   }, [actionMessage])
-
-  useEffect(() => {
-    if (!highlightIdeaId || filteredIdeas.length === 0) return
-    const highlightIndex = filteredIdeas.findIndex(
-      (idea) => Number(idea.idea_id) === Number(highlightIdeaId),
-    )
-    if (highlightIndex < 0) return
-    const targetPage = Math.floor(highlightIndex / itemsPerPage) + 1
-    if (targetPage !== currentPage) {
-      setCurrentPage(targetPage)
-    }
-  }, [highlightIdeaId, filteredIdeas, currentPage])
 
   useEffect(() => {
     if (!highlightCommentId) return
@@ -342,14 +358,74 @@ const StaffAllIdeaPage = () => {
     })
   }, [highlightIdeaId, currentPage, highlightElement])
 
+  useEffect(() => {
+    if (loading) return
 
-  const fetchIdeas = async () => {
+    sectionTopRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }, [currentPage, loading])
+
+  useEffect(() => {
+    if (loading || currentPage >= totalPages) return
+
+    const nextPage = currentPage + 1
+    const cacheKey = buildIdeasCacheKey(nextPage)
+    if (ideaPageCacheRef.current[cacheKey]) return
+
+    const authConfig = getAuthConfig()
+    axios
+      .get('/api/ideas/list/', {
+        ...(authConfig || {}),
+        params: buildIdeasQueryParams(nextPage),
+      })
+      .then((response) => {
+        ideaPageCacheRef.current[cacheKey] = response.data as IdeaListResponse
+      })
+      .catch(() => {
+        // Ignore background prefetch issues.
+      })
+  }, [currentPage, totalPages, loading, debouncedSearchTerm, selectedCategory, selectedDepartment, openFilter, pendingHighlightIdeaId])
+
+  const fetchIdeas = async (page = 1) => {
     setLoading(true)
     setError('')
     try {
-      const response = await axios.get('/api/ideas/list/', getAuthConfig())
-      setIdeas(response.data.results || response.data)
-      setCurrentPage(1)
+      const cacheKey = buildIdeasCacheKey(page)
+      const cachedResponse = ideaPageCacheRef.current[cacheKey]
+      if (cachedResponse) {
+        const cachedResults = Array.isArray(cachedResponse.results) ? cachedResponse.results : []
+        setIdeas(cachedResults)
+        setTotalIdeas(typeof cachedResponse.count === 'number' ? cachedResponse.count : cachedResults.length)
+        setTotalPages(Math.max(1, Number(cachedResponse.total_pages) || 1))
+        setCurrentPage(Math.max(1, Number(cachedResponse.page) || page))
+        setDepartmentOptions(Array.isArray(cachedResponse.department_options) ? cachedResponse.department_options : [])
+        if (pendingHighlightIdeaId && cachedResults.some((idea) => idea.idea_id === pendingHighlightIdeaId)) {
+          setPendingHighlightIdeaId(null)
+        }
+        return
+      }
+
+      const authConfig = getAuthConfig()
+      const response = await axios.get('/api/ideas/list/', {
+        ...(authConfig || {}),
+        params: buildIdeasQueryParams(page),
+      })
+
+      const data = response.data as IdeaListResponse
+      ideaPageCacheRef.current[cacheKey] = data
+
+      const results = Array.isArray(data.results) ? data.results : []
+      setIdeas(results)
+      setTotalIdeas(typeof data.count === 'number' ? data.count : results.length)
+      setTotalPages(Math.max(1, Number(data.total_pages) || 1))
+      setCurrentPage(Math.max(1, Number(data.page) || page))
+      setDepartmentOptions(Array.isArray(data.department_options) ? data.department_options : [])
+
+      if (pendingHighlightIdeaId && results.some((idea) => idea.idea_id === pendingHighlightIdeaId)) {
+        setPendingHighlightIdeaId(null)
+      }
     } catch {
       setError('Failed to load ideas')
     } finally {
@@ -585,7 +661,7 @@ const StaffAllIdeaPage = () => {
   };
 
   return (
-    <section className="space-y-4">
+    <section ref={sectionTopRef} className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-black">All Ideas</h1>
@@ -637,7 +713,9 @@ const StaffAllIdeaPage = () => {
               >
                 <option value="">All Departments</option>
                 {departmentOptions.map((department) => (
-                  <option key={department} value={department}>{department}</option>
+                  <option key={department.department_id} value={String(department.department_id)}>
+                    {department.department_name}
+                  </option>
                 ))}
               </select>
               <select
@@ -656,7 +734,7 @@ const StaffAllIdeaPage = () => {
           {actionMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{actionMessage}</div>}
           {loading && <p className="text-sm text-slate-500">Loading ideas...</p>}
 
-          {filteredIdeas.length === 0 && !loading && (searchTerm.trim() || selectedCategory || selectedDepartment || openFilter !== 'all') ? (
+          {ideas.length === 0 && !loading && (searchTerm.trim() || selectedCategory || selectedDepartment || openFilter !== 'all') ? (
             <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
               <p className="text-sm text-slate-500">No ideas match your filters</p>
             </div>
@@ -924,7 +1002,7 @@ const StaffAllIdeaPage = () => {
                 </div>
               ))}
 
-              {filteredIdeas.length > 0 && (
+              {totalIdeas > 0 && (
                 <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
                   <div className="flex flex-1 justify-between sm:hidden">
                     <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
@@ -932,13 +1010,13 @@ const StaffAllIdeaPage = () => {
                   </div>
                   <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                     <p className="text-sm text-slate-700">
-                      Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredIdeas.length)}</span> of <span className="font-medium">{filteredIdeas.length}</span> results
+                      Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{totalIdeas === 0 ? 0 : startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, totalIdeas)}</span> of <span className="font-medium">{totalIdeas}</span> results
                     </p>
                     <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                       <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
                         <span className="sr-only">Previous</span><ChevronLeft className="h-5 w-5" />
                       </button>
-                      {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                      {visiblePageNumbers.map((page) => (
                         <button key={page} onClick={() => setCurrentPage(page)} className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${page === currentPage ? 'z-10 bg-indigo-600 text-white' : 'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'}`}>{page}</button>
                       ))}
                       <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">

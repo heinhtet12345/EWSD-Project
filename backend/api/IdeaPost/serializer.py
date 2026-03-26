@@ -71,13 +71,13 @@ class IdeaListSerializer(serializers.ModelSerializer):
         return full_name or obj.user.username
 
     def get_upvote_count(self, obj):
-        return obj.votes.filter(vote_type='UP').count()
+        return getattr(obj, 'upvote_count', obj.votes.filter(vote_type='UP').count())
 
     def get_downvote_count(self, obj):
-        return obj.votes.filter(vote_type='DOWN').count()
+        return getattr(obj, 'downvote_count', obj.votes.filter(vote_type='DOWN').count())
 
     def get_comment_count(self, obj):
-        return obj.comments.count()
+        return getattr(obj, 'comment_count', obj.comments.count())
 
     def get_user_vote(self, obj):
         request = self.context.get('request')

@@ -18,6 +18,7 @@ import zipfile
 from io import BytesIO, StringIO
 from django.http import HttpResponse
 from django.db.models import Count, Q
+from django.core.paginator import Paginator
 
 User = get_user_model()
 
@@ -134,6 +135,23 @@ class ListIdeasView(APIView):
         
         mine_only = str(request.query_params.get('mine', 'false')).lower() == 'true'
         my_department_only = str(request.query_params.get('my_department', 'false')).lower() == 'true'
+        search = str(request.query_params.get('search', '')).strip()
+        category_id = request.query_params.get('category_id')
+        department_id = request.query_params.get('department_id')
+        open_filter = str(request.query_params.get('open_filter', 'all')).strip().lower()
+        highlight_idea_id = request.query_params.get('highlight_idea_id')
+
+        try:
+            page = int(request.query_params.get('page', 1))
+        except (TypeError, ValueError):
+            page = 1
+        page = max(1, page)
+
+        try:
+            page_size = int(request.query_params.get('page_size', 5))
+        except (TypeError, ValueError):
+            page_size = 5
+        page_size = max(1, min(page_size, 50))
 
         active_ideas = Idea.objects.filter(user__active_status=True)
 
@@ -149,12 +167,70 @@ class ListIdeasView(APIView):
             # QA Managers and Admins can see all ideas
             ideas = active_ideas
 
-        # Order ideas from newest to oldest by submission time.
-        ideas = ideas.order_by('-submit_datetime')
+        department_options = list(
+            ideas.exclude(department__isnull=True)
+            .values('department_id', 'department__dept_name')
+            .distinct()
+            .order_by('department__dept_name')
+        )
 
-        serializer = IdeaListSerializer(ideas, many=True, context={"request": request, "viewer_role": role})
+        if search:
+            ideas = ideas.filter(
+                Q(idea_title__icontains=search)
+                | Q(idea_content__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(department__dept_name__icontains=search)
+            )
+
+        if category_id and str(category_id).isdigit():
+            ideas = ideas.filter(categories__category_id=int(category_id))
+
+        if department_id and str(department_id).isdigit():
+            ideas = ideas.filter(department_id=int(department_id))
+
+        if open_filter == 'open':
+            ideas = ideas.filter(closurePeriod__idea_closure_date__gt=timezone.now().date())
+        elif open_filter == 'closed':
+            ideas = ideas.filter(closurePeriod__idea_closure_date__lte=timezone.now().date())
+
+        ideas = (
+            ideas.select_related('user', 'department', 'closurePeriod')
+            .prefetch_related('categories', 'documents')
+            .annotate(
+                upvote_count=Count('votes', filter=Q(votes__vote_type='UP'), distinct=True),
+                downvote_count=Count('votes', filter=Q(votes__vote_type='DOWN'), distinct=True),
+                comment_count=Count('comments', distinct=True),
+            )
+            .distinct()
+            .order_by('-submit_datetime')
+        )
+
+        if highlight_idea_id and str(highlight_idea_id).isdigit():
+            highlighted_ids = list(ideas.values_list('idea_id', flat=True))
+            try:
+                highlighted_index = highlighted_ids.index(int(highlight_idea_id))
+            except ValueError:
+                highlighted_index = None
+            if highlighted_index is not None:
+                page = highlighted_index // page_size + 1
+
+        paginator = Paginator(ideas, page_size)
+        page_obj = paginator.get_page(page)
+
+        serializer = IdeaListSerializer(page_obj.object_list, many=True, context={"request": request, "viewer_role": role})
         return Response({
-            "results": serializer.data
+            "results": serializer.data,
+            "count": paginator.count,
+            "page": page_obj.number,
+            "page_size": page_size,
+            "total_pages": paginator.num_pages,
+            "department_options": [
+                {
+                    "department_id": item["department_id"],
+                    "department_name": item["department__dept_name"],
+                }
+                for item in department_options
+            ],
         })
 
 
