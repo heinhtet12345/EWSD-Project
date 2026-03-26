@@ -314,67 +314,61 @@ class LatestIdeaByDepartmentAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # Get latest idea per department
-        departments_latest = (
-            Idea.objects
-            .values('department__dept_name')
-            .annotate(latest_submit=Max('submit_datetime'))
-            .order_by('department__dept_name')
+        # Get department from query parameter
+        department_name = request.query_params.get('department', None)
+        if not department_name:
+            return Response({"message": "Department parameter is required."}, status=400)
+
+        # Get the latest idea for the selected department
+        latest_idea = (
+            Idea.objects.filter(department__dept_name=department_name)
+            .order_by('-submit_datetime')
+            .first()
         )
 
-        result = []
-        for item in departments_latest:
-            latest_idea = Idea.objects.filter(
-                department__dept_name=item['department__dept_name'],
-                submit_datetime=item['latest_submit']
-            ).first()
-            
-            if latest_idea:
-                result.append({
-                    "department": item['department__dept_name'],
-                    "idea_id": latest_idea.idea_id,
-                    "idea_title": latest_idea.idea_title,
-                    "submit_datetime": latest_idea.submit_datetime
-                })
+        if not latest_idea:
+            return Response({"message": f"No ideas found for department '{department_name}'."})
+
+        result = {
+            "department_name": department_name,
+            "idea_id": latest_idea.idea_id,
+            "idea_title": latest_idea.idea_title,
+            "submit_datetime": latest_idea.submit_datetime
+        }
 
         return Response(result)
-
 
 class PopularIdeaByDepartmentAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        result = []
+        # Get department name from query param
+        dept_name = request.query_params.get('department', None)
 
-        # Get all departments that have ideas
-        departments = Idea.objects.values_list('department__dept_name', flat=True).distinct()
+        if not dept_name:
+            return Response({"message": "Department parameter is required."}, status=400)
 
-        for dept_name in departments:
-            # Annotate net votes for each idea: upvotes - downvotes
-            idea = (
-                Idea.objects.filter(department__dept_name=dept_name)
-                .annotate(
-                    upvote_count=Count('votes', filter=Q(votes__vote_type='UP')),
-                    downvote_count=Count('votes', filter=Q(votes__vote_type='DOWN')),
-                    net_votes=ExpressionWrapper(
-                        F('votes__count'),  # placeholder, will override below
-                        output_field=IntegerField()
-                    )
-                )
-            )
-
-            # Calculate net_votes = upvotes - downvotes
-            idea = idea.annotate(
+        # Filter ideas by selected department
+        idea = (
+            Idea.objects.filter(department__dept_name=dept_name)
+            .annotate(
+                upvote_count=Count('votes', filter=Q(votes__vote_type='UP')),
+                downvote_count=Count('votes', filter=Q(votes__vote_type='DOWN')),
                 net_votes=F('upvote_count') - F('downvote_count')
-            ).order_by('-net_votes', '-submit_datetime').first()  # latest if tie
+            )
+            .order_by('-net_votes', '-submit_datetime')  # most votes first, latest if tie
+            .first()
+        )
 
-            if idea:
-                result.append({
-                    "department": dept_name,
-                    "idea_id": idea.idea_id,
-                    "idea_title": idea.idea_title,
-                    "submit_datetime": idea.submit_datetime
-                })
+        if not idea:
+            return Response({"message": f"No ideas found for department {dept_name}."})
+
+        result = {
+            "department": dept_name,
+            "idea_id": idea.idea_id,
+            "idea_title": idea.idea_title,
+            "submit_datetime": idea.submit_datetime
+        }
 
         return Response(result)
     
