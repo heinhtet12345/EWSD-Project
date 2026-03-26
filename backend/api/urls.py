@@ -17,6 +17,7 @@ from .views.admin_views import (
     AdminResetUserPasswordView,
     AdminDisableUserAccountView,
     AdminEnableUserAccountView,
+    CoordinatorDepartmentStaffListView,
 )
 
 
@@ -32,6 +33,7 @@ urlpatterns = [
     path('admin/users/<int:user_id>/reset-password/', AdminResetUserPasswordView.as_view(), name='admin-user-reset-password'),
     path('admin/users/<int:user_id>/disable/', AdminDisableUserAccountView.as_view(), name='admin-user-disable'),
     path('admin/users/<int:user_id>/enable/', AdminEnableUserAccountView.as_view(), name='admin-user-enable'),
+    path('qa-coordinator/my-staff/', CoordinatorDepartmentStaffListView.as_view(), name='qa-coordinator-my-staff'),
     path('categories/add/', AddCategoryView.as_view(), name='add-category'),
     path('categories/view/', ViewCategoryView.as_view(), name='view-categories'),
     path('categories/delete/<int:category_id>/', DeleteCategoryView.as_view(), name='delete_category'),

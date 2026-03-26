@@ -4,6 +4,7 @@ import MainLayout from "./layouts/MainLayout";
 import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import QACoordDashboard from "./pages/QACoordDashboard";
+import QACoordMyStaffPage from "./pages/QACoordMyStaffPage";
 import QAManagerDashboard from "./pages/QAManagerDashboard";
 import QAManagerAllIdeasPage from "./pages/QAManagerAllIdeasPage";
 import QAManagerDepartmentIdeasPage from "./pages/QAManagerDepartmentIdeasPage";
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="qa_coordinator" element={<QACoordDashboard />} />
         <Route path="qa_coordinator/all-ideas" element={<StaffAllIdeaPage />} />
         <Route path="qa_coordinator/my-department" element={<QAManagerDepartmentIdeasPage />} />
+        <Route path="qa_coordinator/my-staff" element={<QACoordMyStaffPage />} />
         <Route path="qa_coordinator/review-moderate" element={<QAManagerDepartmentIdeasPage />} />
         <Route path="005" element={<Navigate to="/qa_coordinator/my-department" replace />} />
         <Route path="006" element={<Navigate to="/qa_coordinator/all-ideas" replace />} />

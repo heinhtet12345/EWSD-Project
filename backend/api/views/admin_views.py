@@ -110,6 +110,30 @@ class AdminUserMetaView(APIView):
         return Response({"roles": roles, "departments": departments}, status=status.HTTP_200_OK)
 
 
+class CoordinatorDepartmentStaffListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if _normalized_role(request.user) != "qa_coordinator":
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        department = getattr(request.user, "department", None)
+        if not department:
+            return Response({"results": []}, status=status.HTTP_200_OK)
+
+        staff_users = (
+            User.objects.select_related("role", "department")
+            .filter(
+                department=department,
+                role__role_name__iexact="staff",
+            )
+            .order_by("username")
+        )
+
+        serializer = UserSerializer(staff_users, many=True)
+        return Response({"results": serializer.data}, status=status.HTTP_200_OK)
+
+
 class AdminCreateUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

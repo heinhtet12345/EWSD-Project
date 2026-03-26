@@ -44,6 +44,7 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Dashboard", to: "/qa_coordinator", icon: LayoutDashboard },
     { label: "All Ideas", to: "/qa_coordinator/all-ideas", icon: FileText },
     { label: "My Department", to: "/qa_coordinator/my-department", icon: ShieldCheck },
+    { label: "My Staff", to: "/qa_coordinator/my-staff", icon: Users },
 
   ],
   staff: [
