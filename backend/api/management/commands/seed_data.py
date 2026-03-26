@@ -76,7 +76,7 @@ class Command(BaseCommand):
                 user = User.objects.create_user(
                     username=user_data['username'],
                     email=user_data['email'],
-                    password='pass123',  
+                    password='Pass@123',  
                     role=role_objects[user_data['role']],
                     department=dept_objects[user_data['department_id']] if user_data['department_id'] else None,
                 )

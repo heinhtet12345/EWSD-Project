@@ -6,6 +6,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
+from ..password_rules import validate_custom_password_rules
 from ..serializer import UserProfileSerializer
 
 
@@ -48,14 +49,9 @@ class ChangePasswordView(APIView):
         if new_password != confirm_password:
             return Response({'message': 'New password and confirm password do not match.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if len(new_password) < 8:
-            return Response({'message': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not any(char.isupper() for char in new_password):
-            return Response({'message': 'Password must include at least one uppercase letter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not any(char.isdigit() for char in new_password):
-            return Response({'message': 'Password must include at least one number.'}, status=status.HTTP_400_BAD_REQUEST)
+        custom_error = validate_custom_password_rules(new_password)
+        if custom_error:
+            return Response({'message': custom_error}, status=status.HTTP_400_BAD_REQUEST)
 
         known_bad_passwords = {'password', '123456', '12345678', 'qwerty', 'abc123', 'password123'}
         if new_password.lower() in known_bad_passwords:

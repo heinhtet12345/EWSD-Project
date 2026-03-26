@@ -9,6 +9,7 @@ from ..models import Department, Notification, Role
 from ..serializer import UserSerializer
 
 User = get_user_model()
+TEMPORARY_PASSWORD = "Pass@123"
 
 
 def _normalized_role(user) -> str:
@@ -179,13 +180,13 @@ class AdminCreateUserView(APIView):
             active_status=True,
             is_active=True,
         )
-        user.set_password("pass123")
+        user.set_password(TEMPORARY_PASSWORD)
         user.save()
 
         serializer = UserSerializer(user)
         return Response(
             {
-                "message": f'User "{username}" created. Temporary password is pass123.',
+                "message": f'User "{username}" created. Temporary password is {TEMPORARY_PASSWORD}.',
                 "user": serializer.data,
             },
             status=status.HTTP_201_CREATED,
@@ -203,14 +204,14 @@ class AdminResetUserPasswordView(APIView):
         if not target_user:
             return Response({"message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        new_password = "pass123"
+        new_password = TEMPORARY_PASSWORD
         target_user.set_password(new_password)
         target_user.save()
 
         Notification.objects.create(
             recipient=target_user,
             title="Your password has been reset",
-            message='Your password was reset by admin. Temporary password: "pass123".',
+            message=f'Your password was reset by admin. Temporary password: "{TEMPORARY_PASSWORD}".',
             notification_type="password_reset_request",
         )
 
@@ -218,7 +219,7 @@ class AdminResetUserPasswordView(APIView):
             try:
                 send_mail(
                     subject="Your Password Has Been Reset",
-                    message='Your password has been reset by admin. Temporary password: "pass123".',
+                    message=f'Your password has been reset by admin. Temporary password: "{TEMPORARY_PASSWORD}".',
                     from_email="system@ewsd.edu",
                     recipient_list=[target_user.email],
                     fail_silently=True,
@@ -226,7 +227,7 @@ class AdminResetUserPasswordView(APIView):
             except (BadHeaderError, OSError):
                 pass
 
-        return Response({"message": "Password reset to pass123."}, status=status.HTTP_200_OK)
+        return Response({"message": f"Password reset to {TEMPORARY_PASSWORD}."}, status=status.HTTP_200_OK)
 
 
 class AdminDisableUserAccountView(APIView):
