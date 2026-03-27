@@ -11,6 +11,7 @@ import {
 } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { useNavigate } from 'react-router-dom'
+import useThemeMode from '../hooks/useThemeMode'
 
 type DepartmentOption = {
   department_id: number
@@ -125,6 +126,7 @@ const IdeaListCard = ({
 )
 
 export default function QAManagerDashboard() {
+  const isDarkMode = useThemeMode()
   const navigate = useNavigate()
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -218,17 +220,17 @@ export default function QAManagerDashboard() {
       },
       scales: {
         x: {
-          ticks: { color: '#475569' },
+          ticks: { color: isDarkMode ? '#cbd5e1' : '#475569' },
           grid: { display: false },
         },
         y: {
           beginAtZero: true,
-          ticks: { color: '#64748b', precision: 0 },
-          grid: { color: '#e2e8f0' },
+          ticks: { color: isDarkMode ? '#94a3b8' : '#64748b', precision: 0 },
+          grid: { color: isDarkMode ? 'rgba(148, 163, 184, 0.15)' : '#e2e8f0' },
         },
       },
     }),
-    [],
+    [isDarkMode],
   )
 
   const donutOptions = useMemo(
@@ -242,12 +244,12 @@ export default function QAManagerDashboard() {
           labels: {
             usePointStyle: true,
             boxWidth: 10,
-            color: '#475569',
+            color: isDarkMode ? '#cbd5e1' : '#475569',
           },
         },
       },
     }),
-    [],
+    [isDarkMode],
   )
 
   const openIdea = (ideaId: number) => {

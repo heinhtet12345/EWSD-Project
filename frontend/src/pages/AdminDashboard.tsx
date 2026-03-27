@@ -19,6 +19,7 @@ import {
   LinearScale,
   Tooltip,
 } from "chart.js";
+import useThemeMode from "../hooks/useThemeMode";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -112,6 +113,7 @@ const computeSuggestedMax = (values: number[]) => {
 };
 
 export default function AdminDashboard() {
+  const isDarkMode = useThemeMode();
   const [days, setDays] = useState(30);
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -201,13 +203,16 @@ export default function AdminDashboard() {
     },
     scales: {
       x: {
+        ticks: { color: isDarkMode ? "#cbd5e1" : "#475569" },
         grid: { display: false },
       },
       y: {
         beginAtZero: true,
         ticks: {
           precision: 0,
+          color: isDarkMode ? "#94a3b8" : "#64748b",
         },
+        grid: { color: isDarkMode ? "rgba(148, 163, 184, 0.15)" : "#e2e8f0" },
       },
     },
   };
@@ -362,7 +367,12 @@ export default function AdminDashboard() {
                     responsive: true,
                     maintainAspectRatio: false,
                     radius: "78%",
-                    plugins: { legend: { position: "bottom" as const } },
+                    plugins: {
+                      legend: {
+                        position: "bottom" as const,
+                        labels: { color: isDarkMode ? "#cbd5e1" : "#475569" },
+                      },
+                    },
                   }}
                 />
               </div>
@@ -380,7 +390,12 @@ export default function AdminDashboard() {
                     responsive: true,
                     maintainAspectRatio: false,
                     radius: "78%",
-                    plugins: { legend: { position: "bottom" as const } },
+                    plugins: {
+                      legend: {
+                        position: "bottom" as const,
+                        labels: { color: isDarkMode ? "#cbd5e1" : "#475569" },
+                      },
+                    },
                   }}
                 />
               </div>

@@ -254,13 +254,19 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
     >
       <div className="flex flex-1 items-center gap-3">
         <div className="relative w-80 max-w-md">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${
+            isDarkMode ? "text-slate-500" : "text-slate-400"
+          }`}>
             <Search className="h-4 w-4" />
           </span>
           <input
             type="text"
             placeholder="Search..."
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white"
+            className={`w-full rounded-lg border py-2 pl-10 pr-3 text-sm outline-none transition ${
+              isDarkMode
+                ? "border-slate-700 bg-slate-900/70 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:bg-slate-900"
+                : "border-slate-200 bg-slate-50 text-slate-700 focus:border-indigo-400 focus:bg-white"
+            }`}
           />
         </div>
       </div>
@@ -274,8 +280,10 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
               setIsNotificationOpen((value) => !value);
               fetchNotifications();
             }}
-            className={`mt-1 rounded-lg p-2 transition hover:bg-slate-100 ${
-              isDarkMode ? "text-white hover:text-slate-600" : "text-slate-600"
+            className={`mt-1 rounded-lg p-2 transition ${
+              isDarkMode
+                ? "text-slate-200 hover:bg-slate-800 hover:text-white"
+                : "text-slate-600 hover:bg-slate-100"
             }`}
           >
             <Bell className="h-5 w-5" />
@@ -287,9 +295,11 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
           </button>
 
           {isNotificationOpen && (
-            <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+            <div className={`absolute right-0 z-20 mt-2 w-80 rounded-xl border p-2 shadow-lg ${
+              isDarkMode ? "border-slate-700 bg-slate-950/95 backdrop-blur" : "border-slate-200 bg-white"
+            }`}>
               <div className="mb-2 flex items-center justify-between px-2 py-1">
-                <p className="text-sm font-semibold text-slate-800">Notifications</p>
+                <p className={`text-sm font-semibold ${isDarkMode ? "text-slate-100" : "text-slate-800"}`}>Notifications</p>
                 {unreadCount > 0 && (
                   <button
                     type="button"
@@ -314,7 +324,7 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
                 onWheel={(event) => event.stopPropagation()}
               >
                 {notifications.length === 0 ? (
-                  <p className="px-2 py-6 text-center text-sm text-slate-500">No notifications yet</p>
+                  <p className={`px-2 py-6 text-center text-sm ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>No notifications yet</p>
                 ) : (
                   notifications.map((item) => (
                     <button
@@ -348,13 +358,17 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
                       }}
                       className={`w-full rounded-lg border px-3 py-2 text-left transition ${
                         item.is_read
-                          ? "border-slate-100 bg-white"
-                          : "border-blue-100 bg-blue-50/40"
+                          ? isDarkMode
+                            ? "border-slate-800 bg-slate-900/80 hover:bg-slate-800"
+                            : "border-slate-100 bg-white"
+                          : isDarkMode
+                            ? "border-blue-900/60 bg-blue-950/40 hover:bg-blue-950/50"
+                            : "border-blue-100 bg-blue-50/40"
                       }`}
                     >
-                      <p className="text-sm font-medium text-slate-800">{item.title}</p>
-                      <p className="mt-0.5 text-xs text-slate-600">{item.message}</p>
-                      <p className="mt-1 text-[11px] text-slate-400">
+                      <p className={`text-sm font-medium ${isDarkMode ? "text-slate-100" : "text-slate-800"}`}>{item.title}</p>
+                      <p className={`mt-0.5 text-xs ${isDarkMode ? "text-slate-300" : "text-slate-600"}`}>{item.message}</p>
+                      <p className={`mt-1 text-[11px] ${isDarkMode ? "text-slate-500" : "text-slate-400"}`}>
                         {new Date(item.created_at).toLocaleString()}
                       </p>
                     </button>
@@ -402,7 +416,11 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
         <div className="relative">
           <button
             type="button"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+              isDarkMode
+                ? "text-slate-100 hover:bg-slate-800"
+                : "text-slate-700 hover:bg-slate-100"
+            }`}
             onClick={() => setIsUserMenuOpen((value) => !value)}
           >
             {user?.profileimg ? (
@@ -412,26 +430,34 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
                 className="h-8 w-8 rounded-full object-cover"
               />
             ) : (
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+              <span className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                isDarkMode ? "bg-slate-800 text-blue-300" : "bg-indigo-100 text-indigo-600"
+              }`}>
                 <User className="h-4 w-4" />
               </span>
             )}
             <span className="hidden text-sm font-semibold sm:block">{displayName}</span>
-            <ChevronDown className="h-4 w-4 text-slate-500" />
+            <ChevronDown className={`h-4 w-4 ${isDarkMode ? "text-slate-400" : "text-slate-500"}`} />
           </button>
 
           {isUserMenuOpen && (
-            <div className="absolute right-0 z-10 mt-2 w-40 rounded-lg border border-slate-200 bg-white py-2 text-sm shadow-lg">
+            <div className={`absolute right-0 z-10 mt-2 w-40 rounded-lg border py-2 text-sm shadow-lg ${
+              isDarkMode ? "border-slate-700 bg-slate-950/95 backdrop-blur" : "border-slate-200 bg-white"
+            }`}>
               <button
                 type="button"
-                className="block w-full px-4 py-2 text-left text-slate-700 hover:bg-slate-100"
+                className={`block w-full px-4 py-2 text-left ${
+                  isDarkMode ? "text-slate-100 hover:bg-slate-800" : "text-slate-700 hover:bg-slate-100"
+                }`}
                 onClick={handleGoToProfile}
               >
                 Profile
               </button>
               <button
                 type="button"
-                className="block w-full px-4 py-2 text-left text-red-600 hover:bg-slate-100"
+                className={`block w-full px-4 py-2 text-left text-red-500 ${
+                  isDarkMode ? "hover:bg-slate-800" : "hover:bg-slate-100"
+                }`}
                 onClick={handleLogout}
               >
                 Logout

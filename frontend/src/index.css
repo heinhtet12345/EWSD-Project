@@ -10,16 +10,142 @@
     --toolbar_border: #e2e8f0;
     --dashboard_bg: #f8fafc;
     --dashboard_text: #0f172a;
+    --surface_base: #ffffff;
+    --surface_muted: #f8fafc;
+    --surface_soft: #f1f5f9;
+    --surface_emphasis: #e2e8f0;
+    --border_subtle: #e2e8f0;
+    --text_strong: #0f172a;
+    --text_body: #334155;
+    --text_muted: #64748b;
+    --text_soft: #94a3b8;
+    --shadow_dark: 0 18px 45px -24px rgba(15, 23, 42, 0.16);
 }
 
 :root[data-theme='dark']{
-    --sidebar_bg: #1e1f3f;
-    --sidebar-active_tab: #3b3f9a;
-    --sidebar_border: transparent;
-    --toolbar_bg: #334155;
-    --toolbar_border: transparent;
-    --dashboard_bg: #0f172a;
-    --dashboard_text: #ffffff;
+    --sidebar_bg: #081120;
+    --sidebar-active_tab: #1d4ed8;
+    --sidebar_border: rgba(148, 163, 184, 0.14);
+    --toolbar_bg: #091220;
+    --toolbar_border: rgba(148, 163, 184, 0.14);
+    --dashboard_bg: #030712;
+    --dashboard_text: #e5eefb;
+    --surface_base: #0f172a;
+    --surface_muted: #111c31;
+    --surface_soft: #172338;
+    --surface_emphasis: #22314a;
+    --border_subtle: rgba(148, 163, 184, 0.18);
+    --text_strong: #f8fafc;
+    --text_body: #d6e0ee;
+    --text_muted: #9fb0c6;
+    --text_soft: #7890ad;
+    --shadow_dark: 0 24px 65px -32px rgba(2, 6, 23, 0.78);
+    color-scheme: dark;
+}
+
+html,
+body,
+#root {
+    min-height: 100%;
+}
+
+body {
+    background-color: var(--dashboard_bg);
+    color: var(--dashboard_text);
+}
+
+:root[data-theme='dark'] .bg-white {
+    background-color: var(--surface_base) !important;
+}
+
+:root[data-theme='dark'] .bg-slate-50 {
+    background-color: var(--surface_muted) !important;
+}
+
+:root[data-theme='dark'] .bg-slate-100 {
+    background-color: var(--surface_soft) !important;
+}
+
+:root[data-theme='dark'] .bg-slate-200 {
+    background-color: var(--surface_emphasis) !important;
+}
+
+:root[data-theme='dark'] .border-slate-100,
+:root[data-theme='dark'] .border-slate-200,
+:root[data-theme='dark'] .border-slate-300 {
+    border-color: var(--border_subtle) !important;
+}
+
+:root[data-theme='dark'] .text-slate-900 {
+    color: var(--text_strong) !important;
+}
+
+:root[data-theme='dark'] .text-slate-800,
+:root[data-theme='dark'] .text-slate-700 {
+    color: var(--text_body) !important;
+}
+
+:root[data-theme='dark'] .text-slate-600,
+:root[data-theme='dark'] .text-slate-500 {
+    color: var(--text_muted) !important;
+}
+
+:root[data-theme='dark'] .text-slate-400 {
+    color: var(--text_soft) !important;
+}
+
+:root[data-theme='dark'] .shadow-sm,
+:root[data-theme='dark'] .shadow,
+:root[data-theme='dark'] .shadow-lg,
+:root[data-theme='dark'] .shadow-xl,
+:root[data-theme='dark'] .shadow-2xl {
+    box-shadow: var(--shadow_dark) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-slate-50:hover,
+:root[data-theme='dark'] .hover\:bg-slate-100:hover {
+    background-color: var(--surface_soft) !important;
+}
+
+:root[data-theme='dark'] .hover\:bg-blue-50:hover {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+:root[data-theme='dark'] .hover\:border-blue-300:hover {
+    border-color: rgba(96, 165, 250, 0.55) !important;
+}
+
+:root[data-theme='dark'] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea {
+    background-color: var(--surface_muted) !important;
+    border-color: var(--border_subtle) !important;
+    color: var(--text_strong) !important;
+}
+
+:root[data-theme='dark'] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])::placeholder,
+:root[data-theme='dark'] textarea::placeholder {
+    color: var(--text_soft) !important;
+}
+
+:root[data-theme='dark'] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+:root[data-theme='dark'] select:focus,
+:root[data-theme='dark'] textarea:focus {
+    border-color: rgba(96, 165, 250, 0.52) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16) !important;
+}
+
+:root[data-theme='dark'] input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.35);
+}
+
+:root[data-theme='dark'] table {
+    color: var(--text_body);
+}
+
+:root[data-theme='dark'] thead.bg-slate-50,
+:root[data-theme='dark'] tbody.bg-white {
+    background-color: var(--surface_base) !important;
 }
 
 .qa-category-table {

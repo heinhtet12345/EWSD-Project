@@ -11,6 +11,7 @@ import {
 } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { useNavigate } from 'react-router-dom'
+import useThemeMode from '../hooks/useThemeMode'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
@@ -135,6 +136,7 @@ const IdeaListCard = ({
 )
 
 export default function QACoordDashboard() {
+  const isDarkMode = useThemeMode()
   const navigate = useNavigate()
   const [data, setData] = useState<CoordinatorDashboardResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -236,16 +238,16 @@ export default function QACoordDashboard() {
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#475569' },
+          ticks: { color: isDarkMode ? '#cbd5e1' : '#475569' },
         },
         y: {
           beginAtZero: true,
-          ticks: { precision: 0, color: '#64748b' },
-          grid: { color: '#e2e8f0' },
+          ticks: { precision: 0, color: isDarkMode ? '#94a3b8' : '#64748b' },
+          grid: { color: isDarkMode ? 'rgba(148, 163, 184, 0.15)' : '#e2e8f0' },
         },
       },
     }),
-    [],
+    [isDarkMode],
   )
 
   const doughnutOptions = useMemo(
@@ -260,12 +262,12 @@ export default function QACoordDashboard() {
           labels: {
             usePointStyle: true,
             boxWidth: 10,
-            color: '#475569',
+            color: isDarkMode ? '#cbd5e1' : '#475569',
           },
         },
       },
     }),
-    [],
+    [isDarkMode],
   )
 
   const openIdea = (ideaId: number) => {
