@@ -17,6 +17,7 @@ import os
 import zipfile
 from io import BytesIO, StringIO
 from django.http import HttpResponse
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.core.paginator import Paginator
 
@@ -259,22 +260,30 @@ class ReportIdeaView(APIView):
         if reason not in allowed_reasons:
             return Response({"message": "Report reason is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        Report.objects.get_or_create(
-            reporter=request.user,
-            idea=idea,
-            reason=reason,
-            defaults={"details": details, "target_type": Report.TargetType.POST},
-        )
+        try:
+            with transaction.atomic():
+                _, created = Report.objects.get_or_create(
+                    reporter=request.user,
+                    idea=idea,
+                    reason=reason,
+                    defaults={"details": details, "target_type": Report.TargetType.POST},
+                )
+        except IntegrityError:
+            created = False
 
-        _notify_managers_about_report(
-            target_label=idea.idea_title,
-            report_reason=reason,
-            reporter_username=request.user.username,
-            idea=idea,
-            target_type="idea",
-        )
+        if created:
+            _notify_managers_about_report(
+                target_label=idea.idea_title,
+                report_reason=reason,
+                reporter_username=request.user.username,
+                idea=idea,
+                target_type="idea",
+            )
 
-        return Response({"message": "Idea reported successfully."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Idea reported successfully." if created else "You already reported this idea for that reason."},
+            status=status.HTTP_200_OK,
+        )
 
 class IdeaDetailView(APIView):
     def get(self, request, idea_id):

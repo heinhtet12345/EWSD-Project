@@ -281,7 +281,7 @@ export default function ViewUserTable() {
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>
       )}
 
-      <div className={`grid grid-cols-1 gap-3 ${canAddUser ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
+      <div className={`grid grid-cols-1 gap-3 ${canAddUser ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
         <input
           type="text"
           value={searchTerm}
@@ -317,7 +317,7 @@ export default function ViewUserTable() {
           <button
             type="button"
             onClick={() => setIsAddingUser(true)}
-            className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800"
+            className="w-full rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800 sm:w-auto"
           >
             Add User
           </button>
@@ -344,21 +344,21 @@ export default function ViewUserTable() {
         <p className="px-2 py-4 text-sm text-slate-500">Loading users...</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
+          <table className="w-full table-fixed divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Username</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Department</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Action</th>
+                <th className="w-[28%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[16%]">Username</th>
+                <th className="hidden w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 lg:table-cell">Email</th>
+                <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[16%]">Role</th>
+                <th className="hidden w-[22%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 md:table-cell">Department</th>
+                <th className="w-[16%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[10%]">Status</th>
+                <th className="w-[32%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[18%]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500 sm:col-span-5 lg:col-span-6">
                     No users found.
                   </td>
                 </tr>
@@ -373,19 +373,27 @@ export default function ViewUserTable() {
                       key={user.user_id}
                       className={user.user_id === highlightedUserId ? "bg-amber-50/60" : undefined}
                     >
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.username}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.email || "-"}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.role_name || "-"}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.department_name || "-"}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        <div className="truncate">{user.username}</div>
+                      </td>
+                      <td className="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">
+                        <div className="truncate">{user.email || "-"}</div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        <div className="truncate">{user.role_name || "-"}</div>
+                      </td>
+                      <td className="hidden px-4 py-3 text-sm text-slate-700 md:table-cell">
+                        <div className="truncate">{user.department_name || "-"}</div>
+                      </td>
                       <td className="px-4 py-3 text-sm text-slate-700">{user.active_status ? "Active" : "Disabled"}</td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 xl:flex-nowrap">
                           {canResetPassword && (
                             <button
                               type="button"
                               onClick={() => handleResetPassword(user)}
                               disabled={isProcessing}
-                              className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="whitespace-nowrap rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               Reset Password
                             </button>
@@ -395,7 +403,7 @@ export default function ViewUserTable() {
                               type="button"
                               onClick={() => handleDisableUser(user)}
                               disabled={isProcessing || isAdminUser}
-                              className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="whitespace-nowrap rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               Disable Account
                             </button>
@@ -404,7 +412,7 @@ export default function ViewUserTable() {
                               type="button"
                               onClick={() => handleEnableUser(user)}
                               disabled={isProcessing}
-                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               Enable Account
                             </button>

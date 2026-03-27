@@ -266,7 +266,7 @@ function QAManagerCategoriesPage() {
       <Modal
         isOpen={isAddingCategory}
         onClose={() => setIsAddingCategory(false)}
-        maxWidthClassName="max-w-3xl"
+        maxWidthClassName="max-w-xl"
       >
         {isAddingCategory && (
           <div className="space-y-3">

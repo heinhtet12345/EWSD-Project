@@ -158,12 +158,12 @@ export default function ReportListPage() {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-black">{title}</h1>
           <p className="text-sm text-slate-500">Review reported ideas and comments, then update their status.</p>
         </div>
-        <div className="w-full max-w-xs">
+        <div className="w-full sm:max-w-xs">
           <input
             type="text"
             value={search}
@@ -183,34 +183,38 @@ export default function ReportListPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200">
+          <table className="w-full table-fixed divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Reported Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Target</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Reporter</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Reason</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Details</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
+                <th className="hidden w-[12%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 md:table-cell">Reported Type</th>
+                <th className="w-[30%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[22%]">Target</th>
+                <th className="hidden w-[16%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 lg:table-cell">Reporter</th>
+                <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[16%]">Reason</th>
+                <th className="hidden w-[19%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 xl:table-cell">Details</th>
+                <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[20%]">Status</th>
+                <th className="w-[22%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[18%]">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredReports.map((report) => (
                 <tr key={report.report_id} className="transition hover:bg-amber-50/40">
-                  <td className="px-4 py-3 text-sm text-slate-700">{formatReportedType(report.target_type)}</td>
+                  <td className="hidden px-4 py-3 text-sm text-slate-700 md:table-cell">{formatReportedType(report.target_type)}</td>
                   <td className="px-4 py-3 text-sm text-slate-700">
                     <button
                       type="button"
                       onClick={() => handleOpenTarget(report)}
-                      className="text-left text-blue-700 hover:text-blue-800 hover:underline"
+                      className="block w-full truncate text-left text-blue-700 hover:text-blue-800 hover:underline"
                     >
                       {report.target_label || (report.target_type === "POST" ? `Idea #${report.idea}` : `Comment #${report.comment}`)}
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-700">{report.reporter_username || `User #${report.reporter}`}</td>
+                  <td className="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">
+                    <div className="truncate">{report.reporter_username || `User #${report.reporter}`}</div>
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-700">{report.reason}</td>
-                  <td className="px-4 py-3 text-sm text-slate-700">{report.details || "-"}</td>
+                  <td className="hidden px-4 py-3 text-sm text-slate-700 xl:table-cell">
+                    <div className="truncate">{report.details || "-"}</div>
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-700">
                     <select
                       value={report.status}

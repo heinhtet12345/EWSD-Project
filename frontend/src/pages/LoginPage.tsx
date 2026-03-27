@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Eye, EyeOff, X } from "lucide-react";
 import loginBackground from "../assets/login_background.jpg";
+import useThemeMode from "../hooks/useThemeMode";
 
 type Role = "admin" | "qa_coordinator" | "qa_manager" | "staff";
 
@@ -54,6 +55,7 @@ function normalizeRole(role?: string | null): Role {
 }
 
 export default function LoginPage() {
+  const isDarkMode = useThemeMode();
   const navigate = useNavigate();
   const [form, setForm] = useState<LoginFormState>({ username: "", password: "" });
   const [error, setError] = useState("");
@@ -191,17 +193,28 @@ export default function LoginPage() {
         style={{ backgroundImage: `url(${loginBackground})` }}
         aria-hidden="true"
       />
-      <div className="absolute inset-0 bg-slate-950/40" />
+      <div className={`absolute inset-0 ${
+        isDarkMode
+          ? "bg-[radial-gradient(circle_at_top,rgba(30,64,175,0.22),transparent_35%),linear-gradient(135deg,rgba(2,6,23,0.88),rgba(15,23,42,0.93))]"
+          : "bg-slate-950/40"
+      }`} />
       <div className="relative z-10 flex min-h-screen items-center justify-center px-6">
-        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white p-8 shadow-xl shadow-black/10 backdrop-blur">
+        <div className={`w-full max-w-md rounded-3xl border p-8 shadow-xl backdrop-blur-xl ${
+          isDarkMode
+            ? "border-white/10 bg-slate-950/70 shadow-black/40"
+            : "border-white/10 bg-white shadow-black/10"
+        }`}>
           <div className="space-y-2">
-            <p className="text-center text-sm font-bold text-black">Quality System</p>
-            <p className="text-center text-lg font-extrabold tracking-wide text-black">Welcome Back!</p>
+            <p className={`text-center text-sm font-bold ${isDarkMode ? "text-blue-200" : "text-black"}`}>Quality System</p>
+            <p className={`text-center text-lg font-extrabold tracking-wide ${isDarkMode ? "text-white" : "text-black"}`}>Welcome Back!</p>
+            <p className={`text-center text-sm ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>
+              Sign in to continue to your workspace.
+            </p>
           </div>
 
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="text-sm font-extrabold tracking-wider text-black/80" htmlFor="username">
+              <label className={`text-sm font-extrabold tracking-wider ${isDarkMode ? "text-slate-200" : "text-black/80"}`} htmlFor="username">
                 Username
               </label>
               <div className="relative">
@@ -212,14 +225,18 @@ export default function LoginPage() {
                   autoComplete="username"
                   value={form.username}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-gray-300 bg-white py-3 px-4 text-sm text-black focus:border-violet-700 focus:outline-none"
+                  className={`w-full rounded-xl border py-3 px-4 text-sm transition focus:outline-none ${
+                    isDarkMode
+                      ? "border-slate-700 bg-slate-900/80 text-white placeholder:text-slate-500 focus:border-blue-500"
+                      : "border-gray-300 bg-white text-black focus:border-violet-700"
+                  }`}
                   placeholder="e.g. Si Thu Aung"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-extrabold tracking-wider text-black/80" htmlFor="password">
+              <label className={`text-sm font-extrabold tracking-wider ${isDarkMode ? "text-slate-200" : "text-black/80"}`} htmlFor="password">
                 Password
               </label>
               <div className="relative">
@@ -230,13 +247,19 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={form.password}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-4 pr-12 text-sm text-black focus:border-violet-700 focus:outline-none"
+                  className={`w-full rounded-xl border py-3 pl-4 pr-12 text-sm transition focus:outline-none ${
+                    isDarkMode
+                      ? "border-slate-700 bg-slate-900/80 text-white placeholder:text-slate-500 focus:border-blue-500"
+                      : "border-gray-300 bg-white text-black focus:border-violet-700"
+                  }`}
                   placeholder="********"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${
+                    isDarkMode ? "text-slate-500 hover:text-slate-300" : "text-gray-500 hover:text-gray-700"
+                  }`}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -257,7 +280,9 @@ export default function LoginPage() {
                   setForgotError("");
                   setForgotSuccess("");
                 }}
-                className="text-sm font-semibold text-gray-500 transition hover:text-violet-900"
+                className={`text-sm font-semibold transition ${
+                  isDarkMode ? "text-slate-400 hover:text-blue-300" : "text-gray-500 hover:text-violet-900"
+                }`}
               >
                 Forgot password?
               </button>
@@ -275,19 +300,25 @@ export default function LoginPage() {
       </div>
 
       {isForgotModalOpen && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div className={`fixed inset-0 z-30 flex items-center justify-center px-4 ${
+          isDarkMode ? "bg-slate-950/70 backdrop-blur-sm" : "bg-black/50"
+        }`}>
+          <div className={`w-full max-w-md rounded-2xl p-6 shadow-xl ${
+            isDarkMode ? "border border-slate-800 bg-slate-950 text-white" : "bg-white"
+          }`}>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Forgot Password</h2>
+              <h2 className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-slate-900"}`}>Forgot Password</h2>
               <button
                 type="button"
                 onClick={() => setIsForgotModalOpen(false)}
-                className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+                className={`rounded-md p-1 ${
+                  isDarkMode ? "text-slate-400 hover:bg-slate-800" : "text-slate-500 hover:bg-slate-100"
+                }`}
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <p className="mb-4 text-sm text-slate-600">
+            <p className={`mb-4 text-sm ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>
               Enter your username. If valid, the system will notify admin to reset your password.
             </p>
             <form onSubmit={handleForgotPasswordRequest} className="space-y-4">
@@ -296,7 +327,11 @@ export default function LoginPage() {
                 value={forgotUsername}
                 onChange={(event) => setForgotUsername(event.target.value)}
                 placeholder="Username"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-violet-600"
+                className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ${
+                  isDarkMode
+                    ? "border-slate-700 bg-slate-900 text-white placeholder:text-slate-500 focus:border-blue-500"
+                    : "border-slate-200 text-slate-900 focus:border-violet-600"
+                }`}
               />
               {forgotError && (
                 <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -312,7 +347,11 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setIsForgotModalOpen(false)}
-                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  className={`rounded-lg border px-4 py-2 text-sm ${
+                    isDarkMode
+                      ? "border-slate-700 text-slate-200 hover:bg-slate-800"
+                      : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
                 >
                   Cancel
                 </button>

@@ -783,8 +783,14 @@ class QAManagerDashboardView(APIView):
             if idea.anonymous_status
         ][:5]
 
-        total_user_accounts = User.objects.count()
+        total_user_accounts = (
+            User.objects.select_related("role")
+            .exclude(role__role_name__iexact="admin")
+            .exclude(role__role_name__iexact="qa_manager")
+            .count()
+        )
         department_count = Department.objects.count()
+        anonymous_idea_count = sum(1 for idea in idea_list if idea.anonymous_status)
 
         return Response(
             {
@@ -792,6 +798,7 @@ class QAManagerDashboardView(APIView):
                     "total_user_accounts": total_user_accounts,
                     "total_idea_count": total_filtered_ideas,
                     "department_count": department_count,
+                    "anonymous_idea_count": anonymous_idea_count,
                 },
                 "filters": {
                     "department_options": [

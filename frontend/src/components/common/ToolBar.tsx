@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, ChevronDown, Moon, Search, Sun, User } from "lucide-react";
+import { Bell, ChevronDown, Menu, Moon, Search, Sun, User } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 interface ToolBarProps {
   userName?: string;
+  onMenuToggle?: () => void;
 }
 
 type NotificationItem = {
@@ -74,7 +75,7 @@ const getAuthConfig = () => {
   }
 };
 
-export default function ToolBar({ userName = "" }: ToolBarProps) {
+export default function ToolBar({ userName = "", onMenuToggle }: ToolBarProps) {
   const navigate = useNavigate();
   const [user, setUser] = useState<{ id?: string | number; name: string; profileimg?: string } | null>(
     () => getStoredUser()
@@ -246,14 +247,28 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
 
   return (
     <header
-      className="flex items-center justify-between gap-4 px-4 py-1 shadow-sm"
+      className="flex items-center justify-between gap-3 px-3 py-2 shadow-sm sm:px-4"
       style={{
         backgroundColor: "var(--toolbar_bg)",
         borderBottom: "1px solid var(--toolbar_border)",
       }}
     >
-      <div className="flex flex-1 items-center gap-3">
-        <div className="relative w-80 max-w-md">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+        {onMenuToggle && (
+          <button
+            type="button"
+            aria-label="Open menu"
+            onClick={onMenuToggle}
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-lg transition lg:hidden ${
+              isDarkMode
+                ? "text-slate-100 hover:bg-slate-800"
+                : "text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
+        <div className="relative hidden w-full max-w-md sm:block">
           <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${
             isDarkMode ? "text-slate-500" : "text-slate-400"
           }`}>
@@ -271,7 +286,7 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         <div className="relative" ref={notificationRef}>
           <button
             type="button"
@@ -295,7 +310,7 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
           </button>
 
           {isNotificationOpen && (
-            <div className={`absolute right-0 z-20 mt-2 w-80 rounded-xl border p-2 shadow-lg ${
+            <div className={`absolute right-0 z-20 mt-2 w-[min(20rem,calc(100vw-1rem))] rounded-xl border p-2 shadow-lg sm:w-80 ${
               isDarkMode ? "border-slate-700 bg-slate-950/95 backdrop-blur" : "border-slate-200 bg-white"
             }`}>
               <div className="mb-2 flex items-center justify-between px-2 py-1">
@@ -436,7 +451,7 @@ export default function ToolBar({ userName = "" }: ToolBarProps) {
                 <User className="h-4 w-4" />
               </span>
             )}
-            <span className="hidden text-sm font-semibold sm:block">{displayName}</span>
+            <span className="hidden max-w-[9rem] truncate text-sm font-semibold sm:block">{displayName}</span>
             <ChevronDown className={`h-4 w-4 ${isDarkMode ? "text-slate-400" : "text-slate-500"}`} />
           </button>
 

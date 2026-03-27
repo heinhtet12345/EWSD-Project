@@ -88,6 +88,7 @@ const StaffAllIdeaPage = () => {
   >(null)
   const [reportReason, setReportReason] = useState('')
   const [reportDetails, setReportDetails] = useState('')
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false)
 
   const itemsPerPage = 5
 
@@ -475,12 +476,14 @@ const StaffAllIdeaPage = () => {
     setReportTarget(null)
     setReportReason('')
     setReportDetails('')
+    setIsSubmittingReport(false)
   }
 
   const handleSubmitReport = async () => {
-    if (!reportTarget) return
+    if (!reportTarget || isSubmittingReport) return
     setError('')
     setActionMessage('')
+    setIsSubmittingReport(true)
     try {
       const endpoint =
         reportTarget.type === 'idea'
@@ -507,6 +510,8 @@ const StaffAllIdeaPage = () => {
       } else {
         setError(`Failed to report ${reportTarget.type === 'idea' ? 'idea' : 'comment'}.`)
       }
+    } finally {
+      setIsSubmittingReport(false)
     }
   }
 
@@ -662,7 +667,7 @@ const StaffAllIdeaPage = () => {
 
   return (
     <section ref={sectionTopRef} className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-black">All Ideas</h1>
           <p className="text-sm text-slate-500">View ideas across departments.</p>
@@ -672,7 +677,7 @@ const StaffAllIdeaPage = () => {
             type="button"
             onClick={handleAddIdeaClick}
             disabled={isCheckingAccount}
-            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-800"
+            className="w-full rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-800 sm:w-auto"
           >
             {isCheckingAccount ? 'Checking...' : 'Add New Idea'}
           </button>
@@ -680,7 +685,7 @@ const StaffAllIdeaPage = () => {
       </div>
 
       {isAdding && (
-        <div className="w-full max-w-2xl space-y-3">
+        <div className="w-full space-y-3 lg:max-w-2xl">
           <AddIdeaSubmissionForm onCancel={() => setIsAdding(false)} onSubmit={() => { setIsAdding(false); fetchIdeas() }} />
         </div>
       )}
@@ -688,7 +693,7 @@ const StaffAllIdeaPage = () => {
       {!isAdding && (
         <div className="space-y-2">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <input
                 type="text"
                 value={searchTerm}
@@ -762,7 +767,7 @@ const StaffAllIdeaPage = () => {
                       key={idea.idea_id}
                       ref={String(highlightIdeaId) === String(idea.idea_id) ? handleHighlightRef : undefined}
                       tabIndex={-1}
-                      className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
+                      className={`rounded-2xl border bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5 ${
                         String(highlightIdeaId) === String(idea.idea_id)
                           ? 'border-amber-300 ring-2 ring-amber-200 bg-amber-50'
                           : 'border-slate-200'
@@ -775,9 +780,9 @@ const StaffAllIdeaPage = () => {
                         const commentOpen = idea.closure_period_comment_open !== false
                         return (
                           <>
-                      <div className="mb-3 flex items-start justify-between gap-3">
-                        <div>
-                          <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
+                      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <h2 className="break-words text-base font-semibold text-slate-900 sm:text-lg">{idea.idea_title}</h2>
                           <p className="mt-1 text-xs text-slate-500">
                             {idea.poster_name ? (
                               <>
@@ -801,8 +806,8 @@ const StaffAllIdeaPage = () => {
                             )} | {new Date(idea.submit_datetime).toLocaleString()}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="max-w-full rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
                             {idea.department_name || `Department #${idea.department}`}
                           </span>
                           {isStaff && idea.user !== currentUserId && (
@@ -920,13 +925,13 @@ const StaffAllIdeaPage = () => {
                                       : 'border-slate-200'
                                   }`}
                                 >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
+                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="min-w-0">
                                       <p className="text-xs text-slate-500">
                                         {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
                                         {new Date(comment.cmt_datetime).toLocaleString()}
                                       </p>
-                                      <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
+                                      <p className="mt-1 break-words text-sm text-slate-700">{comment.cmt_content}</p>
                                     </div>
                                     {isStaff && comment.user_id !== currentUserId && (
                                       <button
@@ -966,7 +971,7 @@ const StaffAllIdeaPage = () => {
                               }`}
                               style={{ resize: 'none' }}
                             />
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                               <label className="flex items-center gap-2 text-xs text-slate-600">
                                 <input
                                   type="checkbox"
@@ -982,7 +987,7 @@ const StaffAllIdeaPage = () => {
                                 type="button"
                                 onClick={() => handleSubmitComment(idea.idea_id)}
                                 disabled={!commentOpen}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white ${
+                                className={`w-full rounded-lg px-3 py-2 text-xs font-semibold text-white sm:w-auto ${
                                   commentOpen
                                     ? 'bg-blue-700 hover:bg-blue-800'
                                     : 'cursor-not-allowed bg-slate-400'
@@ -1031,8 +1036,8 @@ const StaffAllIdeaPage = () => {
         </div>
       )}
       {reportTarget && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-6">
             <h2 className="text-lg font-semibold text-slate-900">
               Report {reportTarget.type === 'idea' ? 'Idea' : 'Comment'}
             </h2>
@@ -1070,17 +1075,18 @@ const StaffAllIdeaPage = () => {
               <button
                 type="button"
                 onClick={resetReportModal}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                disabled={isSubmittingReport}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSubmitReport}
-                disabled={!reportReason}
+                disabled={!reportReason || isSubmittingReport}
                 className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Submit Report
+                {isSubmittingReport ? 'Submitting...' : 'Submit Report'}
               </button>
             </div>
           </div>

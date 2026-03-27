@@ -56,9 +56,17 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
 
 interface SideBarProps {
   role?: Role;
+  isMobile?: boolean;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
-export default function SideBar({ role = "staff" }: SideBarProps) {
+export default function SideBar({
+  role = "staff",
+  isMobile = false,
+  isMobileOpen = false,
+  onCloseMobile,
+}: SideBarProps) {
   const navigate = useNavigate();
   const tabs = ROLE_TABS[role] ?? ROLE_TABS.staff;
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -115,10 +123,27 @@ export default function SideBar({ role = "staff" }: SideBarProps) {
   }, []);
 
   return (
-    <aside className="sticky top-0 h-screen shrink-0">
+    <>
+      {isMobile && isMobileOpen && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[1px] lg:hidden"
+          onClick={onCloseMobile}
+        />
+      )}
+      <aside
+        className={`shrink-0 ${
+          isMobile
+            ? `fixed inset-y-0 left-0 z-50 transition-transform duration-200 lg:hidden ${
+                isMobileOpen ? "translate-x-0" : "-translate-x-full"
+              }`
+            : "sticky top-0 h-screen"
+        }`}
+      >
       <nav
-        className={`h-full flex flex-col shadow-sm text-white transition-[width] duration-200 ${
-          isCollapsed ? "w-16" : "w-[250px]"
+        className={`flex h-full flex-col text-white shadow-sm transition-[width,transform] duration-200 ${
+          isMobile ? "w-[272px]" : isCollapsed ? "w-16" : "w-[250px]"
         }`}
         style={{
           backgroundColor: "var(--sidebar_bg)",
@@ -127,35 +152,46 @@ export default function SideBar({ role = "staff" }: SideBarProps) {
       >
         <div
           className={
-            isCollapsed
+            !isMobile && isCollapsed
               ? "pt-4 pb-2 px-2 flex items-center justify-start overflow-hidden"
               : "p-4 pb-2 flex items-center justify-between gap-3 overflow-hidden"
           }
         >
-          {!isCollapsed && (
+          {(isMobile || !isCollapsed) && (
             <h1 className="text-lg font-semibold whitespace-nowrap -mt-0.5">
               Quality System
             </h1>
           )}
           <button
             type="button"
-            aria-label="Toggle menu"
-            aria-pressed={isCollapsed}
+            aria-label={isMobile ? "Close menu" : "Toggle menu"}
+            aria-pressed={isMobile ? isMobileOpen : isCollapsed}
             className={`p-2 rounded-md hover:bg-white/10 ${
-              isCollapsed ? "ml-0.5" : ""
+              !isMobile && isCollapsed ? "ml-0.5" : ""
             }`}
-            onClick={() => setIsCollapsed((value) => !value)}
+            onClick={() => {
+              if (isMobile) {
+                onCloseMobile?.();
+                return;
+              }
+              setIsCollapsed((value) => !value);
+            }}
           >
             <Menu className="h-6 w-6" />
           </button>
         </div>
-        <ul className={`flex-1 space-y-1 mt-6 ${isCollapsed ? "px-2" : "px-3"}`}>
+        <ul className={`mt-4 flex-1 space-y-1 ${!isMobile && isCollapsed ? "px-2" : "px-3"}`}>
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <li key={tab.to}>
                 <NavLink
                   to={tab.to}
+                  onClick={() => {
+                    if (isMobile) {
+                      onCloseMobile?.();
+                    }
+                  }}
                   className={({ isActive }) =>
                     `group relative flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
                       isActive
@@ -170,13 +206,13 @@ export default function SideBar({ role = "staff" }: SideBarProps) {
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   <span
-                    className={`whitespace-nowrap ${isCollapsed ? "hidden" : "inline"}`}
+                    className={`whitespace-nowrap ${!isMobile && isCollapsed ? "hidden" : "inline"}`}
                   >
                     {tab.label}
                   </span>
                   <span
                     className={`absolute left-full z-20 ml-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg ring-1 ring-white/10 transition ${
-                      isCollapsed ? "group-hover:opacity-100" : "hidden"
+                      !isMobile && isCollapsed ? "group-hover:opacity-100" : "hidden"
                     }`}
                   >
                     {tab.label}
@@ -191,15 +227,15 @@ export default function SideBar({ role = "staff" }: SideBarProps) {
           <button
             type="button"
             className={`group relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white ${
-              isCollapsed ? "justify-center" : ""
+              !isMobile && isCollapsed ? "justify-center" : ""
             }`}
             onClick={handleLogout}
           >
             <LogOut className="h-5 w-5 shrink-0" />
-            <span className={isCollapsed ? "hidden" : "inline"}>Logout</span>
+            <span className={!isMobile && isCollapsed ? "hidden" : "inline"}>Logout</span>
             <span
               className={`absolute left-full z-20 ml-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg ring-1 ring-white/10 transition ${
-                isCollapsed ? "group-hover:opacity-100" : "hidden"
+                !isMobile && isCollapsed ? "group-hover:opacity-100" : "hidden"
               }`}
             >
               Logout
@@ -207,6 +243,7 @@ export default function SideBar({ role = "staff" }: SideBarProps) {
           </button>
         </div>
       </nav>
-    </aside>
+      </aside>
+    </>
   );
 }

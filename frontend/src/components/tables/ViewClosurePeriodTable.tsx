@@ -101,38 +101,38 @@ const ViewClosurePeriodTable = ({
 							value={searchTerm}
 							onChange={(e) => onSearchChange?.(e.target.value)}
 							placeholder="Search academic year..."
-							className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+							className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
 						/>
 					</div>
 					<button
 						type="button"
 						onClick={onDownloadAll}
 						disabled={isDownloading}
-						className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+						className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70 sm:text-xs"
 					>
 						{isDownloading ? 'Preparing...' : 'Download All'}
 					</button>
 				</div>
 			)}
-			<table className="min-w-full divide-y divide-slate-200">
+			<table className="w-full table-fixed divide-y divide-slate-200">
 				<thead className="qa-closure-table-head bg-slate-50">
 					<tr>
-						<th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+						<th className="w-[34%] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 sm:w-[20%] sm:text-xs">
 							Academic Year
 						</th>
-						<th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+						<th className="hidden w-[16%] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 lg:table-cell sm:text-xs">
 							Start Date
 						</th>
-						<th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+						<th className="hidden w-[16%] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 md:table-cell sm:text-xs">
 							Idea Closure Date
 						</th>
-						<th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+						<th className="hidden w-[16%] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 md:table-cell sm:text-xs">
 							Comment Closure Date
 						</th>
-						<th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+						<th className="w-[24%] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 sm:w-[12%] sm:text-xs">
 							Status
 						</th>
-						<th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
+						<th className="w-[42%] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-600 sm:w-[20%] sm:text-xs">
 							Action
 						</th>
 					</tr>
@@ -140,7 +140,7 @@ const ViewClosurePeriodTable = ({
 				<tbody className="qa-closure-table-body divide-y divide-slate-100 bg-white">
 					{periods.length === 0 ? (
 						<tr>
-							<td colSpan={6} className="px-4 py-10">
+							<td colSpan={3} className="px-4 py-10 md:col-span-5 lg:col-span-6">
 								<div className="qa-closure-empty-state flex flex-col items-center justify-center gap-1 text-center opacity-50">
 									<FolderOpen className="h-8 w-8 text-slate-400" />
 									<p className="text-sm font-medium text-slate-700">No closure periods available</p>
@@ -151,13 +151,15 @@ const ViewClosurePeriodTable = ({
 					) : (
 						visiblePeriods.map((period) => (
 							<tr key={period.id}>
-								<td className="px-4 py-3 text-center text-sm text-slate-700">{period.academicYear}</td>
-								<td className="px-4 py-3 text-center text-sm text-slate-700">{formatDate(period.startDate)}</td>
-								<td className="px-4 py-3 text-center text-sm text-slate-700">{formatDate(period.ideaClosureDate)}</td>
-								<td className="px-4 py-3 text-center text-sm text-slate-700">{formatDate(period.commentClosureDate)}</td>
-								<td className="px-4 py-3 text-center text-sm text-slate-700">
+								<td className="px-4 py-3 text-center text-xs text-slate-700 sm:text-sm">
+									<div className="truncate">{period.academicYear}</div>
+								</td>
+								<td className="hidden px-4 py-3 text-center text-xs text-slate-700 lg:table-cell sm:text-sm">{formatDate(period.startDate)}</td>
+								<td className="hidden px-4 py-3 text-center text-xs text-slate-700 md:table-cell sm:text-sm">{formatDate(period.ideaClosureDate)}</td>
+								<td className="hidden px-4 py-3 text-center text-xs text-slate-700 md:table-cell sm:text-sm">{formatDate(period.commentClosureDate)}</td>
+								<td className="px-4 py-3 text-center text-xs text-slate-700 sm:text-sm">
 									<span
-										className={`inline-flex items-center rounded-full px-4 py-1 text-xs font-bold ${
+										className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-bold sm:px-4 sm:text-xs ${
 											period.isActive
 												? 'bg-emerald-100 text-emerald-700'
 												: 'bg-slate-100 text-slate-600'
@@ -166,14 +168,14 @@ const ViewClosurePeriodTable = ({
 										{period.isActive ? 'Open' : 'Closed'}
 									</span>
 								</td>
-								<td className="px-4 py-3 text-center text-sm text-slate-700">
-									<div className="flex items-center justify-center gap-2">
+								<td className="px-4 py-3 text-center text-xs text-slate-700 sm:text-sm">
+									<div className="flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
 										{onEditPeriod && (
 											<button
 												type="button"
 												onClick={() => onEditPeriod(period)}
 												disabled={!period.canExtendIdeaDeadline && !period.canExtendCommentDeadline}
-												className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+												className="whitespace-nowrap rounded-md bg-blue-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 sm:py-1 sm:text-xs"
 											>
 												Extend
 											</button>
@@ -183,7 +185,7 @@ const ViewClosurePeriodTable = ({
 												type="button"
 												onClick={() => onOpenDownloadOptions?.(period)}
 												disabled={downloadingPeriodId === period.id}
-												className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+												className="whitespace-nowrap rounded-md bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70 sm:px-3 sm:py-1 sm:text-xs"
 											>
 												{downloadingPeriodId === period.id ? 'Downloading...' : 'Export Options'}
 											</button>

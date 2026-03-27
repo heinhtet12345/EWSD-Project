@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.contrib.auth import get_user_model
 from django.core.mail import BadHeaderError, send_mail
+from django.db import IntegrityError, transaction
 from api.models import Notification
 from .models import Comment, Vote, Report
 from .serializers import CommentSerializer, VoteSerializer, ReportSerializer
@@ -208,30 +209,43 @@ class ReportCommentView(APIView):
         if reason not in allowed_reasons:
             return Response({"message": "Report reason is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        report, created = Report.objects.get_or_create(
-            reporter=request.user,
-            comment=comment,
-            reason=reason,
-            defaults={
-                "details": details,
-                "idea": comment.idea,
-                "target_type": Report.TargetType.COMMENT,
-            },
-        )
+        try:
+            with transaction.atomic():
+                report, created = Report.objects.get_or_create(
+                    reporter=request.user,
+                    comment=comment,
+                    reason=reason,
+                    defaults={
+                        "details": details,
+                        "idea": comment.idea,
+                        "target_type": Report.TargetType.COMMENT,
+                    },
+                )
+        except IntegrityError:
+            report = Report.objects.filter(
+                reporter=request.user,
+                comment=comment,
+                reason=reason,
+            ).first()
+            created = False
 
-        if not created and details and report.details != details:
+        if report and not created and details and report.details != details:
             report.details = details
             report.save(update_fields=["details"])
 
-        preview = (comment.cmt_content or "").strip()
-        if len(preview) > 80:
-            preview = f"{preview[:77]}..."
-        _notify_managers_about_report(
-            target_label=preview or f"Comment #{comment.cmt_id}",
-            report_reason=reason,
-            reporter_username=request.user.username,
-            idea=comment.idea,
-            target_type="comment",
-        )
+        if created:
+            preview = (comment.cmt_content or "").strip()
+            if len(preview) > 80:
+                preview = f"{preview[:77]}..."
+            _notify_managers_about_report(
+                target_label=preview or f"Comment #{comment.cmt_id}",
+                report_reason=reason,
+                reporter_username=request.user.username,
+                idea=comment.idea,
+                target_type="comment",
+            )
 
-        return Response({"message": "Comment reported successfully."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Comment reported successfully." if created else "You already reported this comment for that reason."},
+            status=status.HTTP_200_OK,
+        )

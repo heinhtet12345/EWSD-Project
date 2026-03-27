@@ -39,6 +39,7 @@ type DashboardResponse = {
     total_user_accounts: number
     total_idea_count: number
     department_count: number
+    anonymous_idea_count: number
   }
   filters: {
     department_options: DepartmentOption[]
@@ -292,10 +293,11 @@ export default function QAManagerDashboard() {
 
       {!isLoading && data && (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Total User Account" value={data.summary.total_user_accounts} />
             <StatCard label="Total Idea Count" value={data.summary.total_idea_count} />
             <StatCard label="Department Count" value={data.summary.department_count} />
+            <StatCard label="Anonymous Idea Count" value={data.summary.anonymous_idea_count} />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)]">

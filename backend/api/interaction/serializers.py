@@ -68,11 +68,18 @@ class ReportSerializer(serializers.ModelSerializer):
         return obj.target_type
 
     def get_target_label(self, obj):
+        target_user = None
+        if obj.comment_id and obj.comment and obj.comment.user:
+            target_user = obj.comment.user
+        elif obj.idea_id and obj.idea and obj.idea.user:
+            target_user = obj.idea.user
+
+        if target_user:
+            full_name = f"{(target_user.first_name or '').strip()} {(target_user.last_name or '').strip()}".strip()
+            return full_name or target_user.username
+
         if obj.comment_id:
-            preview = (obj.comment.cmt_content or "").strip()
-            if len(preview) > 80:
-                preview = f"{preview[:77]}..."
-            return preview or f"Comment #{obj.comment_id}"
+            return f"User #{obj.comment.user_id}" if obj.comment and obj.comment.user_id else f"Comment #{obj.comment_id}"
         if obj.idea_id:
-            return obj.idea.idea_title
+            return f"User #{obj.idea.user_id}" if obj.idea and obj.idea.user_id else f"Idea #{obj.idea_id}"
         return None

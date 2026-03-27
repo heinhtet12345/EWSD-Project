@@ -37,6 +37,10 @@ export default function MainLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const role = getRoleFromPath(pathname);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
+  );
   const [loginNotice, setLoginNotice] = useState<LoginNotice | null>(() => {
     try {
       const raw = sessionStorage.getItem("loginNotice");
@@ -57,6 +61,28 @@ export default function MainLayout() {
       navigate("/", { replace: true });
     }
   }, [navigate, role]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1023px)");
+    const applyViewport = (matches: boolean) => {
+      setIsMobileViewport(matches);
+      if (!matches) {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+
+    applyViewport(mediaQuery.matches);
+
+    const handleChange = (event: MediaQueryListEvent) => applyViewport(event.matches);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (isMobileViewport) {
+      setIsMobileSidebarOpen(false);
+    }
+  }, [pathname, isMobileViewport]);
 
   useEffect(() => {
     if (!role) return;
@@ -81,7 +107,12 @@ export default function MainLayout() {
   if (role) {
     return (
       <div className="relative flex h-screen overflow-hidden">
-        <SideBar role={role} />
+        <SideBar
+          role={role}
+          isMobile={isMobileViewport}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        />
         <div
           className="flex min-w-0 flex-1 flex-col"
           style={{
@@ -89,8 +120,8 @@ export default function MainLayout() {
             color: "var(--dashboard_text)",
           }}
         >
-          <ToolBar />
-          <main className="min-h-0 flex-1 overflow-y-auto p-6">
+          <ToolBar onMenuToggle={isMobileViewport ? () => setIsMobileSidebarOpen((value) => !value) : undefined} />
+          <main className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
             <Outlet />
           </main>
         </div>

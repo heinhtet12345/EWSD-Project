@@ -27,19 +27,19 @@ export default function QAManagerCategoriesTable({ categories, onDelete }: QAMan
 
   return (
     <div className="qa-category-table overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-full divide-y divide-slate-200">
+      <table className="w-full table-fixed divide-y divide-slate-200">
         <thead className="qa-category-table-head bg-slate-50">
           <tr>
-            <th className="w-16 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <th className="hidden w-[12%] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 sm:table-cell sm:text-xs">
               ID
             </th>
-            <th className="w-64 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <th className="w-[48%] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 sm:w-[24%] sm:text-xs">
               Name
             </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <th className="hidden w-[28%] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 md:table-cell sm:text-xs">
               Description
             </th>
-            <th className="w-24 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <th className="w-[52%] px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-600 sm:w-[16%] sm:text-xs">
               Action
             </th>
           </tr>
@@ -47,7 +47,7 @@ export default function QAManagerCategoriesTable({ categories, onDelete }: QAMan
         <tbody className="qa-category-table-body divide-y divide-slate-100 bg-white">
           {currentCategories.length === 0 ? (
             <tr>
-              <td colSpan={4} className="px-4 py-10">
+              <td colSpan={2} className="px-4 py-10 md:col-span-3 sm:col-span-4">
                 <div className="qa-category-empty-state flex flex-col items-center justify-center gap-1 text-center opacity-50">
                   <FolderOpen className="h-8 w-8 text-slate-400" />
                   <p className="text-sm font-medium text-slate-700">No categories available</p>
@@ -58,14 +58,18 @@ export default function QAManagerCategoriesTable({ categories, onDelete }: QAMan
           ) : (
             currentCategories.map((category) => (
               <tr key={category.id}>
-                <td className="px-4 py-3 text-sm text-slate-700">{category.id}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">{category.name}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">{category.description}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">
+                <td className="hidden px-4 py-3 text-xs text-slate-700 sm:table-cell sm:text-sm">{category.id}</td>
+                <td className="px-4 py-3 text-xs text-slate-700 sm:text-sm">
+                  <div className="truncate">{category.name}</div>
+                </td>
+                <td className="hidden px-4 py-3 text-xs text-slate-700 md:table-cell sm:text-sm">
+                  <div className="truncate">{category.description}</div>
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-700 sm:text-sm">
                   <button
                     type="button"
                     onClick={() => onDelete?.(category.id)}
-                    className="font-medium text-rose-600 hover:text-rose-700"
+                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-rose-700 sm:text-xs"
                   >
                     Delete
                   </button>
