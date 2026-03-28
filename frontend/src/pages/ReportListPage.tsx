@@ -192,7 +192,7 @@ export default function ReportListPage() {
                 <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[16%]">Reason</th>
                 <th className="hidden w-[19%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 xl:table-cell">Details</th>
                 <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[20%]">Status</th>
-                <th className="w-[22%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[18%]">Date</th>
+                <th className="w-[28%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[24%]">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
