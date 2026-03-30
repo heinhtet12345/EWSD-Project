@@ -2,6 +2,17 @@ import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { ChevronLeft, ChevronRight, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
 import AddIdeaSubmissionForm from '../forms/AddIdeaSubmissionForm'
+import UserAvatar from '../components/common/UserAvatar'
+
+const formatDisplayTime = (value: string) =>
+  new Date(value).toLocaleString([], {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
 
 type Idea = {
   idea_id: number
@@ -17,6 +28,8 @@ type Idea = {
   closure_period_academic_year?: string
   closure_period_idea_open?: boolean
   closure_period_comment_open?: boolean
+  poster_name?: string | null
+  poster_profile_image?: string | null
   upvote_count?: number
   downvote_count?: number
   comment_count?: number
@@ -512,14 +525,23 @@ const StaffMyIdeasPage = () => {
                     const commentOpen = idea.closure_period_comment_open !== false
                     return (
                       <article key={idea.idea_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-                        <div className="mb-3 flex items-start justify-between gap-3">
-                          <div>
-                            <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
-                            <p className="mt-1 text-xs text-slate-500">{new Date(idea.submit_datetime).toLocaleString()}</p>
+                        <div className="mb-3 flex gap-3">
+                          <UserAvatar
+                            imageUrl={idea.poster_profile_image}
+                            name={idea.poster_name || 'You'}
+                            className="mt-0.5 h-11 w-11 shrink-0"
+                          />
+                          <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {idea.poster_name || 'You'} | {formatDisplayTime(idea.submit_datetime)}
+                              </p>
+                            </div>
+                            <span className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                              {idea.department_name || `Department #${idea.department}`}
+                            </span>
                           </div>
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
-                            {idea.department_name || `Department #${idea.department}`}
-                          </span>
                         </div>
 
                         {idea.category_ids.length > 0 && (
@@ -610,7 +632,7 @@ const StaffMyIdeasPage = () => {
                                   <div key={comment.cmt_id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                                     <p className="text-xs text-slate-500">
                                       {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
-                                      {new Date(comment.cmt_datetime).toLocaleString()}
+                                      {formatDisplayTime(comment.cmt_datetime)}
                                     </p>
                                     <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
                                   </div>

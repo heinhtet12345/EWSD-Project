@@ -12,6 +12,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { useNavigate } from 'react-router-dom'
 import useThemeMode from '../hooks/useThemeMode'
+import DashboardIdeaListSection from '../components/ideas/DashboardIdeaListSection'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
@@ -94,44 +95,6 @@ const StatCard = ({ label, value }: { label: string; value: number }) => (
   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <p className="text-sm font-medium text-slate-500">{label}</p>
     <p className="mt-3 text-3xl font-semibold text-slate-900">{value}</p>
-  </div>
-)
-
-const IdeaListCard = ({
-  title,
-  items,
-  emptyLabel,
-  onOpen,
-}: {
-  title: string
-  items: IdeaCardItem[]
-  emptyLabel: string
-  onOpen: (ideaId: number) => void
-}) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-    <div className="mt-4 space-y-3">
-      {items.length === 0 ? (
-        <p className="text-sm text-slate-500">{emptyLabel}</p>
-      ) : (
-        items.map((item) => (
-          <button
-            key={`${title}-${item.idea_id}`}
-            type="button"
-            onClick={() => onOpen(item.idea_id)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
-          >
-            <p className="text-sm font-semibold text-slate-900">{item.idea_title}</p>
-            <p className="mt-1 text-xs text-slate-500">
-              {item.author_name} | {formatDateTime(item.submit_datetime)}
-            </p>
-            <p className="mt-2 text-xs text-slate-600">
-              Upvotes: {item.upvote_count} | Comments: {item.comment_count}
-            </p>
-          </button>
-        ))
-      )}
-    </div>
   </div>
 )
 
@@ -271,7 +234,7 @@ export default function QACoordDashboard() {
   )
 
   const openIdea = (ideaId: number) => {
-    navigate(`/qa_coordinator/my-department?highlightIdeaId=${ideaId}`)
+    navigate(`/qa_coordinator/all-ideas?highlightIdeaId=${ideaId}`)
   }
 
   return (
@@ -357,26 +320,29 @@ export default function QACoordDashboard() {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <IdeaListCard
+            <DashboardIdeaListSection
               title="Latest Department Ideas"
               items={data.lists.latest_department_ideas}
               emptyLabel="No department ideas found."
               onOpen={openIdea}
+              metaLabel={(item) => (item.anonymous_status ? 'Posted anonymously' : item.author_name || null)}
             />
-            <IdeaListCard
+            <DashboardIdeaListSection
               title="Popular Department Ideas"
               items={data.lists.popular_department_ideas}
               emptyLabel="No popular ideas to show yet."
               onOpen={openIdea}
+              metaLabel={(item) => (item.anonymous_status ? 'Posted anonymously' : item.author_name || null)}
             />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <IdeaListCard
+            <DashboardIdeaListSection
               title="Ideas Without Comments"
               items={data.lists.ideas_without_comments}
               emptyLabel="Every idea has comments right now."
               onOpen={openIdea}
+              metaLabel={(item) => (item.anonymous_status ? 'Posted anonymously' : item.author_name || null)}
             />
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

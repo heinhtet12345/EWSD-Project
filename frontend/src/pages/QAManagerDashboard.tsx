@@ -12,6 +12,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { useNavigate } from 'react-router-dom'
 import useThemeMode from '../hooks/useThemeMode'
+import DashboardIdeaListSection from '../components/ideas/DashboardIdeaListSection'
 
 type DepartmentOption = {
   department_id: number
@@ -79,50 +80,10 @@ const donutPalette = ['#0f766e', '#2563eb', '#d97706', '#16a34a', '#db2777', '#7
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
-const formatRelativeDate = (value: string) => new Date(value).toLocaleString()
-
 const StatCard = ({ label, value }: { label: string; value: number }) => (
   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <p className="text-sm font-medium text-slate-500">{label}</p>
     <p className="mt-3 text-3xl font-semibold text-slate-900">{value}</p>
-  </div>
-)
-
-const IdeaListCard = ({
-  title,
-  items,
-  onOpenIdea,
-}: {
-  title: string
-  items: IdeaCardItem[]
-  onOpenIdea: (ideaId: number) => void
-}) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-    <div className="mt-4 space-y-3">
-      {items.length === 0 ? (
-        <p className="text-sm text-slate-500">No ideas found.</p>
-      ) : (
-        items.map((item) => (
-          <button
-            key={`${title}-${item.idea_id}`}
-            type="button"
-            onClick={() => onOpenIdea(item.idea_id)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
-          >
-            <p className="text-sm font-semibold text-slate-900">{item.idea_title}</p>
-            <p className="mt-1 text-xs text-slate-500">
-              {item.department_name} | {formatRelativeDate(item.submit_datetime)}
-            </p>
-            {(typeof item.upvote_count === 'number' || typeof item.comment_count === 'number') && (
-              <p className="mt-2 text-xs text-slate-600">
-                Upvotes: {item.upvote_count ?? 0} | Comments: {item.comment_count ?? 0}
-              </p>
-            )}
-          </button>
-        ))
-      )}
-    </div>
   </div>
 )
 
@@ -324,13 +285,34 @@ export default function QAManagerDashboard() {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <IdeaListCard title="Latest Ideas By Department" items={data.ideas.latest} onOpenIdea={openIdea} />
-            <IdeaListCard title="Popular Ideas By Department" items={data.ideas.popular} onOpenIdea={openIdea} />
+            <DashboardIdeaListSection
+              title="Latest Ideas By Department"
+              emptyLabel="No ideas found."
+              items={data.ideas.latest}
+              onOpen={openIdea}
+            />
+            <DashboardIdeaListSection
+              title="Popular Ideas By Department"
+              emptyLabel="No ideas found."
+              items={data.ideas.popular}
+              onOpen={openIdea}
+            />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <IdeaListCard title="Ideas Without Comment" items={data.exception_reports.without_comments} onOpenIdea={openIdea} />
-            <IdeaListCard title="Anonymous Ideas" items={data.exception_reports.anonymous} onOpenIdea={openIdea} />
+            <DashboardIdeaListSection
+              title="Ideas Without Comment"
+              emptyLabel="No ideas found."
+              items={data.exception_reports.without_comments}
+              onOpen={openIdea}
+            />
+            <DashboardIdeaListSection
+              title="Anonymous Ideas"
+              emptyLabel="No ideas found."
+              items={data.exception_reports.anonymous}
+              onOpen={openIdea}
+              metaLabel={() => 'Posted anonymously'}
+            />
           </div>
         </>
       )}

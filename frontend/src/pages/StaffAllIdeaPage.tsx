@@ -21,6 +21,7 @@ type Idea = {
   closure_period_comment_open?: boolean
   poster_username?: string | null
   poster_name?: string | null
+  poster_profile_image?: string | null
   upvote_count?: number
   downvote_count?: number
   comment_count?: number

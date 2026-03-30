@@ -31,6 +31,7 @@ class IdeaListSerializer(serializers.ModelSerializer):
     documents = DocumentSerializer(many=True, read_only=True)
     poster_username = serializers.SerializerMethodField()
     poster_name = serializers.SerializerMethodField()
+    poster_profile_image = serializers.SerializerMethodField()
     closure_period_idea_open = serializers.SerializerMethodField()
     closure_period_comment_open = serializers.SerializerMethodField()
     upvote_count = serializers.SerializerMethodField()
@@ -42,7 +43,7 @@ class IdeaListSerializer(serializers.ModelSerializer):
         model = Idea
         fields = [
             'idea_id', 'idea_title', 'idea_content', 
-            'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'department_name', 'closurePeriod', 'closure_period_academic_year', 'documents', 'poster_username', 'poster_name',
+            'anonymous_status', 'category_ids', 'terms_accepted', 'submit_datetime', 'user', 'department', 'department_name', 'closurePeriod', 'closure_period_academic_year', 'documents', 'poster_username', 'poster_name', 'poster_profile_image',
             'upvote_count', 'downvote_count', 'comment_count', 'user_vote',
             'closure_period_idea_open', 'closure_period_comment_open'
         ]
@@ -69,6 +70,17 @@ class IdeaListSerializer(serializers.ModelSerializer):
         last_name = (obj.user.last_name or '').strip()
         full_name = f"{first_name} {last_name}".strip()
         return full_name or obj.user.username
+
+    def get_poster_profile_image(self, obj):
+        if not self._can_view_poster_identity(obj):
+            return None
+        profile_image = getattr(obj.user, 'profile_image', None)
+        if not profile_image:
+            return None
+        try:
+            return profile_image.url
+        except Exception:
+            return None
 
     def get_upvote_count(self, obj):
         return getattr(obj, 'upvote_count', obj.votes.filter(vote_type='UP').count())

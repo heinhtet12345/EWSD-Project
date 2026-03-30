@@ -8,6 +8,17 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react'
+import UserAvatar from '../common/UserAvatar'
+
+const formatDisplayTime = (value: string) =>
+  new Date(value).toLocaleString([], {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
 
 type Idea = {
   idea_id: number
@@ -22,6 +33,7 @@ type Idea = {
   closurePeriod: number
   closure_period_comment_open?: boolean
   poster_name?: string | null
+  poster_profile_image?: string | null
   upvote_count?: number
   downvote_count?: number
   comment_count?: number
@@ -166,48 +178,55 @@ export default function ViewIdeaTable({
                     : 'border-slate-200'
                 }`}
               >
-                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <h2 className="break-words text-base font-semibold text-slate-900 sm:text-lg">
-                      {idea.idea_title}
-                    </h2>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {idea.poster_name ? (
-                        <>
-                          Posted by{' '}
-                          {canModerateView ? (
-                            <button
-                              type="button"
-                              onClick={() => onOpenUserRow(idea.user)}
-                              className="font-semibold text-blue-700 hover:text-blue-800 hover:underline"
-                            >
-                              {idea.poster_name}
-                            </button>
-                          ) : (
-                            idea.poster_name
-                          )}
-                        </>
-                      ) : idea.anonymous_status ? (
-                        'Posted anonymously'
-                      ) : (
-                        `Posted by User #${idea.user}`
-                      )}{' '}
-                      | {new Date(idea.submit_datetime).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="max-w-full rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
-                      {idea.department_name || `Department #${idea.department}`}
-                    </span>
-                    {isStaff && idea.user !== currentUserId && (
-                      <button
-                        type="button"
-                        onClick={() => onReportIdea(idea.idea_id)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
-                      >
-                        <Flag className="h-4 w-4" /> Report
-                      </button>
-                    )}
+                <div className="mb-3 flex gap-3">
+                  <UserAvatar
+                    imageUrl={idea.poster_profile_image}
+                    name={idea.poster_name || (idea.anonymous_status ? 'Anonymous' : `User ${idea.user}`)}
+                    className="mt-0.5 h-11 w-11 shrink-0"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <h2 className="break-words text-base font-semibold text-slate-900 sm:text-lg">
+                        {idea.idea_title}
+                      </h2>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {idea.poster_name ? (
+                          <>
+                            Posted by{' '}
+                            {canModerateView ? (
+                              <button
+                                type="button"
+                                onClick={() => onOpenUserRow(idea.user)}
+                                className="font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                              >
+                                {idea.poster_name}
+                              </button>
+                            ) : (
+                              idea.poster_name
+                            )}
+                          </>
+                        ) : idea.anonymous_status ? (
+                          'Posted anonymously'
+                        ) : (
+                          `Posted by User #${idea.user}`
+                        )}{' '}
+                        | {formatDisplayTime(idea.submit_datetime)}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="max-w-full shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                        {idea.department_name || `Department #${idea.department}`}
+                      </span>
+                      {isStaff && idea.user !== currentUserId && (
+                        <button
+                          type="button"
+                          onClick={() => onReportIdea(idea.idea_id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                        >
+                          <Flag className="h-4 w-4" /> Report
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -324,7 +343,7 @@ export default function ViewIdeaTable({
                               <div className="min-w-0">
                                 <p className="text-xs text-slate-500">
                                   {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
-                                  {new Date(comment.cmt_datetime).toLocaleString()}
+                                  {formatDisplayTime(comment.cmt_datetime)}
                                 </p>
                                 <p className="mt-1 break-words text-sm text-slate-700">
                                   {comment.cmt_content}

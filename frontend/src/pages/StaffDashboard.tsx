@@ -12,6 +12,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { useNavigate } from 'react-router-dom'
 import useThemeMode from '../hooks/useThemeMode'
+import DashboardIdeaListSection from '../components/ideas/DashboardIdeaListSection'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
@@ -70,50 +71,10 @@ const formatDate = (value?: string | null) => {
   return new Date(value).toLocaleDateString()
 }
 
-const formatDateTime = (value: string) => new Date(value).toLocaleString()
-
 const StatCard = ({ label, value }: { label: string; value: number }) => (
   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <p className="text-sm font-medium text-slate-500">{label}</p>
     <p className="mt-3 text-3xl font-semibold text-slate-900">{value}</p>
-  </div>
-)
-
-const IdeaListCard = ({
-  title,
-  emptyLabel,
-  items,
-  onOpen,
-}: {
-  title: string
-  emptyLabel: string
-  items: IdeaCardItem[]
-  onOpen: (ideaId: number) => void
-}) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-    <div className="mt-4 space-y-3">
-      {items.length === 0 ? (
-        <p className="text-sm text-slate-500">{emptyLabel}</p>
-      ) : (
-        items.map((item) => (
-          <button
-            key={`${title}-${item.idea_id}`}
-            type="button"
-            onClick={() => onOpen(item.idea_id)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
-          >
-            <p className="text-sm font-semibold text-slate-900">{item.idea_title}</p>
-            <p className="mt-1 text-xs text-slate-500">
-              {item.department_name} | {formatDateTime(item.submit_datetime)}
-            </p>
-            <p className="mt-2 text-xs text-slate-600">
-              Upvotes: {item.upvote_count} | Comments: {item.comment_count}
-            </p>
-          </button>
-        ))
-      )}
-    </div>
   </div>
 )
 
@@ -296,25 +257,28 @@ export default function StaffDashboard() {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <IdeaListCard
+            <DashboardIdeaListSection
               title="My Latest Ideas"
               emptyLabel="You have not submitted any ideas yet."
               items={data.lists.recent_my_ideas}
               onOpen={openIdea}
+              metaLabel={(item) => (item.anonymous_status ? 'Posted anonymously' : item.author_name || 'Your idea')}
             />
-            <IdeaListCard
+            <DashboardIdeaListSection
               title="Popular Ideas In My Department"
               emptyLabel="No department ideas available yet."
               items={data.lists.popular_department_ideas}
               onOpen={openIdea}
+              metaLabel={(item) => (item.anonymous_status ? 'Posted anonymously' : item.author_name || null)}
             />
           </div>
 
-          <IdeaListCard
+          <DashboardIdeaListSection
             title="Ideas Still Waiting For Comments"
             emptyLabel="Nothing is waiting for comments right now."
             items={data.lists.ideas_needing_comments}
             onOpen={openIdea}
+            metaLabel={(item) => (item.anonymous_status ? 'Posted anonymously' : item.author_name || null)}
           />
         </>
       )}
