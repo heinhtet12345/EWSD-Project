@@ -76,7 +76,7 @@ def _serialize_idea_card(idea):
         "idea_title": idea.idea_title,
         "department_name": getattr(idea.department, "dept_name", ""),
         "submit_datetime": idea.submit_datetime,
-        "comment_count": idea.comments.count(),
+        "comment_count": idea.comments.filter(user__active_status=True).count(),
         "upvote_count": idea.votes.filter(vote_type=Vote.VoteType.UPVOTE).count(),
         "anonymous_status": idea.anonymous_status,
         "author_name": _display_name(getattr(idea, "user", None)),
@@ -102,6 +102,14 @@ def _active_closure(today):
         .order_by("comment_closure_date")
         .first()
     )
+
+
+def _visible_ideas_queryset():
+    return Idea.objects.filter(user__active_status=True)
+
+
+def _visible_comments_queryset():
+    return Comment.objects.filter(user__active_status=True, idea__user__active_status=True)
 
 
 class TrackActivityView(APIView):
@@ -468,13 +476,13 @@ class StaffDashboardView(APIView):
         active_closure = _active_closure(today)
 
         user_ideas_qs = (
-            Idea.objects.filter(user=user)
+            _visible_ideas_queryset().filter(user=user)
             .select_related("department", "closurePeriod", "user")
             .prefetch_related("comments", "votes")
             .order_by("-submit_datetime")
         )
         department_ideas_qs = (
-            Idea.objects.filter(department=user.department)
+            _visible_ideas_queryset().filter(department=user.department)
             .select_related("department", "closurePeriod", "user")
             .prefetch_related("comments", "votes")
             .order_by("-submit_datetime")
@@ -486,7 +494,7 @@ class StaffDashboardView(APIView):
             idea for idea in department_ideas if active_closure and idea.closurePeriod_id == active_closure.id
         ]
 
-        comment_count = Comment.objects.filter(user=user).count()
+        comment_count = _visible_comments_queryset().filter(user=user).count()
         vote_count = Vote.objects.filter(user=user).count()
         department_contributors = len({idea.user_id for idea in department_ideas})
 
@@ -509,7 +517,7 @@ class StaffDashboardView(APIView):
             active_department_ideas or department_ideas,
             key=lambda idea: (
                 idea.votes.filter(vote_type=Vote.VoteType.UPVOTE).count(),
-                idea.comments.count(),
+                idea.comments.filter(user__active_status=True).count(),
                 idea.submit_datetime,
             ),
             reverse=True,
@@ -545,7 +553,7 @@ class StaffDashboardView(APIView):
                     "ideas_needing_comments": [
                         _serialize_idea_card(idea)
                         for idea in (active_department_ideas or department_ideas)
-                        if idea.comments.count() == 0
+                        if idea.comments.filter(user__active_status=True).count() == 0
                     ][:5],
                 },
             },
@@ -566,7 +574,7 @@ class QACoordinatorDashboardView(APIView):
         active_closure = _active_closure(today)
 
         department_ideas_qs = (
-            Idea.objects.filter(department=department)
+            _visible_ideas_queryset().filter(department=department)
             .select_related("department", "closurePeriod", "user")
             .prefetch_related("comments", "votes")
             .order_by("-submit_datetime")
@@ -582,7 +590,7 @@ class QACoordinatorDashboardView(APIView):
         )
         staff_ids = list(staff_queryset.values_list("user_id", flat=True))
 
-        department_comment_count = Comment.objects.filter(idea__department=department).count()
+        department_comment_count = _visible_comments_queryset().filter(idea__department=department).count()
         department_vote_count = Vote.objects.filter(idea__department=department).count()
         in_review_reports = Report.objects.filter(
             Q(idea__department=department) | Q(comment__idea__department=department),
@@ -595,7 +603,7 @@ class QACoordinatorDashboardView(APIView):
         contributor_rows = []
         for staff in staff_queryset:
             idea_total = sum(1 for idea in department_ideas if idea.user_id == staff.user_id)
-            comment_total = Comment.objects.filter(user=staff, idea__department=department).count()
+            comment_total = _visible_comments_queryset().filter(user=staff, idea__department=department).count()
             vote_total = Vote.objects.filter(user=staff, idea__department=department).count()
             contributor_rows.append(
                 {
@@ -624,7 +632,7 @@ class QACoordinatorDashboardView(APIView):
             active_department_ideas or department_ideas,
             key=lambda idea: (
                 idea.votes.filter(vote_type=Vote.VoteType.UPVOTE).count(),
-                idea.comments.count(),
+                idea.comments.filter(user__active_status=True).count(),
                 idea.submit_datetime,
             ),
             reverse=True,
@@ -664,7 +672,9 @@ class QACoordinatorDashboardView(APIView):
                     "latest_department_ideas": [_serialize_idea_card(idea) for idea in department_ideas[:5]],
                     "popular_department_ideas": [_serialize_idea_card(idea) for idea in popular_department_ideas],
                     "ideas_without_comments": [
-                        _serialize_idea_card(idea) for idea in department_ideas if idea.comments.count() == 0
+                        _serialize_idea_card(idea)
+                        for idea in department_ideas
+                        if idea.comments.filter(user__active_status=True).count() == 0
                     ][:5],
                     "reported_items": [_serialize_report_row(report) for report in all_reports[:5]],
                 },
@@ -687,7 +697,8 @@ class QAManagerDashboardView(APIView):
 
         today = timezone.now().date()
         ideas = (
-            Idea.objects.select_related("department", "closurePeriod", "user")
+            _visible_ideas_queryset()
+            .select_related("department", "closurePeriod", "user")
             .prefetch_related("comments", "votes")
             .order_by("-submit_datetime")
         )
@@ -734,7 +745,7 @@ class QAManagerDashboardView(APIView):
                 "idea_title": idea.idea_title,
                 "department_name": getattr(idea.department, "dept_name", ""),
                 "submit_datetime": idea.submit_datetime,
-                "comment_count": idea.comments.count(),
+                "comment_count": idea.comments.filter(user__active_status=True).count(),
                 "upvote_count": idea.votes.filter(vote_type=Vote.VoteType.UPVOTE).count(),
             }
             for idea in idea_list[:5]
@@ -744,7 +755,7 @@ class QAManagerDashboardView(APIView):
             idea_list,
             key=lambda idea: (
                 idea.votes.filter(vote_type=Vote.VoteType.UPVOTE).count(),
-                idea.comments.count(),
+                idea.comments.filter(user__active_status=True).count(),
                 idea.submit_datetime,
             ),
             reverse=True,
@@ -755,7 +766,7 @@ class QAManagerDashboardView(APIView):
                 "idea_title": idea.idea_title,
                 "department_name": getattr(idea.department, "dept_name", ""),
                 "submit_datetime": idea.submit_datetime,
-                "comment_count": idea.comments.count(),
+                "comment_count": idea.comments.filter(user__active_status=True).count(),
                 "upvote_count": idea.votes.filter(vote_type=Vote.VoteType.UPVOTE).count(),
             }
             for idea in popular_ideas
@@ -769,7 +780,7 @@ class QAManagerDashboardView(APIView):
                 "submit_datetime": idea.submit_datetime,
             }
             for idea in idea_list
-            if idea.comments.count() == 0
+            if idea.comments.filter(user__active_status=True).count() == 0
         ][:5]
 
         anonymous_ideas = [

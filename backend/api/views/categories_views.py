@@ -66,6 +66,11 @@ class DeleteCategoryView(APIView):
             )
 
         category = get_object_or_404(Category, category_id=category_id)
+        if category.ideas.exists():
+            return Response(
+                {"message": "Category cannot be deleted because it is already used by one or more ideas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         category.delete() 
         return Response(
             {"message": "Category deleted successfully"},

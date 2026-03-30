@@ -200,7 +200,7 @@ class ListIdeasView(APIView):
             .annotate(
                 upvote_count=Count('votes', filter=Q(votes__vote_type='UP'), distinct=True),
                 downvote_count=Count('votes', filter=Q(votes__vote_type='DOWN'), distinct=True),
-                comment_count=Count('comments', distinct=True),
+                comment_count=Count('comments', filter=Q(comments__user__active_status=True), distinct=True),
             )
             .distinct()
             .order_by('-submit_datetime')
@@ -289,8 +289,10 @@ class IdeaDetailView(APIView):
     def get(self, request, idea_id):
         try:
             idea = Idea.objects.select_related('user',      'department', 'closurePeriod') \
-                           .prefetch_related('comments', 'votes', 'documents', 'categories') \
+                           .prefetch_related('votes', 'documents', 'categories') \
                            .get(pk=idea_id)
+            if not bool(getattr(idea.user, "active_status", True)):
+                return Response({"error": "Idea not found"}, status=status.HTTP_404_NOT_FOUND)
             serializer = IdeaDetailSerializer(idea)
             return Response(serializer.data)
         except Idea.DoesNotExist:

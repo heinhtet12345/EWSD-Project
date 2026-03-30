@@ -77,7 +77,7 @@ class IdeaListSerializer(serializers.ModelSerializer):
         return getattr(obj, 'downvote_count', obj.votes.filter(vote_type='DOWN').count())
 
     def get_comment_count(self, obj):
-        return getattr(obj, 'comment_count', obj.comments.count())
+        return getattr(obj, 'comment_count', obj.comments.filter(user__active_status=True).count())
 
     def get_user_vote(self, obj):
         request = self.context.get('request')
@@ -93,7 +93,7 @@ class IdeaListSerializer(serializers.ModelSerializer):
         return bool(getattr(obj.closurePeriod, "is_comment_open", True))
 
 class IdeaDetailSerializer(serializers.ModelSerializer):
-    comments = CommentSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     documents = DocumentSerializer(many=True, read_only=True)
     
     user_name = serializers.ReadOnlyField(source='user.username')
@@ -124,4 +124,8 @@ class IdeaDetailSerializer(serializers.ModelSerializer):
         return obj.votes.filter(vote_type='DOWN').count()
 
     def get_comment_count(self, obj):
-        return obj.comments.count()
+        return obj.comments.filter(user__active_status=True).count()
+
+    def get_comments(self, obj):
+        comments = obj.comments.filter(user__active_status=True).select_related("user").order_by("cmt_datetime")
+        return CommentSerializer(comments, many=True).data
