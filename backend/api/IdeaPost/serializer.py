@@ -24,6 +24,11 @@ class IdeaCreateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['idea_id', 'submit_datetime', 'user', 'department', 'closurePeriod', 'documents']
 
+    def validate_terms_accepted(self, value):
+        if value is not True:
+            raise serializers.ValidationError("You must accept the terms and conditions before submitting an idea.")
+        return value
+
 class IdeaListSerializer(serializers.ModelSerializer):
     category_ids = serializers.SerializerMethodField()
     department_name = serializers.CharField(source='department.dept_name', read_only=True)

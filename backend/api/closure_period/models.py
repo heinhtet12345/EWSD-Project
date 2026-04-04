@@ -10,6 +10,9 @@ class ClosurePeriod(models.Model):
     is_active = models.BooleanField(default=True)
     academic_year = models.CharField(max_length=20)
 
+    class Meta:
+        db_table = "ClosurePeriod"
+
     def clean(self):
         # Ensure comment closure is not before idea closure
         if self.comment_closure_date <= self.idea_closure_date:

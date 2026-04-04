@@ -15,6 +15,9 @@ class Idea(models.Model):
     
     categories = models.ManyToManyField('api.Category', related_name='ideas', db_table='Idea_Category')
 
+    class Meta:
+        db_table = "Idea"
+
     def __str__(self):
         return self.idea_title
 
@@ -24,3 +27,6 @@ class UploadedDocument(models.Model):
     file_name = models.TextField()
     upload_time = models.DateTimeField(auto_now_add=True)
     idea = models.ForeignKey(Idea, on_delete=models.CASCADE, related_name='documents')
+
+    class Meta:
+        db_table = "UploadedDocument"

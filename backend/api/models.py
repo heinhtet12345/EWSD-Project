@@ -7,12 +7,18 @@ class Department(models.Model):
     dept_id = models.AutoField(primary_key=True)
     dept_name = models.CharField(max_length=100, unique=True)
 
+    class Meta:
+        db_table = "Department"
+
     def __str__(self):
         return self.dept_name
 
 class Role(models.Model):
     role_id = models.AutoField(primary_key=True)
     role_name = models.CharField(max_length=30, unique=True)
+
+    class Meta:
+        db_table = "Role"
 
     def __str__(self):
         return self.role_name
@@ -49,6 +55,9 @@ class User(AbstractUser):
         blank=True
     )
 
+    class Meta:
+        db_table = "User"
+
     def __str__(self):
         return self.username
 
@@ -56,6 +65,9 @@ class Category(models.Model):
     category_id = models.AutoField(primary_key=True)
     category_name = models.CharField(max_length=30, unique=True)
     category_desc = models.CharField(max_length=256,)
+
+    class Meta:
+        db_table = "Category"
 
     def __str__(self):
         return self.category_name
@@ -82,6 +94,7 @@ class Notification(models.Model):
     )
 
     class Meta:
+        db_table = "Notification"
         ordering = ['-created_at']
 
     def __str__(self):

@@ -20,6 +20,7 @@ class ActivityLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        db_table = "ActivityLog"
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["created_at", "event_type"]),

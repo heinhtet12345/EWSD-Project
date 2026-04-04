@@ -24,6 +24,9 @@ class Comment(models.Model):
         related_name='comments'
     )
 
+    class Meta:
+        db_table = "Comment"
+
     def __str__(self):
         return f"Comment {self.cmt_id} on Idea {self.idea.idea_id}"
 
@@ -55,6 +58,7 @@ class Vote(models.Model):
     )
 
     class Meta:
+        db_table = "Vote"
         unique_together = ('user', 'idea')
 
     def __str__(self):
@@ -115,6 +119,7 @@ class Report(models.Model):
     )
 
     class Meta:
+        db_table = "Report"
         constraints = [
             models.UniqueConstraint(
                 fields=["reporter", "idea", "reason"],
