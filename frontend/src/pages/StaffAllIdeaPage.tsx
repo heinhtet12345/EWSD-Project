@@ -686,7 +686,7 @@ const StaffAllIdeaPage = () => {
       </div>
 
       {isAdding && (
-        <div className="w-full space-y-3 lg:max-w-2xl">
+        <div className="w-full space-y-3">
           <AddIdeaSubmissionForm onCancel={() => setIsAdding(false)} onSubmit={() => { setIsAdding(false); fetchIdeas() }} />
         </div>
       )}

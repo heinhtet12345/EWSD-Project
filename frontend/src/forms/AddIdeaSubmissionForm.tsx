@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { MultiSelect } from 'primereact/multiselect'
-import { ArrowLeft, X, Tag, Layers } from 'lucide-react'
+import { ArrowLeft, Check, EyeOff, FileText, Layers, Tag, User, X } from 'lucide-react'
 import axios from 'axios'
+import Modal from '../components/common/Modal'
+import { IDEA_TERMS_SECTIONS, IDEA_TERMS_TITLE } from '../content/ideaTermsAndConditions'
 
 type Category = {
   id: number
@@ -26,7 +28,10 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [fileName, setFileName] = useState('')
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false)
+  const [hasReachedTermsEnd, setHasReachedTermsEnd] = useState(false)
   const isSubmittingRef = useRef(false)
+  const termsContentRef = useRef<HTMLDivElement | null>(null)
 
   const getAuthConfig = () => {
     try {
@@ -80,6 +85,20 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
     const selectedFile = e.target.files ? e.target.files[0] : null
     setFile(selectedFile)
     setFileName(selectedFile ? selectedFile.name : '')
+  }
+
+  const handleOpenTerms = () => {
+    setHasReachedTermsEnd(false)
+    setIsTermsModalOpen(true)
+  }
+
+  const handleTermsScroll = () => {
+    const element = termsContentRef.current
+    if (!element || hasReachedTermsEnd) return
+    const remaining = element.scrollHeight - element.scrollTop - element.clientHeight
+    if (remaining <= 12) {
+      setHasReachedTermsEnd(true)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,7 +185,8 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
   }
 
   return (
-    <div className="qa-add-idea-form w-full max-w-2xl rounded-2xl bg-white p-6 shadow-lg border border-slate-200">
+    <>
+    <div className="qa-add-idea-form w-full rounded-2xl bg-white p-6 shadow-lg border border-slate-200">
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Submit New Idea</h2>
@@ -350,36 +370,95 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
 
         {/* Checkbox Options */}
         <div className="space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200">
-          <div className="flex items-start gap-3 group hover:bg-white p-2 rounded-lg transition-colors">
-            <input
-              id="anonymous"
-              type="checkbox"
-              checked={anonymous}
-              onChange={(e) => setAnonymous(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-            />
-            <div className="flex flex-col">
-              <label htmlFor="anonymous" className="text-sm font-medium text-slate-700 cursor-pointer group-hover:text-blue-600">
-                Submit anonymously
-              </label>
-              <p className="text-xs text-slate-500">Your identity will be hidden from other users</p>
+          <div className="group rounded-xl border border-slate-200 bg-white p-3 transition-all duration-200 hover:border-blue-200 hover:shadow-sm">
+            <div className="flex items-start justify-start gap-3">
+              <button
+                id="anonymous"
+                type="button"
+                role="switch"
+                aria-checked={anonymous}
+                aria-label="Submit anonymously"
+                onClick={() => setAnonymous((value) => !value)}
+                className={`relative mt-0.5 inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-all duration-300 ease-out focus:outline-none focus:ring-4 ${
+                  anonymous
+                    ? 'border-blue-500 bg-gradient-to-r from-sky-500 to-blue-600 shadow-lg shadow-blue-200 focus:ring-blue-100'
+                    : 'border-slate-300 bg-gradient-to-r from-slate-200 to-slate-300 focus:ring-slate-200'
+                }`}
+              >
+                <span className="pointer-events-none absolute left-2 text-white/85">
+                  <User className={`h-3.5 w-3.5 transition-opacity duration-300 ${anonymous ? 'opacity-0' : 'opacity-100'}`} />
+                </span>
+                <span className="pointer-events-none absolute right-2 text-white/90">
+                  <EyeOff className={`h-3.5 w-3.5 transition-opacity duration-300 ${anonymous ? 'opacity-100' : 'opacity-0'}`} />
+                </span>
+                <span
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(15,23,42,0.18)] transition-all duration-300 ease-out ${
+                    anonymous ? 'translate-x-6 text-blue-600' : 'translate-x-0 text-slate-500'
+                  }`}
+                >
+                  {anonymous ? <EyeOff className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                </span>
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-700 transition-colors group-hover:text-blue-600">
+                  Submit anonymously
+                </p>
+                <p className="text-xs text-slate-500">Your identity will be hidden from other users</p>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-start gap-3 group hover:bg-white p-2 rounded-lg transition-colors">
-            <input
-              id="terms"
-              type="checkbox"
-              checked={termsAccepted}
-              onChange={(e) => setTermsAccepted(e.target.checked)}
-              required
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-            />
-            <div className="flex flex-col">
-              <label htmlFor="terms" className="text-sm font-medium text-slate-700 cursor-pointer group-hover:text-blue-600">
-                I accept the terms and conditions <span className="text-red-500">*</span>
-              </label>
-              <p className="text-xs text-slate-500">Please read and accept our terms before submitting</p>
+          <div className="group rounded-xl border border-slate-200 bg-white p-3 transition-all duration-200 hover:border-blue-200 hover:shadow-sm">
+            <div className="flex items-start justify-start gap-3">
+              <button
+                id="terms"
+                type="button"
+                role="switch"
+                aria-checked={termsAccepted}
+                aria-label="Accept terms and conditions"
+                onClick={() => {
+                  if (termsAccepted) {
+                    setTermsAccepted(false)
+                    return
+                  }
+                  handleOpenTerms()
+                }}
+                className={`relative mt-0.5 inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-all duration-300 ease-out focus:outline-none focus:ring-4 ${
+                  termsAccepted
+                    ? 'border-emerald-500 bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg shadow-emerald-200 focus:ring-emerald-100'
+                    : 'border-slate-300 bg-gradient-to-r from-slate-200 to-slate-300 focus:ring-slate-200'
+                }`}
+              >
+                <span className="pointer-events-none absolute left-2 text-white/85">
+                  <FileText className={`h-3.5 w-3.5 transition-opacity duration-300 ${termsAccepted ? 'opacity-0' : 'opacity-100'}`} />
+                </span>
+                <span className="pointer-events-none absolute right-2 text-white/90">
+                  <Check className={`h-3.5 w-3.5 transition-opacity duration-300 ${termsAccepted ? 'opacity-100' : 'opacity-0'}`} />
+                </span>
+                <span
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(15,23,42,0.18)] transition-all duration-300 ease-out ${
+                    termsAccepted ? 'translate-x-6 text-emerald-600' : 'translate-x-0 text-slate-500'
+                  }`}
+                >
+                  {termsAccepted ? <Check className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+                </span>
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center justify-start gap-2">
+                  <p className="text-sm font-medium text-slate-700 transition-colors group-hover:text-blue-600">
+                    I accept the terms and conditions <span className="text-red-500">*</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleOpenTerms}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Read terms
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">Open the terms, read to the end, then accept them before submitting</p>
+              </div>
             </div>
           </div>
         </div>
@@ -413,6 +492,64 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
         </div>
       </form>
     </div>
+    <Modal
+      isOpen={isTermsModalOpen}
+      onClose={() => setIsTermsModalOpen(false)}
+      title={IDEA_TERMS_TITLE}
+      description="Scroll to the end to enable acceptance."
+      maxWidthClassName="max-w-3xl"
+    >
+      <div className="rounded-3xl bg-white p-6 shadow-2xl">
+        <div
+          ref={termsContentRef}
+          onScroll={handleTermsScroll}
+          className="max-h-[55vh] space-y-5 overflow-y-auto pr-2"
+        >
+          {IDEA_TERMS_SECTIONS.map((section) => (
+            <section key={section.heading} className="space-y-2">
+              <h3 className="text-base font-semibold text-slate-900">{section.heading}</h3>
+              {section.body.map((paragraph) => (
+                <p key={paragraph} className="text-sm leading-6 text-slate-600">
+                  {paragraph}
+                </p>
+              ))}
+            </section>
+          ))}
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-slate-500">
+            {hasReachedTermsEnd ? 'You can now accept the terms.' : 'Scroll to the bottom to enable acceptance.'}
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsTermsModalOpen(false)}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              disabled={!hasReachedTermsEnd}
+              onClick={() => {
+                setTermsAccepted(true)
+                setIsTermsModalOpen(false)
+              }}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition ${
+                hasReachedTermsEnd
+                  ? 'bg-emerald-600 shadow-lg shadow-emerald-200 animate-pulse hover:bg-emerald-700'
+                  : 'cursor-not-allowed bg-slate-400'
+              }`}
+            >
+              <Check className="h-4 w-4" />
+              Accept Terms
+            </button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+    </>
   )
 }
 
