@@ -35,6 +35,13 @@ type Comment = {
   idea: number
 }
 
+type IdeaListResponse = {
+  results?: Idea[]
+  count?: number
+  page?: number
+  total_pages?: number
+}
+
 export default function QAManagerDepartmentIdeasPage() {
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [closurePeriods, setClosurePeriods] = useState<Array<{ id: number; academic_year: string; is_active: boolean }>>([])
@@ -51,6 +58,7 @@ export default function QAManagerDepartmentIdeasPage() {
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
+  const [totalIdeas, setTotalIdeas] = useState(0)
 
   const location = useLocation()
   const highlightIdeaIdFromQuery = useMemo(() => {
@@ -112,31 +120,10 @@ export default function QAManagerDepartmentIdeasPage() {
     }
   }
 
-  const filteredIdeas = useMemo(() => {
-    const search = searchTerm.trim().toLowerCase()
-    return ideas.filter((idea) => {
-      const matchesSearch =
-        !search ||
-        idea.idea_title.toLowerCase().includes(search) ||
-        idea.idea_content.toLowerCase().includes(search)
-
-      const matchesCategory =
-        !selectedCategory || idea.category_ids.includes(Number(selectedCategory))
-
-      const ideaOpen = idea.closure_period_idea_open !== false
-      const matchesOpenFilter =
-        openFilter === 'all' ||
-        (openFilter === 'open' && ideaOpen) ||
-        (openFilter === 'closed' && !ideaOpen)
-
-      return matchesSearch && matchesCategory && matchesOpenFilter
-    })
-  }, [ideas, searchTerm, selectedCategory, openFilter])
-
-  const totalPages = Math.max(1, Math.ceil(filteredIdeas.length / itemsPerPage))
+  const totalPages = Math.max(1, Math.ceil(totalIdeas / itemsPerPage))
   const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentIdeas = filteredIdeas.slice(startIndex, endIndex)
+  const endIndex = startIndex + ideas.length
+  const currentIdeas = ideas
 
   const categoryOptions = useMemo(
     () =>
@@ -223,7 +210,6 @@ export default function QAManagerDepartmentIdeasPage() {
   }, [currentIdeas, closurePeriods])
 
   useEffect(() => {
-    fetchIdeas()
     fetchCategories()
     fetchClosurePeriods()
   }, [])
@@ -233,14 +219,13 @@ export default function QAManagerDepartmentIdeasPage() {
   }, [searchTerm, selectedCategory, openFilter])
 
   useEffect(() => {
-    if (!highlightIdeaId || filteredIdeas.length === 0) return
-    const highlightIndex = filteredIdeas.findIndex((idea) => idea.idea_id === highlightIdeaId)
+    if (!highlightIdeaId || ideas.length === 0) return
+    const highlightIndex = ideas.findIndex((idea) => idea.idea_id === highlightIdeaId)
     if (highlightIndex < 0) return
-    const targetPage = Math.floor(highlightIndex / itemsPerPage) + 1
-    if (targetPage !== currentPage) {
-      setCurrentPage(targetPage)
+    if (currentPage !== 1) {
+      setCurrentPage(1)
     }
-  }, [highlightIdeaId, filteredIdeas, currentPage])
+  }, [highlightIdeaId, ideas, currentPage])
 
   useEffect(() => {
     if (!highlightIdeaId) return
@@ -255,13 +240,30 @@ export default function QAManagerDepartmentIdeasPage() {
     return () => window.clearTimeout(timeoutId)
   }, [actionMessage])
 
-  const fetchIdeas = async () => {
+  useEffect(() => {
+    fetchIdeas(currentPage)
+  }, [currentPage, searchTerm, selectedCategory, openFilter])
+
+  const fetchIdeas = async (page = 1) => {
     setLoading(true)
     setError('')
     try {
-      const response = await axios.get('/api/ideas/list/?my_department=true', getAuthConfig())
-      setIdeas(response.data.results || response.data)
-      setCurrentPage(1)
+      const response = await axios.get('/api/ideas/my-department/', {
+        ...(getAuthConfig() || {}),
+        params: {
+          page,
+          page_size: itemsPerPage,
+          search: searchTerm.trim() || undefined,
+          category_id: selectedCategory || undefined,
+          open_filter: openFilter,
+          highlight_idea_id: highlightIdeaId || undefined,
+        },
+      })
+      const data = response.data as IdeaListResponse
+      const results = Array.isArray(data.results) ? data.results : []
+      setIdeas(results)
+      setTotalIdeas(typeof data.count === 'number' ? data.count : results.length)
+      setCurrentPage(Math.max(1, Number(data.page) || page))
     } catch {
       setError('Failed to load department ideas')
     } finally {
@@ -487,11 +489,11 @@ export default function QAManagerDepartmentIdeasPage() {
       {actionMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{actionMessage}</div>}
       {loading && <p className="text-sm text-slate-500">Loading ideas...</p>}
 
-      {(!loading && filteredIdeas.length === 0 && (searchTerm.trim() || selectedCategory)) ? (
+      {(!loading && ideas.length === 0 && (searchTerm.trim() || selectedCategory || openFilter !== 'all')) ? (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
           <p className="text-sm text-slate-500">No department ideas match your filters</p>
         </div>
-      ) : (!loading && filteredIdeas.length === 0 && closurePeriods.length === 0) ? (
+      ) : (!loading && ideas.length === 0 && closurePeriods.length === 0) ? (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
           <p className="text-sm text-slate-500">No department ideas yet</p>
         </div>
@@ -692,14 +694,14 @@ export default function QAManagerDepartmentIdeasPage() {
             </div>
           ))}
 
-          {filteredIdeas.length > 0 && (
+          {totalIdeas > 0 && (
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
               <div className="flex flex-1 justify-between sm:hidden">
                 <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                 <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
               </div>
               <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-700">Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredIdeas.length)}</span> of <span className="font-medium">{filteredIdeas.length}</span> results</p>
+                <p className="text-sm text-slate-700">Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{totalIdeas === 0 ? 0 : startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, totalIdeas)}</span> of <span className="font-medium">{totalIdeas}</span> results</p>
                 <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                   <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><span className="sr-only">Previous</span><ChevronLeft className="h-5 w-5" /></button>
                   {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
