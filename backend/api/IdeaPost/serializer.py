@@ -3,6 +3,31 @@ from .models import Idea, UploadedDocument
 from api.models import Category
 from api.interaction.models import Comment, Vote
 from api.interaction.serializers import CommentSerializer, VoteSerializer
+from pathlib import Path
+
+ALLOWED_DOCUMENT_EXTENSIONS = {
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".txt",
+    ".rtf",
+    ".odt",
+    ".csv",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+}
+
+
+def validate_uploaded_document(file):
+    extension = Path(file.name or "").suffix.lower()
+    if extension not in ALLOWED_DOCUMENT_EXTENSIONS:
+        allowed_types = ", ".join(sorted(ALLOWED_DOCUMENT_EXTENSIONS))
+        raise serializers.ValidationError(
+            f"Only document files are allowed: {allowed_types}"
+        )
+    return file
 
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:

@@ -9,7 +9,7 @@ from django.utils import timezone
 from api.models import Notification
 from api.interaction.models import Report
 from api.interaction.views import _notify_managers_about_report
-from .serializer import IdeaCreateSerializer, IdeaListSerializer, IdeaDetailSerializer
+from .serializer import IdeaCreateSerializer, IdeaListSerializer, IdeaDetailSerializer, validate_uploaded_document
 from .models import Idea, UploadedDocument
 
 import csv
@@ -191,6 +191,7 @@ class PostIdeaView(APIView):
 
                 files = request.FILES.getlist('documents') 
                 for f in files:
+                    validate_uploaded_document(f)
                     UploadedDocument.objects.create(
                         idea=idea,
                         file=f,
