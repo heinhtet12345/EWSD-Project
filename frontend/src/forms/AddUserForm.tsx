@@ -1,3 +1,4 @@
+import axios from "axios";
 import { useMemo, useState, type FormEvent } from "react";
 
 type AddUserPayload = {
@@ -29,6 +30,7 @@ export default function AddUserForm({ roles, departments, isSubmitting = false, 
     department_name: "",
   });
   const [error, setError] = useState("");
+  const availableRoles = useMemo(() => roles.filter((role) => normalizeRole(role) !== "admin"), [roles]);
 
   const requiresDepartment = useMemo(() => {
     const role = normalizeRole(form.role_name);
@@ -51,6 +53,10 @@ export default function AddUserForm({ roles, departments, isSubmitting = false, 
       setError("Role is required.");
       return;
     }
+    if (normalizeRole(form.role_name) === "admin") {
+      setError("Admin accounts cannot be created from this form.");
+      return;
+    }
     if (requiresDepartment && !form.department_name.trim()) {
       setError("Department is required for QA Coordinator and Staff.");
       return;
@@ -66,8 +72,13 @@ export default function AddUserForm({ roles, departments, isSubmitting = false, 
         role_name: form.role_name.trim(),
         department_name: form.department_name.trim(),
       });
-    } catch {
-      // Parent handles API errors and shows alert above.
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined;
+        setError(data?.message || data?.detail || "Failed to create user.");
+        return;
+      }
+      setError("Failed to create user.");
     }
   };
 
@@ -137,7 +148,7 @@ export default function AddUserForm({ roles, departments, isSubmitting = false, 
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400"
           >
             <option value="">Select role</option>
-            {roles.map((role) => (
+            {availableRoles.map((role) => (
               <option key={role} value={role}>
                 {role}
               </option>

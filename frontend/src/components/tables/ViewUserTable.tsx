@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
 import Modal from "../common/Modal";
@@ -31,6 +31,7 @@ const getAuthConfig = () => {
 };
 
 export default function ViewUserTable() {
+  const tableTopRef = useRef<HTMLDivElement | null>(null);
   const location = useLocation();
   const currentRole = useMemo(() => {
     try {
@@ -175,6 +176,10 @@ export default function ViewUserTable() {
     return () => window.clearTimeout(timeoutId);
   }, [error]);
 
+  useEffect(() => {
+    tableTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [currentPage]);
+
   const handleResetPassword = async (user: AppUser) => {
     setError("");
     setSuccess("");
@@ -253,7 +258,6 @@ export default function ViewUserTable() {
     role_name: string;
     department_name: string;
   }) => {
-    setError("");
     setSuccess("");
     setIsCreatingUser(true);
     try {
@@ -262,12 +266,6 @@ export default function ViewUserTable() {
       setIsAddingUser(false);
       await fetchUsers();
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        const data = err.response?.data as { message?: string; detail?: string } | undefined;
-        setError(data?.message || data?.detail || "Failed to create user.");
-      } else {
-        setError("Failed to create user.");
-      }
       throw err;
     } finally {
       setIsCreatingUser(false);
@@ -275,7 +273,7 @@ export default function ViewUserTable() {
   };
 
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div ref={tableTopRef} className="min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {success && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>
@@ -418,16 +416,16 @@ export default function ViewUserTable() {
                 })}
               </div>
 
-              <div className="hidden overflow-x-auto sm:block">
+              <div className="hidden min-w-0 overflow-x-auto sm:block">
           <table className="w-full table-fixed divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="w-[28%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[16%]">Username</th>
-                <th className="hidden w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 lg:table-cell">Email</th>
-                <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[16%]">Role</th>
-                <th className="hidden w-[22%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 md:table-cell">Department</th>
-                <th className="w-[16%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[10%]">Status</th>
-                <th className="w-[32%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[18%]">Action</th>
+                <th className="w-[16%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Username</th>
+                <th className="hidden w-[22%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 lg:table-cell">Email</th>
+                <th className="w-[14%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Role</th>
+                <th className="hidden w-[16%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 md:table-cell">Department</th>
+                <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+                <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -462,13 +460,13 @@ export default function ViewUserTable() {
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-700">{user.active_status ? "Active" : "Disabled"}</td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2 xl:flex-nowrap">
+                        <div className="flex flex-nowrap gap-1.5">
                           {canResetPassword && (
                             <button
                               type="button"
                               onClick={() => handleResetPassword(user)}
                               disabled={isProcessing}
-                              className="whitespace-nowrap rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="whitespace-nowrap rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               Reset Password
                             </button>
@@ -478,7 +476,7 @@ export default function ViewUserTable() {
                               type="button"
                               onClick={() => handleDisableUser(user)}
                               disabled={isProcessing || isAdminUser}
-                              className="whitespace-nowrap rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="whitespace-nowrap rounded-lg bg-rose-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               Disable Account
                             </button>
@@ -487,7 +485,7 @@ export default function ViewUserTable() {
                               type="button"
                               onClick={() => handleEnableUser(user)}
                               disabled={isProcessing}
-                              className="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="whitespace-nowrap rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               Enable Account
                             </button>
@@ -507,7 +505,7 @@ export default function ViewUserTable() {
       )}
 
       {!isLoadingUsers && filteredUsers.length > 0 && (
-        <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col items-center gap-3 border-t border-slate-200 pt-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
           <p className="text-sm text-slate-500">
             Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length}
           </p>

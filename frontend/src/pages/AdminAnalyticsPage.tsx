@@ -117,47 +117,92 @@ export default function AdminAnalyticsPage() {
         {isLoading ? (
           <p className="px-4 py-10 text-center text-sm text-slate-500">Loading activity logs...</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">User</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Browser</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Page</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">OS / Device</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {logs.length === 0 ? (
+          <>
+            <div className="space-y-3 p-3 sm:hidden">
+              {logs.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 shadow-sm">
+                  No activity logs found.
+                </div>
+              ) : (
+                logs.map((log) => (
+                  <article key={log.activity_log_id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">User</p>
+                        <p className="mt-1 truncate text-base font-semibold text-slate-900">{log.username || "Unknown"}</p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-700">
+                        {log.event_type}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-3">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Browser</p>
+                        <p className="mt-1 text-sm text-slate-700">{log.browser || "-"}</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Page</p>
+                        <p className="mt-1 break-words text-sm text-slate-700">{log.path || "-"}</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">OS / Device</p>
+                        <p className="mt-1 text-sm text-slate-700">
+                          {(log.operating_system || "-") + " / " + (log.device_type || "-")}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Time</p>
+                        <p className="mt-1 text-sm text-slate-700">{new Date(log.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
-                      No activity logs found.
-                    </td>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">User</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Browser</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Page</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">OS / Device</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Time</th>
                   </tr>
-                ) : (
-                  logs.map((log) => (
-                    <tr key={log.activity_log_id}>
-                      <td className="px-4 py-3 text-sm text-slate-700">{log.username || "Unknown"}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{log.browser || "-"}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{log.event_type}</td>
-                      <td className="max-w-[280px] truncate px-4 py-3 text-sm text-slate-700">{log.path || "-"}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        {(log.operating_system || "-") + " / " + (log.device_type || "-")}
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {logs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                        No activity logs found.
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{new Date(log.created_at).toLocaleString()}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    logs.map((log) => (
+                      <tr key={log.activity_log_id}>
+                        <td className="px-4 py-3 text-sm text-slate-700">{log.username || "Unknown"}</td>
+                        <td className="px-4 py-3 text-sm text-slate-700">{log.browser || "-"}</td>
+                        <td className="px-4 py-3 text-sm text-slate-700">{log.event_type}</td>
+                        <td className="max-w-[280px] truncate px-4 py-3 text-sm text-slate-700">{log.path || "-"}</td>
+                        <td className="px-4 py-3 text-sm text-slate-700">
+                          {(log.operating_system || "-") + " / " + (log.device_type || "-")}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700">{new Date(log.created_at).toLocaleString()}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {!isLoading && totalCount > 0 && (
-        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-center sm:text-left">
           <p className="text-sm text-slate-600">
             Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} logs
           </p>

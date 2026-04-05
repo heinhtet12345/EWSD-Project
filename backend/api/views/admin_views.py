@@ -105,7 +105,11 @@ class AdminUserMetaView(APIView):
         if _normalized_role(request.user) != "admin":
             return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
 
-        roles = list(Role.objects.order_by("role_name").values_list("role_name", flat=True))
+        roles = [
+            role_name
+            for role_name in Role.objects.order_by("role_name").values_list("role_name", flat=True)
+            if _normalized_role_name(role_name) != "admin"
+        ]
         departments = list(Department.objects.order_by("dept_name").values_list("dept_name", flat=True))
         return Response({"roles": roles, "departments": departments}, status=status.HTTP_200_OK)
 
@@ -169,6 +173,11 @@ class AdminCreateUserView(APIView):
             return Response({"message": "Invalid role."}, status=status.HTTP_400_BAD_REQUEST)
 
         normalized_selected_role = _normalized_role_name(role_obj.role_name)
+        if normalized_selected_role == "admin":
+            return Response(
+                {"message": "Admin account creation is not allowed from this form."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if normalized_selected_role == "qa_manager":
             qa_manager_role_names = {"qa_manager", "qa manager"}
             manager_exists = any(
@@ -190,6 +199,20 @@ class AdminCreateUserView(APIView):
             department_obj = Department.objects.filter(dept_name__iexact=department_name).first()
             if not department_obj:
                 return Response({"message": "Invalid department."}, status=status.HTTP_400_BAD_REQUEST)
+            if normalized_selected_role == "qa_coordinator":
+                coordinator_exists_in_department = (
+                    User.objects.select_related("role")
+                    .filter(
+                        department=department_obj,
+                        role__role_name__iexact="qa_coordinator",
+                    )
+                    .exists()
+                )
+                if coordinator_exists_in_department:
+                    return Response(
+                        {"message": f'A QA Coordinator already exists for "{department_obj.dept_name}".'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
         elif department_name:
             department_obj = Department.objects.filter(dept_name__iexact=department_name).first()
 
