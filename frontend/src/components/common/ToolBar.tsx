@@ -153,7 +153,7 @@ export default function ToolBar({ userName = "", onMenuToggle }: ToolBarProps) {
   useEffect(() => {
     const initialFetchTimeout = window.setTimeout(() => {
       fetchNotifications();
-    }, 0);
+    }, 1500);
     const interval = window.setInterval(fetchNotifications, 30000);
     return () => {
       window.clearTimeout(initialFetchTimeout);

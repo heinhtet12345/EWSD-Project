@@ -6,7 +6,6 @@ import {
   Globe,
   Monitor,
   Network,
-  ShieldCheck,
   Users,
 } from "lucide-react";
 import { Bar, Doughnut } from "react-chartjs-2";
@@ -92,12 +91,6 @@ type DashboardResponse = {
   };
 };
 
-const TRAFFIC_STYLES: Record<TrafficData["status"], string> = {
-  High: "border-amber-200 bg-amber-50 text-amber-800",
-  Normal: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  Low: "border-slate-200 bg-slate-50 text-slate-700",
-};
-
 const BAR_COLORS = ["#1d4ed8", "#0f766e", "#b45309", "#7c3aed", "#be123c", "#0891b2", "#4d7c0f", "#4338ca"];
 
 const shortenPath = (path?: string | null) => {
@@ -111,6 +104,46 @@ const computeSuggestedMax = (values: number[]) => {
   if (maxValue <= 5) return maxValue + 1;
   return Math.ceil(maxValue * 1.03);
 };
+
+const shellCardClassName =
+  "rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900";
+
+const surfaceCardClassName =
+  "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950";
+
+const headingClassName = "text-lg font-semibold text-slate-600 dark:text-slate-100";
+const titleValueClassName = "text-slate-600 dark:text-slate-100";
+const bodyTextClassName = "text-slate-500 dark:text-slate-400";
+
+function MetricCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  accentClassName,
+}: {
+  label: string;
+  value: number | string;
+  hint: string;
+  icon: typeof Activity;
+  accentClassName: string;
+}) {
+  return (
+    <div className={`${surfaceCardClassName} relative overflow-hidden`}>
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{label}</p>
+          <p className={`mt-3 text-3xl font-semibold ${titleValueClassName}`}>{value}</p>
+          <p className={`mt-2 text-sm ${bodyTextClassName}`}>{hint}</p>
+        </div>
+        <span className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${accentClassName}`}>
+          <Icon className="h-5 w-5" />
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const isDarkMode = useThemeMode();
@@ -242,123 +275,160 @@ export default function AdminDashboard() {
     },
   };
 
+  const selectedPeriodLabel =
+    days === 7 ? "Last 7 days" : days === 30 ? "Last 30 days" : days === 90 ? "Last 90 days" : "Last 365 days";
+
   return (
     <section className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Admin Dashboard</h1>
-          <p className="text-sm text-slate-500">Monitor system traffic, usage patterns, and operational health.</p>
-        </div>
-        <select
-          value={days}
-          onChange={(event) => setDays(Number(event.target.value))}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400"
+      <div className={`${shellCardClassName} overflow-hidden`}>
+        <div
+          className={`relative px-6 py-6 ${
+            isDarkMode
+              ? "bg-slate-900 text-white"
+              : "bg-white text-slate-800"
+          }`}
         >
-          <option value={7}>Last 7 days</option>
-          <option value={30}>Last 30 days</option>
-          <option value={90}>Last 90 days</option>
-          <option value={365}>Last 365 days</option>
-        </select>
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${isDarkMode ? "text-blue-100/90" : "text-blue-700"}`}>System Oversight</p>
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-600 dark:text-white">Admin Dashboard</h1>
+              <p className={`mt-3 max-w-xl text-sm leading-6 ${isDarkMode ? "text-slate-300" : "text-slate-500"}`}>
+                Monitor platform traffic, usage patterns, login activity, and operational health from one place.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <div className={`rounded-2xl px-4 py-3 backdrop-blur ${
+                isDarkMode
+                  ? "border border-white/15 bg-white/10"
+                  : "border border-slate-200 bg-slate-50 shadow-sm"
+              }`}>
+                <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${isDarkMode ? "text-blue-100/80" : "text-blue-700/80"}`}>Tracking Window</p>
+                <p className="mt-1 text-base font-semibold text-slate-600 dark:text-inherit">{selectedPeriodLabel}</p>
+              </div>
+              <div className={`rounded-2xl px-4 py-3 backdrop-blur ${
+                isDarkMode
+                  ? "border border-white/15 bg-white/10"
+                  : "border border-slate-200 bg-slate-50 shadow-sm"
+              }`}>
+                <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${isDarkMode ? "text-blue-100/80" : "text-blue-700/80"}`}>Traffic Status</p>
+                <p className="mt-1 text-base font-semibold text-slate-600 dark:text-inherit">{data?.traffic.status || "..."}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
+          <div>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Analytics window</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Choose how much activity history to show across the dashboard.</p>
+          </div>
+          <select
+            value={days}
+            onChange={(event) => setDays(Number(event.target.value))}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
+            <option value={365}>Last 365 days</option>
+          </select>
+        </div>
       </div>
 
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
       {isLoading ? (
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 shadow-sm">
+        <div className={`${shellCardClassName} px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400`}>
           Loading dashboard...
         </div>
       ) : data ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-500">Total Events</span>
-                <Activity className="h-5 w-5 text-blue-600" />
+            <MetricCard
+              label="Total Events"
+              value={data.summary.total_events}
+              hint={`${data.summary.average_daily_events} events per day`}
+              icon={Activity}
+              accentClassName="bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200"
+            />
+            <MetricCard
+              label="Active Users"
+              value={data.summary.unique_active_users}
+              hint={`Out of ${data.summary.total_user_accounts} total accounts`}
+              icon={Users}
+              accentClassName="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200"
+            />
+            <MetricCard
+              label="Ideas In System"
+              value={data.summary.total_ideas}
+              hint={`${data.summary.page_view_count} page views in selected period`}
+              icon={BarChart3}
+              accentClassName="bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200"
+            />
+            <MetricCard
+              label="Traffic Status"
+              value={data.traffic.status}
+              hint={`${data.traffic.recent_1h_events} events in the last hour`}
+              icon={Network}
+              accentClassName="bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className={`min-w-0 ${shellCardClassName} p-5`}>
+              <div className="mb-4">
+                <h2 className={headingClassName}>Most Viewed Pages</h2>
+                <p className={`text-sm ${bodyTextClassName}`}>Top URLs by activity volume</p>
               </div>
-              <p className="mt-3 text-3xl font-semibold text-slate-900">{data.summary.total_events}</p>
-              <p className="mt-1 text-xs text-slate-500">{data.summary.average_daily_events} events per day</p>
+              <div className="overflow-hidden" style={{ height: "28rem" }}>
+                <Bar data={topPagesChartData} options={topPagesChartOptions} />
+              </div>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-500">Active Users</span>
-                <Users className="h-5 w-5 text-emerald-600" />
+            <div className={`min-w-0 ${shellCardClassName} p-5`}>
+              <div className="mb-4">
+                <h2 className={headingClassName}>Most Active Users</h2>
+                <p className={`text-sm ${bodyTextClassName}`}>Users generating the most events</p>
               </div>
-              <p className="mt-3 text-3xl font-semibold text-slate-900">{data.summary.unique_active_users}</p>
-              <p className="mt-1 text-xs text-slate-500">out of {data.summary.total_user_accounts} total accounts</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-500">Ideas in System</span>
-                <BarChart3 className="h-5 w-5 text-violet-600" />
+              <div className="overflow-hidden" style={{ height: "28rem" }}>
+                <Bar data={topUsersChartData} options={topUsersChartOptions} />
               </div>
-              <p className="mt-3 text-3xl font-semibold text-slate-900">{data.summary.total_ideas}</p>
-              <p className="mt-1 text-xs text-slate-500">{data.summary.page_view_count} page views in selected period</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-500">Network Traffic Status</span>
-                <Network className="h-5 w-5 text-amber-600" />
-              </div>
-              <p className="mt-3 text-3xl font-semibold text-slate-900">{data.traffic.status}</p>
-              <p className="mt-1 text-xs text-slate-500">{data.traffic.recent_1h_events} events in the last hour</p>
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900">Most Viewed Pages</h2>
-                  <p className="text-sm text-slate-500">Top URLs by activity volume</p>
-                </div>
-                <div className="overflow-hidden" style={{ height: "28rem" }}>
-                  <Bar data={topPagesChartData} options={topPagesChartOptions} />
-                </div>
+          <div className={`${shellCardClassName} p-5`}>
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-200">
+                <Globe className="h-5 w-5" />
               </div>
-              <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900">Most Active Users</h2>
-                  <p className="text-sm text-slate-500">Users generating the most events</p>
-                </div>
-                <div className="overflow-hidden" style={{ height: "28rem" }}>
-                  <Bar data={topUsersChartData} options={topUsersChartOptions} />
-                </div>
+              <div>
+                <h2 className={headingClassName}>System Highlights</h2>
+                <p className={`text-sm ${bodyTextClassName}`}>Quick operational takeaways</p>
               </div>
             </div>
-
-            <div className="grid gap-4">
-              <div className={`rounded-2xl border p-5 shadow-sm ${TRAFFIC_STYLES[data.traffic.status]}`}>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Traffic Snapshot</h2>
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide opacity-70">Last 24 hours</p>
-                    <p className="text-2xl font-semibold">{data.traffic.recent_24h_events}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide opacity-70">Previous 24 hours</p>
-                    <p className="text-2xl font-semibold">{data.traffic.previous_24h_events}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide opacity-70">Change</p>
-                    <p className="text-2xl font-semibold">{data.traffic.change_percent}%</p>
-                  </div>
-                  <p className="text-xs opacity-80">
-                    Traffic status is an estimate based on recent activity log volume.
-                  </p>
-                </div>
+            <div className="mt-5 grid gap-3 lg:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Most Viewed URL</p>
+                <p className={`mt-2 text-sm font-semibold ${titleValueClassName}`}>{data.summary.most_viewed_page || "No data"}</p>
+                <p className={`mt-1 text-xs ${bodyTextClassName}`}>{data.summary.most_viewed_page_count} views</p>
               </div>
-
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Most Active User</p>
+                <p className={`mt-2 text-sm font-semibold ${titleValueClassName}`}>{data.summary.most_active_user || "No data"}</p>
+                <p className={`mt-1 text-xs ${bodyTextClassName}`}>{data.summary.most_active_user_count} events</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Login Activity</p>
+                <p className={`mt-2 text-sm font-semibold ${titleValueClassName}`}>{data.summary.login_count} logins</p>
+                <p className={`mt-1 text-xs ${bodyTextClassName}`}>{data.summary.total_departments} departments currently in system</p>
+              </div>
             </div>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`${shellCardClassName} p-5`}>
               <div className="mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">Event Mix</h2>
-                <p className="text-sm text-slate-500">What kind of activity is happening</p>
+                <h2 className={headingClassName}>Event Mix</h2>
+                <p className={`text-sm ${bodyTextClassName}`}>What kind of activity is happening</p>
               </div>
               <div className="overflow-hidden" style={{ height: "28rem" }}>
                 <Doughnut
@@ -378,10 +448,10 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`${shellCardClassName} p-5`}>
               <div className="mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">Browser Distribution</h2>
-                <p className="text-sm text-slate-500">Which browsers are being used most often</p>
+                <h2 className={headingClassName}>Browser Distribution</h2>
+                <p className={`text-sm ${bodyTextClassName}`}>Which browsers are being used most often</p>
               </div>
               <div className="overflow-hidden" style={{ height: "28rem" }}>
                 <Doughnut
@@ -400,85 +470,128 @@ export default function AdminDashboard() {
                 />
               </div>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center gap-2">
-                <Monitor className="h-5 w-5 text-violet-600" />
-                <h2 className="text-lg font-semibold text-slate-900">Browsers & Systems</h2>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-slate-800">Browsers</p>
-                  {data.tables.browsers.map((item, index) => (
-                    <div key={`${item.browser}-${index}`} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                      <span className="text-sm text-slate-700">{item.browser}</span>
-                      <span className="text-sm font-semibold text-slate-900">{item.usage_count}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-slate-800">Operating Systems</p>
-                  {data.tables.operating_systems.map((item, index) => (
-                    <div key={`${item.operating_system}-${index}`} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                      <span className="text-sm text-slate-700">{item.operating_system}</span>
-                      <span className="text-sm font-semibold text-slate-900">{item.usage_count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">System Highlights</h2>
-              <p className="text-sm text-slate-500">Quick operational takeaways</p>
+          <div className={`${shellCardClassName} p-6`}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
+                    <Monitor className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className={headingClassName}>Browsers & Systems</h2>
+                    <p className={`text-sm ${bodyTextClassName}`}>A quick breakdown of the client environment used across recent sessions.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
+                  {data.tables.browsers.length} browser types
+                </span>
+                <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
+                  {data.tables.operating_systems.length} operating systems
+                </span>
+              </div>
             </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Most Viewed URL</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{data.summary.most_viewed_page || "No data"}</p>
-                <p className="mt-1 text-xs text-slate-500">{data.summary.most_viewed_page_count} views</p>
+
+            <div className="mt-6 grid gap-5 xl:grid-cols-2">
+              <div className="rounded-[1.4rem] border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-600 dark:text-slate-200">Browsers</p>
+                  <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
+                    Usage
+                  </span>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {data.tables.browsers.map((item, index) => {
+                    const browserMax = Math.max(...data.tables.browsers.map((entry) => entry.usage_count || 0), 1);
+                    const width = Math.max(((item.usage_count || 0) / browserMax) * 100, 10);
+                    return (
+                      <div key={`${item.browser}-${index}`} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className={`text-sm font-medium ${titleValueClassName}`}>{item.browser || "Unknown"}</p>
+                            <p className={`text-xs ${bodyTextClassName}`}>Rank #{index + 1}</p>
+                          </div>
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                            {item.usage_count}
+                          </span>
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Most Active User</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{data.summary.most_active_user || "No data"}</p>
-                <p className="mt-1 text-xs text-slate-500">{data.summary.most_active_user_count} events</p>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">Login Activity</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{data.summary.login_count} logins</p>
-                <p className="mt-1 text-xs text-slate-500">{data.summary.total_departments} departments currently in system</p>
+
+              <div className="rounded-[1.4rem] border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-600 dark:text-slate-200">Operating Systems</p>
+                  <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
+                    Usage
+                  </span>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {data.tables.operating_systems.map((item, index) => {
+                    const osMax = Math.max(...data.tables.operating_systems.map((entry) => entry.usage_count || 0), 1);
+                    const width = Math.max(((item.usage_count || 0) / osMax) * 100, 10);
+                    return (
+                      <div key={`${item.operating_system}-${index}`} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className={`text-sm font-medium ${titleValueClassName}`}>{item.operating_system || "Unknown"}</p>
+                            <p className={`text-xs ${bodyTextClassName}`}>Rank #{index + 1}</p>
+                          </div>
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                            {item.usage_count}
+                          </span>
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`${shellCardClassName} p-5`}>
               <div className="mb-4 flex items-center gap-2">
                 <Globe className="h-5 w-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-slate-900">Top URLs</h2>
+                <h2 className={headingClassName}>Top URLs</h2>
               </div>
               <div className="space-y-3">
                 {data.tables.top_pages.map((item, index) => (
-                  <div key={`${item.path}-${index}`} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                  <div key={`${item.path}-${index}`} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-900">{item.path}</p>
+                      <p className={`truncate text-sm font-medium ${titleValueClassName}`}>{item.path}</p>
                     </div>
                     <span className="ml-3 text-sm font-semibold text-blue-700">{item.view_count}</span>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`${shellCardClassName} p-5`}>
               <div className="mb-4 flex items-center gap-2">
                 <Users className="h-5 w-5 text-emerald-600" />
-                <h2 className="text-lg font-semibold text-slate-900">Top Users</h2>
+                <h2 className={headingClassName}>Top Users</h2>
               </div>
               <div className="space-y-3">
                 {data.tables.top_users.map((item, index) => (
-                  <div key={`${item.username}-${index}`} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                    <p className="text-sm font-medium text-slate-900">{item.display_name || item.username || "Unknown"}</p>
+                  <div key={`${item.username}-${index}`} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+                    <p className={`text-sm font-medium ${titleValueClassName}`}>{item.display_name || item.username || "Unknown"}</p>
                     <span className="text-sm font-semibold text-emerald-700">{item.activity_count}</span>
                   </div>
                 ))}
@@ -487,22 +600,22 @@ export default function AdminDashboard() {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1fr_1.25fr]">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`${shellCardClassName} p-5`}>
               <div className="mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">Recent Activity</h2>
-                <p className="text-sm text-slate-500">Latest events recorded in the system</p>
+                <h2 className={headingClassName}>Recent Activity</h2>
+                <p className={`text-sm ${bodyTextClassName}`}>Latest events recorded in the system</p>
               </div>
               <div className="space-y-3">
                 {data.tables.recent_activity.slice(0, 5).map((item) => (
-                  <div key={item.activity_log_id} className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                  <div key={item.activity_log_id} className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-slate-900">{item.username}</p>
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+                      <p className={`text-sm font-semibold ${titleValueClassName}`}>{item.username}</p>
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                         {item.event_type}
                       </span>
                     </div>
-                    <p className="mt-2 truncate text-sm text-slate-700">{item.path}</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-2 truncate text-sm text-slate-700 dark:text-slate-300">{item.path}</p>
+                    <p className={`mt-1 text-xs ${bodyTextClassName}`}>
                       {(item.operating_system || "Unknown") + " / " + (item.device_type || "Unknown")} | {item.browser || "Unknown"} | {new Date(item.created_at).toLocaleString()}
                     </p>
                   </div>

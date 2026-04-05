@@ -89,19 +89,19 @@ export default function MainLayout() {
     if (lastTrackedPathRef.current === pathname) return;
     lastTrackedPathRef.current = pathname;
 
-    const trackPageView = async () => {
-      try {
-        await axios.post("/api/analytics/track/", {
+    const timeoutId = window.setTimeout(() => {
+      void axios
+        .post("/api/analytics/track/", {
           event_type: "page_view",
           path: pathname,
           metadata: { source: "frontend-route-change" },
+        })
+        .catch(() => {
+          // Keep navigation smooth if activity tracking fails.
         });
-      } catch {
-        // Keep navigation smooth if activity tracking fails.
-      }
-    };
+    }, 1000);
 
-    trackPageView();
+    return () => window.clearTimeout(timeoutId);
   }, [pathname, role]);
 
   if (role) {
