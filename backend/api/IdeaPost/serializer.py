@@ -54,6 +54,11 @@ class IdeaCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("You must accept the terms and conditions before submitting an idea.")
         return value
 
+    def validate_category_ids(self, value):
+        if not value:
+            raise serializers.ValidationError("You must select at least one category before submitting an idea.")
+        return value
+
 class IdeaListSerializer(serializers.ModelSerializer):
     category_ids = serializers.SerializerMethodField()
     department_name = serializers.CharField(source='department.dept_name', read_only=True)
