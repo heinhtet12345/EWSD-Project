@@ -415,7 +415,7 @@ const StaffMyIdeasPage = () => {
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-black">My Ideas</h1>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">My Ideas</h1>
           <p className="text-sm text-slate-500">Only your submitted ideas, grouped by closure period.</p>
         </div>
         {!isAdding && (

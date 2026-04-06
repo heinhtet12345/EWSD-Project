@@ -204,32 +204,6 @@ export default function StaffDashboard() {
 
       {!isLoading && data && (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <StatCard label="My Ideas" value={data.summary.my_idea_count} />
-            <StatCard label="My Comments" value={data.summary.my_comment_count} />
-            <StatCard label="My Votes" value={data.summary.my_vote_count} />
-            <StatCard label="Department Ideas" value={data.summary.department_idea_count} />
-            <StatCard label="Department Contributors" value={data.summary.department_contributor_count} />
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">My Idea History</h2>
-              <p className="text-sm text-slate-500">Ideas you submitted across recent closure periods</p>
-              <div className="mt-5 h-[320px] overflow-hidden">
-                <Bar data={historyBarData} options={barOptions} />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">My Engagement Mix</h2>
-              <p className="text-sm text-slate-500">How you are participating in the platform</p>
-              <div className="mt-5 h-[320px] overflow-hidden">
-                <Doughnut data={engagementData} options={doughnutOptions} />
-              </div>
-            </div>
-          </div>
-
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -252,6 +226,32 @@ export default function StaffDashboard() {
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Comment closure date</p>
                 <p className="mt-2 text-lg font-semibold text-slate-900">{formatDate(data.active_closure.comment_closure_date)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <StatCard label="My Ideas" value={data.summary.my_idea_count} />
+            <StatCard label="My Comments" value={data.summary.my_comment_count} />
+            <StatCard label="My Votes" value={data.summary.my_vote_count} />
+            <StatCard label="Department Ideas" value={data.summary.department_idea_count} />
+            <StatCard label="Department Contributors" value={data.summary.department_contributor_count} />
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900">My Idea History</h2>
+              <p className="text-sm text-slate-500">Ideas you submitted across recent closure periods</p>
+              <div className="mt-5 h-[320px] overflow-hidden">
+                <Bar data={historyBarData} options={barOptions} />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900">My Engagement Mix</h2>
+              <p className="text-sm text-slate-500">How you are participating in the platform</p>
+              <div className="mt-5 h-[320px] overflow-hidden">
+                <Doughnut data={engagementData} options={doughnutOptions} />
               </div>
             </div>
           </div>

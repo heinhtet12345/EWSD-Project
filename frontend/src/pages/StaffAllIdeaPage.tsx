@@ -670,7 +670,7 @@ const StaffAllIdeaPage = () => {
     <section ref={sectionTopRef} className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-black">All Ideas</h1>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">All Ideas</h1>
           <p className="text-sm text-slate-500">View ideas across departments.</p>
         </div>
         {!isAdding && isStaff && (

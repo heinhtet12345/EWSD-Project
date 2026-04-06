@@ -254,14 +254,6 @@ export default function QACoordDashboard() {
 
       {!isLoading && data && (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <StatCard label="Department Staff" value={data.summary.staff_count} />
-            <StatCard label="Participating Staff" value={data.summary.participating_staff_count} />
-            <StatCard label="Department Ideas" value={data.summary.department_idea_count} />
-            <StatCard label="Active Period Ideas" value={data.summary.active_idea_count} />
-            <StatCard label="Reports In Review" value={data.summary.in_review_report_count} />
-          </div>
-
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -281,6 +273,14 @@ export default function QACoordDashboard() {
                 <p className="mt-2 text-lg font-semibold text-slate-900">{formatDate(data.active_closure.comment_closure_date)}</p>
               </div>
             </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <StatCard label="Department Staff" value={data.summary.staff_count} />
+            <StatCard label="Participating Staff" value={data.summary.participating_staff_count} />
+            <StatCard label="Department Ideas" value={data.summary.department_idea_count} />
+            <StatCard label="Active Period Ideas" value={data.summary.active_idea_count} />
+            <StatCard label="Reports In Review" value={data.summary.in_review_report_count} />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
