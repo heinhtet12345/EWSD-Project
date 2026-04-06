@@ -1,88 +1,44 @@
-export const IDEA_TERMS_TITLE = "Terms & Conditions (Full Version)"
+export const IDEA_TERMS_TITLE = "Idea Submission Terms and Conditions"
 
 export const IDEA_TERMS_SECTIONS = [
   {
-    heading: "Authorization and Credentials",
+    heading: "Purpose",
     body: [
-      "You are an authorized university staff member and must use valid credentials issued by the University.",
+      "This platform is provided for submitting constructive ideas that support improvement across the organization.",
+      "Ideas should be relevant, honest, and written with enough detail for reviewers to understand the value and impact.",
     ],
   },
   {
-    heading: "Permitted Use",
+    heading: "Acceptable Content",
     body: [
-      "You agree to use the system only for lawful, professional, and work-related purposes.",
+      "You must not submit content that is abusive, defamatory, misleading, discriminatory, harassing, or otherwise inappropriate.",
+      "You should not submit confidential information unless you are authorized to share it through this system.",
     ],
   },
   {
-    heading: "Content Accuracy and Appropriateness",
+    heading: "Ownership and Review",
     body: [
-      "All information, ideas, and content submitted must be accurate, truthful, and appropriate.",
-      "Ideas and comments must not contain offensive, harmful, defamatory, or inappropriate material.",
+      "Submitted ideas may be reviewed by authorized staff, QA coordinators, QA managers, and administrators based on their role.",
+      "Your idea may be discussed, moderated, exported in reports, or used to support internal decision-making and service improvement.",
     ],
   },
   {
-    heading: "Submissions and Supporting Documents",
+    heading: "Anonymous Submission",
     body: [
-      "You may submit one or more ideas for institutional improvement within the allowed submission period.",
-      "You may upload supporting documents where necessary, ensuring they are relevant and safe.",
+      "If you choose to submit anonymously, your identity may be hidden from standard viewers, but authorized system roles may still access information where required for moderation, compliance, or administration.",
     ],
   },
   {
-    heading: "Anonymous Submissions",
+    heading: "Responsible Use",
     body: [
-      "Anonymous submissions and comments are permitted; however, your identity will be securely stored for administrative, auditing, and investigation purposes.",
-    ],
-  },
-  {
-    heading: "Editing and Interaction",
-    body: [
-      "Once submitted, ideas cannot be edited after the defined closure date.",
-      "You may view, comment on, and interact with all submitted ideas respectfully.",
-      "You may react to ideas using 'Thumbs Up' or 'Thumbs Down,' limited to one reaction per idea.",
-    ],
-  },
-  {
-    heading: "Monitoring and Enforcement",
-    body: [
-      "The University reserves the right to monitor, review, moderate, and remove any content that violates policies or is deemed inappropriate.",
-      "The University may take disciplinary action, including restricting system access, against users who misuse the system.",
-    ],
-  },
-  {
-    heading: "Notifications and Data Privacy",
-    body: [
-      "Email notifications may be sent regarding idea submissions, comments, and other relevant system activities.",
-      "Your personal data and activity within the system will be securely stored and protected.",
-      "Access to sensitive data is restricted to authorized personnel (e.g., QA Manager, Administrators).",
-      "Data may be used for reporting, statistical analysis, system improvement, and decision-making purposes.",
-    ],
-  },
-  {
-    heading: "Submission and Closure Deadlines",
-    body: [
-      "Idea submissions will close after a specified deadline, while comments may remain open until a final closure date.",
-      "No new submissions will be accepted after the submission deadline.",
-      "System data may be exported by authorized personnel for reporting and archival purposes after closure dates.",
-    ],
-  },
-  {
-    heading: "Disclaimer of Warranties",
-    body: [
-      "The system is provided on an 'as-is' and 'as-available' basis without guarantee of uninterrupted or error-free operation.",
-      "The University shall not be held liable for data loss, system downtime, or any damages arising from system usage.",
-    ],
-  },
-  {
-    heading: "Modifications to Terms",
-    body: [
-      "The University reserves the right to update or modify these Terms and Conditions at any time without prior notice.",
-      "Continued use of the system constitutes acceptance of any updated Terms and Conditions.",
+      "You are responsible for ensuring that the information you submit is accurate to the best of your knowledge.",
+      "Repeated misuse of the system may lead to moderation action or account restrictions in line with platform policy.",
     ],
   },
   {
     heading: "Confirmation",
     body: [
-      "By proceeding, you confirm that you have read, understood, and agree to these Terms & Conditions.",
+      "By accepting these terms, you confirm that you have read and understood them and agree to submit ideas in good faith and in accordance with platform rules.",
     ],
   },
 ] as const
