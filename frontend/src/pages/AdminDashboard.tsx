@@ -599,8 +599,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1fr_1.25fr]">
-            <div className={`${shellCardClassName} p-5`}>
+          <div className={`${shellCardClassName} p-5`}>
               <div className="mb-4">
                 <h2 className={headingClassName}>Recent Activity</h2>
                 <p className={`text-sm ${bodyTextClassName}`}>Latest events recorded in the system</p>
@@ -622,7 +621,6 @@ export default function AdminDashboard() {
                 ))}
               </div>
             </div>
-          </div>
         </>
       ) : null}
     </section>
