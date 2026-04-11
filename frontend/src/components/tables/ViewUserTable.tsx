@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, KeyRound, ShieldCheck, UserX } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, KeyRound, ShieldCheck, Trash2, UserX } from "lucide-react";
 import { Column } from "primereact/column";
 import { DataTable } from "primereact/datatable";
 import { useLocation } from "react-router-dom";
@@ -257,6 +257,31 @@ export default function ViewUserTable() {
     }
   };
 
+  const handleDeleteUser = async (user: AppUser) => {
+    const shouldDelete = window.confirm(
+      `Delete account for "${user.username}"?\n\nAre you sure you want to delete this account?`,
+    );
+    if (!shouldDelete) return;
+
+    setError("");
+    setSuccess("");
+    setProcessingUserId(user.user_id);
+    try {
+      const response = await axios.post(`/api/admin/users/${user.user_id}/delete/`, {}, getAuthConfig());
+      setSuccess((response.data as { message?: string })?.message || `Account deleted for ${user.username}.`);
+      await fetchUsers();
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined;
+        setError(data?.message || data?.detail || "Failed to delete account.");
+      } else {
+        setError("Failed to delete account.");
+      }
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
   const handleCreateUser = async (payload: {
     first_name: string;
     last_name: string;
@@ -325,6 +350,16 @@ export default function ViewUserTable() {
             <ShieldCheck className="h-3.5 w-3.5" />
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => handleDeleteUser(user)}
+          disabled={isProcessing || isAdminUser}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          title="Delete account"
+          aria-label={`Delete account for ${user.username}`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
     );
   };
@@ -475,6 +510,16 @@ export default function ViewUserTable() {
                             <ShieldCheck className="h-3.5 w-3.5" />
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(user)}
+                          disabled={isProcessing || isAdminUser}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-700 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                          title="Delete account"
+                          aria-label={`Delete account for ${user.username}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </article>
                   );

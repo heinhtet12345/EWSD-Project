@@ -38,6 +38,7 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const role = getRoleFromPath(pathname);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [mobileSidebarRoute, setMobileSidebarRoute] = useState(pathname);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
   );
@@ -79,12 +80,6 @@ export default function MainLayout() {
   }, []);
 
   useEffect(() => {
-    if (isMobileViewport) {
-      setIsMobileSidebarOpen(false);
-    }
-  }, [pathname, isMobileViewport]);
-
-  useEffect(() => {
     if (!role) return;
     if (lastTrackedPathRef.current === pathname) return;
     lastTrackedPathRef.current = pathname;
@@ -105,12 +100,15 @@ export default function MainLayout() {
   }, [pathname, role]);
 
   if (role) {
+    const isSidebarOpenForCurrentRoute =
+      isMobileViewport && isMobileSidebarOpen && mobileSidebarRoute === pathname;
+
     return (
       <div className="relative flex h-screen overflow-hidden">
         <SideBar
           role={role}
           isMobile={isMobileViewport}
-          isMobileOpen={isMobileSidebarOpen}
+          isMobileOpen={isSidebarOpenForCurrentRoute}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
         <div
@@ -120,7 +118,21 @@ export default function MainLayout() {
             color: "var(--dashboard_text)",
           }}
         >
-          <ToolBar onMenuToggle={isMobileViewport ? () => setIsMobileSidebarOpen((value) => !value) : undefined} />
+          <ToolBar
+            onMenuToggle={
+              isMobileViewport
+                ? () => {
+                    setIsMobileSidebarOpen((value) => {
+                      const nextValue = !value;
+                      if (nextValue) {
+                        setMobileSidebarRoute(pathname);
+                      }
+                      return nextValue;
+                    });
+                  }
+                : undefined
+            }
+          />
           <main className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
             <Outlet />
           </main>

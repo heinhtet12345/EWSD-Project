@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { ChevronLeft, ChevronRight, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
 import AddIdeaSubmissionForm from '../forms/AddIdeaSubmissionForm'
 import UserAvatar from '../components/common/UserAvatar'
 
@@ -73,6 +73,7 @@ const StaffMyIdeasPage = () => {
   const [isAdding, setIsAdding] = useState(false)
   const [isCheckingAccount, setIsCheckingAccount] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
   const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set())
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
@@ -80,7 +81,7 @@ const StaffMyIdeasPage = () => {
   const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
   const [totalIdeas, setTotalIdeas] = useState(0)
 
-  const itemsPerPage = 5
+  const skipSize = 5
 
   const getAuthConfig = () => {
     try {
@@ -105,10 +106,14 @@ const StaffMyIdeasPage = () => {
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalIdeas / itemsPerPage))
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + ideas.length
+  const effectivePageSize = pageSize === -1 ? Math.max(totalIdeas, 1) : pageSize
+  const totalPages = pageSize === -1 ? 1 : Math.max(1, Math.ceil(totalIdeas / pageSize))
+  const startIndex = (currentPage - 1) * effectivePageSize
+  const endIndex = Math.min(startIndex + effectivePageSize, totalIdeas)
   const currentIdeas = ideas
+  const nearbyPages = Array.from({ length: 4 }, (_, index) => currentPage - 4 + index).filter(
+    (page) => page >= 1 && page < currentPage,
+  )
 
   const categoryOptions = useMemo(
     () =>
@@ -219,7 +224,11 @@ const StaffMyIdeasPage = () => {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, selectedCategory, selectedDepartment, openFilter])
+  }, [searchTerm, selectedCategory, selectedDepartment, openFilter, pageSize])
+
+  useEffect(() => {
+    fetchIdeas(1)
+  }, [pageSize])
 
   useEffect(() => {
     fetchIdeas(currentPage)
@@ -233,7 +242,7 @@ const StaffMyIdeasPage = () => {
         ...(getAuthConfig() || {}),
         params: {
           page,
-          page_size: itemsPerPage,
+          page_size: effectivePageSize,
           search: searchTerm.trim() || undefined,
           category_id: selectedCategory || undefined,
           department_id: selectedDepartment || undefined,
@@ -695,22 +704,73 @@ const StaffMyIdeasPage = () => {
             ))}
 
             {totalIdeas > 0 && (
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
-                <div className="flex flex-1 justify-between sm:hidden">
-                  <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
-                  <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
-                </div>
-                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                  <p className="text-sm text-slate-700">
-                    Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{totalIdeas === 0 ? 0 : startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, totalIdeas)}</span> of <span className="font-medium">{totalIdeas}</span> results
-                  </p>
-                  <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                    <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><span className="sr-only">Previous</span><ChevronLeft className="h-5 w-5" /></button>
-                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                      <button key={page} onClick={() => setCurrentPage(page)} className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${page === currentPage ? 'z-10 bg-indigo-600 text-white' : 'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'}`}>{page}</button>
-                    ))}
-                    <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><span className="sr-only">Next</span><ChevronRight className="h-5 w-5" /></button>
-                  </nav>
+              <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-center sm:text-left">
+                <p className="text-sm text-slate-600">
+                  Showing {startIndex + 1} to {endIndex} of {totalIdeas} ideas
+                </p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={pageSize}
+                    onChange={(event) => setPageSize(Number(event.target.value))}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
+                    disabled={currentPage === 1}
+                    className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label={`Skip back ${skipSize} pages`}
+                    title={`Skip back ${skipSize} pages`}
+                  >
+                    {'<<'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Previous page"
+                    title="Previous page"
+                  >
+                    {'<'}
+                  </button>
+                  {nearbyPages.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <span className="text-sm text-slate-600">
+                    Page {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Next page"
+                    title="Next page"
+                  >
+                    {'>'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label={`Skip forward ${skipSize} pages`}
+                    title={`Skip forward ${skipSize} pages`}
+                  >
+                    {'>>'}
+                  </button>
                 </div>
               </div>
             )}

@@ -73,8 +73,9 @@ const StaffAllIdeaPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [totalIdeas, setTotalIdeas] = useState(0)
+  const skipSize = 5;
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
   const [isCheckingAccount, setIsCheckingAccount] = useState(false)
   const [actionMessage, setActionMessage] = useState('')
@@ -91,7 +92,8 @@ const StaffAllIdeaPage = () => {
   const [reportDetails, setReportDetails] = useState('')
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
 
-  const itemsPerPage = 5
+  const effectivePageSize = pageSize === -1 ? Math.max(totalIdeas, 1) : pageSize;
+  const totalPages = pageSize === -1 ? 1 : Math.max(1, Math.ceil(totalIdeas / pageSize));
 
   const getAuthConfig = () => {
     try {
@@ -202,29 +204,57 @@ const StaffAllIdeaPage = () => {
     return () => window.clearTimeout(timeoutId)
   }, [searchTerm])
 
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + ideas.length
-  const currentIdeas = ideas
+  const startIndex = (currentPage - 1) * effectivePageSize;
+  const endIndex = Math.min(startIndex + effectivePageSize, totalIdeas);
+  // Exclude deleted_user ideas from search results, but include in full list and CSV export
+  const isSearching = debouncedSearchTerm.length > 0
+  const filteredIdeas = useMemo(() => {
+    if (!isSearching) return ideas
+    const term = debouncedSearchTerm.toLowerCase()
+    return ideas.filter((idea) => {
+      // Exclude if deleted_user
+      const isDeletedUser = idea.user === 0 || idea.poster_username === 'deleted_user' || idea.poster_name === 'deleted_user'
+      // Only exclude from search
+      if (isDeletedUser) return false
+      // Search title, content, poster_name, poster_username
+      return (
+        idea.idea_title.toLowerCase().includes(term) ||
+        idea.idea_content.toLowerCase().includes(term) ||
+        (idea.poster_name && idea.poster_name.toLowerCase().includes(term)) ||
+        (idea.poster_username && idea.poster_username.toLowerCase().includes(term))
+      )
+    })
+  }, [ideas, debouncedSearchTerm, isSearching])
 
-  const buildIdeasQueryParams = (page: number) => ({
-    page,
-    page_size: itemsPerPage,
-    search: debouncedSearchTerm || undefined,
-    category_id: selectedCategory || undefined,
-    department_id: selectedDepartment || undefined,
-    open_filter: openFilter,
-    highlight_idea_id: pendingHighlightIdeaId || undefined,
-  })
+  const currentIdeas = isSearching ? filteredIdeas : ideas
+
+  const buildIdeasQueryParams = (page: number) => {
+    let page_size = effectivePageSize;
+    // If 'All' is selected, use a large number (e.g., 1000) instead of -1 or totalIdeas
+    if (pageSize === -1) {
+      page_size = 1000;
+    }
+    return {
+      page,
+      page_size,
+      search: debouncedSearchTerm || undefined,
+      category_id: selectedCategory || undefined,
+      department_id: selectedDepartment || undefined,
+      open_filter: openFilter,
+      highlight_idea_id: pendingHighlightIdeaId || undefined,
+    };
+  };
 
   const buildIdeasCacheKey = (page: number) =>
     JSON.stringify({
       page,
+      pageSize: effectivePageSize,
       search: debouncedSearchTerm || '',
       category: selectedCategory || '',
       department: selectedDepartment || '',
       open: openFilter,
       highlight: pendingHighlightIdeaId || '',
-    })
+    });
 
   const categoryOptions = useMemo(
     () =>
@@ -318,7 +348,12 @@ const StaffAllIdeaPage = () => {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearchTerm, selectedCategory, selectedDepartment, openFilter])
+  }, [debouncedSearchTerm, selectedCategory, selectedDepartment, openFilter, pageSize])
+
+  // Ensure ideas are fetched immediately when pageSize changes
+  useEffect(() => {
+    fetchIdeas(1);
+  }, [pageSize]);
 
   useEffect(() => {
     ideaPageCacheRef.current = {}
@@ -400,7 +435,6 @@ const StaffAllIdeaPage = () => {
         const cachedResults = Array.isArray(cachedResponse.results) ? cachedResponse.results : []
         setIdeas(cachedResults)
         setTotalIdeas(typeof cachedResponse.count === 'number' ? cachedResponse.count : cachedResults.length)
-        setTotalPages(Math.max(1, Number(cachedResponse.total_pages) || 1))
         setCurrentPage(Math.max(1, Number(cachedResponse.page) || page))
         setDepartmentOptions(Array.isArray(cachedResponse.department_options) ? cachedResponse.department_options : [])
         if (pendingHighlightIdeaId && cachedResults.some((idea) => idea.idea_id === pendingHighlightIdeaId)) {
@@ -420,8 +454,8 @@ const StaffAllIdeaPage = () => {
 
       const results = Array.isArray(data.results) ? data.results : []
       setIdeas(results)
+      console.log('Loaded ideas:', results.length, results);
       setTotalIdeas(typeof data.count === 'number' ? data.count : results.length)
-      setTotalPages(Math.max(1, Number(data.total_pages) || 1))
       setCurrentPage(Math.max(1, Number(data.page) || page))
       setDepartmentOptions(Array.isArray(data.department_options) ? data.department_options : [])
 
@@ -778,14 +812,82 @@ const StaffAllIdeaPage = () => {
               setCommentAnon((prev) => ({ ...prev, [ideaId]: checked }))
             }
             onSubmitComment={handleSubmitComment}
-            totalIdeas={totalIdeas}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            visiblePageNumbers={visiblePageNumbers}
-            onPageChange={setCurrentPage}
           />
+
+          {/* Pagination Controls (AdminAnalyticsPage style) */}
+          {!loading && totalIdeas > 0 && (
+            <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-center sm:text-left">
+              <p className="text-sm text-slate-600">
+                Showing {startIndex + 1} to {endIndex} of {totalIdeas} ideas
+              </p>
+              <div className="flex items-center gap-2">
+                <select
+                  value={pageSize}
+                  onChange={(event) => setPageSize(Number(event.target.value))}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value={10}>10 / page</option>
+                  <option value={20}>20 / page</option>
+                  <option value={50}>50 / page</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
+                  disabled={currentPage === 1}
+                  className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label={`Skip back ${skipSize} pages`}
+                  title={`Skip back ${skipSize} pages`}
+                >
+                  {'<<'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Previous page"
+                  title="Previous page"
+                >
+                  {'<'}
+                </button>
+                {Array.from({ length: 4 }, (_, index) => currentPage - 4 + index)
+                  .filter((page) => page >= 1 && page < currentPage)
+                  .map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {page}
+                    </button>
+                  ))}
+                <span className="text-sm text-slate-600">
+                  Page {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Next page"
+                  title="Next page"
+                >
+                  {'>'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label={`Skip forward ${skipSize} pages`}
+                  title={`Skip forward ${skipSize} pages`}
+                >
+                  {'>>'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {reportTarget && (

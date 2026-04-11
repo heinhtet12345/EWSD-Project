@@ -88,13 +88,6 @@ type ViewIdeaTableProps = {
   commentAnon: Record<number, boolean>
   onCommentAnonChange: (ideaId: number, checked: boolean) => void
   onSubmitComment: (ideaId: number) => void
-  totalIdeas: number
-  currentPage: number
-  totalPages: number
-  startIndex: number
-  endIndex: number
-  visiblePageNumbers: number[]
-  onPageChange: (page: number) => void
 }
 
 export default function ViewIdeaTable({
@@ -125,13 +118,6 @@ export default function ViewIdeaTable({
   commentAnon,
   onCommentAnonChange,
   onSubmitComment,
-  totalIdeas,
-  currentPage,
-  totalPages,
-  startIndex,
-  endIndex,
-  visiblePageNumbers,
-  onPageChange,
 }: ViewIdeaTableProps) {
   if (loading) {
     return <p className="text-sm text-slate-500">Loading ideas...</p>
@@ -410,66 +396,7 @@ export default function ViewIdeaTable({
         </div>
       ))}
 
-      {totalIdeas > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
-          <div className="flex flex-1 justify-between sm:hidden">
-            <button
-              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-700">
-              Page <span className="font-medium">{currentPage}</span> of{' '}
-              <span className="font-medium">{totalPages}</span> — Showing{' '}
-              <span className="font-medium">{totalIdeas === 0 ? 0 : startIndex + 1}</span> to{' '}
-              <span className="font-medium">{Math.min(endIndex, totalIdeas)}</span> of{' '}
-              <span className="font-medium">{totalIdeas}</span> results
-            </p>
-            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-              <button
-                onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span className="sr-only">Previous</span>
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              {visiblePageNumbers.map((page) => (
-                <button
-                  key={page}
-                  onClick={() => onPageChange(page)}
-                  className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                    page === currentPage
-                      ? 'z-10 bg-indigo-600 text-white'
-                      : 'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span className="sr-only">Next</span>
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </nav>
-          </div>
-        </div>
-      )}
+      {/* Pagination controls removed; now handled in StaffAllIdeaPage */}
     </div>
   )
 }
