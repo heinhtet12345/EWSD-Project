@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.mail import BadHeaderError, send_mail
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -7,9 +8,12 @@ from rest_framework.views import APIView
 
 from ..models import Department, Notification, Role
 from ..serializer import UserSerializer
+from ..IdeaPost.models import Idea
+from ..interaction.models import Comment
 
 User = get_user_model()
 TEMPORARY_PASSWORD = "Pass@123"
+DELETED_USER_ID = 0
 
 
 def _normalized_role(user) -> str:
@@ -23,6 +27,21 @@ def _normalized_role_name(role_name: str) -> str:
 
 def _admin_users_queryset():
     return [user for user in User.objects.select_related("role") if _normalized_role(user) == "admin"]
+
+
+def _get_deleted_user():
+    deleted_user, _ = User.objects.get_or_create(
+        user_id=DELETED_USER_ID,
+        defaults={
+            "username": "deleted_user",
+            "email": "deleted_user@system.local",
+            "first_name": "Deleted",
+            "last_name": "User",
+            "is_active": False,
+            "active_status": False,
+        },
+    )
+    return deleted_user
 
 
 def _requester_can_toggle_user(requester, target_user) -> bool:
@@ -87,7 +106,7 @@ class AdminUserListView(APIView):
         if requester_role not in {"admin", "qa_manager"}:
             return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
 
-        users_queryset = User.objects.select_related("role", "department").order_by("username")
+        users_queryset = User.objects.select_related("role", "department").exclude(user_id=DELETED_USER_ID).order_by("username")
         if requester_role == "qa_manager":
             allowed_roles = {"staff", "qa_coordinator"}
             users = [user for user in users_queryset if _normalized_role(user) in allowed_roles]
@@ -304,6 +323,20 @@ class AdminDisableUserAccountView(APIView):
             notification_type="account_disabled",
         )
 
+        # Send email notification to the user
+        from django.core.mail import send_mail
+        if target_user.email:
+            try:
+                send_mail(
+                    subject="Account Disabled",
+                    message="Your account has been disabled due to Users' Agreement Violations",
+                    from_email=None,  # Uses DEFAULT_FROM_EMAIL from settings
+                    recipient_list=[target_user.email],
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
         return Response({"message": f'Account "{target_user.username}" disabled.'}, status=status.HTTP_200_OK)
 
 
@@ -334,3 +367,35 @@ class AdminEnableUserAccountView(APIView):
         )
 
         return Response({"message": f'Account "{target_user.username}" enabled.'}, status=status.HTTP_200_OK)
+
+
+class AdminDeleteUserAccountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, user_id):
+        requester_role = _normalized_role(request.user)
+        if requester_role not in {"admin", "qa_manager"}:
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        target_user = User.objects.select_related("role", "department").filter(user_id=user_id).first()
+        if not target_user:
+            return Response({"message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        if target_user.user_id == DELETED_USER_ID:
+            return Response({"message": "The deleted user placeholder cannot be removed."}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.user_id == target_user.user_id:
+            return Response({"message": "You cannot delete your own account."}, status=status.HTTP_400_BAD_REQUEST)
+        if not _requester_can_toggle_user(request.user, target_user):
+            return Response({"message": "Not authorized to delete this user."}, status=status.HTTP_403_FORBIDDEN)
+
+        deleted_user = _get_deleted_user()
+
+        with transaction.atomic():
+            Idea.objects.filter(user=target_user).update(user=deleted_user)
+            Comment.objects.filter(user=target_user).update(user=deleted_user)
+            target_username = target_user.username
+            target_user.delete()
+
+        return Response(
+            {"message": f'Account "{target_username}" deleted. Related ideas and comments were reassigned to deleted_user.'},
+            status=status.HTTP_200_OK,
+        )
