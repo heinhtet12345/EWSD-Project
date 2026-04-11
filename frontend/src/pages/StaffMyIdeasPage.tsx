@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { Edit3, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
 import AddIdeaSubmissionForm from '../forms/AddIdeaSubmissionForm'
 import UserAvatar from '../components/common/UserAvatar'
 
@@ -71,6 +71,7 @@ const StaffMyIdeasPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isAdding, setIsAdding] = useState(false)
+  const [editingIdea, setEditingIdea] = useState<Idea | null>(null)
   const [isCheckingAccount, setIsCheckingAccount] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -427,7 +428,7 @@ const StaffMyIdeasPage = () => {
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">My Ideas</h1>
           <p className="text-sm text-slate-500">Only your submitted ideas, grouped by closure period.</p>
         </div>
-        {!isAdding && (
+        {!isAdding && !editingIdea && (
           <button
             type="button"
             onClick={handleAddIdeaClick}
@@ -439,19 +440,34 @@ const StaffMyIdeasPage = () => {
         )}
       </div>
 
-      {isAdding && (
+      {(isAdding || editingIdea) && (
         <div className="w-full space-y-3">
           <AddIdeaSubmissionForm
-            onCancel={() => setIsAdding(false)}
+            initialIdea={
+              editingIdea
+                ? {
+                    idea_id: editingIdea.idea_id,
+                    idea_title: editingIdea.idea_title,
+                    idea_content: editingIdea.idea_content,
+                    anonymous_status: editingIdea.anonymous_status,
+                    category_ids: editingIdea.category_ids,
+                  }
+                : null
+            }
+            onCancel={() => {
+              setIsAdding(false)
+              setEditingIdea(null)
+            }}
             onSubmit={() => {
               setIsAdding(false)
+              setEditingIdea(null)
               fetchIdeas()
             }}
           />
         </div>
       )}
 
-      {!isAdding && (
+      {!isAdding && !editingIdea && (
         <div className="space-y-2">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
@@ -533,6 +549,7 @@ const StaffMyIdeasPage = () => {
                 ) : (
                   group.ideas.map((idea) => {
                     const commentOpen = idea.closure_period_comment_open !== false
+                    const canEditIdea = idea.closure_period_idea_open !== false
                     return (
                       <article key={idea.idea_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
                         <div className="mb-3 flex gap-3">
@@ -600,6 +617,15 @@ const StaffMyIdeasPage = () => {
                         )}
 
                         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                          {canEditIdea && (
+                            <button
+                              type="button"
+                              onClick={() => setEditingIdea(idea)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                            >
+                              <Edit3 className="h-4 w-4" /> Edit Idea
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={!commentOpen}

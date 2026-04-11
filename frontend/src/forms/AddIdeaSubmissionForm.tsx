@@ -11,6 +11,14 @@ type Category = {
   description: string
 }
 
+type ExistingIdea = {
+  idea_id: number
+  idea_title: string
+  idea_content: string
+  anonymous_status: boolean
+  category_ids: number[]
+}
+
 const ALLOWED_DOCUMENT_EXTENSIONS = [
   '.pdf',
   '.doc',
@@ -31,9 +39,10 @@ type AddIdeaSubmissionFormProps = {
   onCancel: () => void
   onSubmit: (data: any) => void
   onClose?: () => void
+  initialIdea?: ExistingIdea | null
 }
 
-const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel, onSubmit, onClose }) => {
+const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel, onSubmit, onClose, initialIdea = null }) => {
   const [title, setTitle] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<Category[]>([])
   const [description, setDescription] = useState('')
@@ -48,6 +57,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
   const [hasReachedTermsEnd, setHasReachedTermsEnd] = useState(false)
   const isSubmittingRef = useRef(false)
   const termsContentRef = useRef<HTMLDivElement | null>(null)
+  const isEditMode = Boolean(initialIdea)
 
   const getAuthConfig = () => {
     try {
@@ -97,6 +107,21 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
     fetchCategories()
   }, [])
 
+  useEffect(() => {
+    if (!initialIdea) return
+    setTitle(initialIdea.idea_title)
+    setDescription(initialIdea.idea_content)
+    setAnonymous(initialIdea.anonymous_status)
+    setTermsAccepted(true)
+  }, [initialIdea])
+
+  useEffect(() => {
+    if (!initialIdea || categories.length === 0) return
+    setSelectedCategories(
+      categories.filter((category) => initialIdea.category_ids.includes(category.id)),
+    )
+  }, [initialIdea, categories])
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files ? e.target.files[0] : null
     if (selectedFile) {
@@ -134,8 +159,8 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
 
     // Prevent duplicate submissions if the user clicks quickly multiple times.
     if (isSubmittingRef.current) return
-    if (!title || !description || selectedCategories.length === 0 || !termsAccepted) {
-      setError('Please fill all required fields and accept terms')
+    if (!title || !description || selectedCategories.length === 0 || (!isEditMode && !termsAccepted)) {
+      setError(isEditMode ? 'Please fill all required fields' : 'Please fill all required fields and accept terms')
       return
     }
 
@@ -150,16 +175,23 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
       })
       formData.append('idea_content', description)
       formData.append('anonymous_status', anonymous.toString())
-      formData.append('terms_accepted', termsAccepted.toString())
+      if (!isEditMode) {
+        formData.append('terms_accepted', termsAccepted.toString())
+      }
       if (file) formData.append('documents', file)
       const authConfig = getAuthConfig()
-      await axios.post('/api/ideas/post/', formData, {
+      const requestConfig = {
         ...authConfig,
         headers: {
           ...(authConfig?.headers || {}),
           'Content-Type': 'multipart/form-data',
         },
-      })
+      }
+      if (isEditMode && initialIdea) {
+        await axios.patch(`/api/ideas/${initialIdea.idea_id}/update/`, formData, requestConfig)
+      } else {
+        await axios.post('/api/ideas/post/', formData, requestConfig)
+      }
       onSubmit({ title, selectedCategories, description, file, anonymous })
     } catch (err: any) {
       const backendMessage =
@@ -217,8 +249,10 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
     <div className="qa-add-idea-form w-full rounded-2xl bg-white p-6 shadow-lg border border-slate-200">
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Submit New Idea</h2>
-          <p className="text-sm text-slate-500 mt-1">Share your innovative ideas with the community.</p>
+          <h2 className="text-xl font-semibold text-slate-900">{isEditMode ? 'Edit Idea' : 'Submit New Idea'}</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            {isEditMode ? 'Update your idea while the closure period is still open.' : 'Share your innovative ideas with the community.'}
+          </p>
         </div>
         {onClose && (
           <button
@@ -437,59 +471,61 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
             </div>
           </div>
 
-          <div className="group rounded-xl border border-slate-200 bg-white p-3 transition-all duration-200 hover:border-blue-200 hover:shadow-sm">
-            <div className="flex items-start justify-start gap-3">
-              <button
-                id="terms"
-                type="button"
-                role="switch"
-                aria-checked={termsAccepted}
-                aria-label="Accept terms and conditions"
-                onClick={() => {
-                  if (termsAccepted) {
-                    setTermsAccepted(false)
-                    return
-                  }
-                  handleOpenTerms()
-                }}
-                className={`relative mt-0.5 inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-all duration-300 ease-out focus:outline-none focus:ring-4 ${
-                  termsAccepted
-                    ? 'border-emerald-500 bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg shadow-emerald-200 focus:ring-emerald-100'
-                    : 'border-slate-300 bg-gradient-to-r from-slate-200 to-slate-300 focus:ring-slate-200'
-                }`}
-              >
-                <span className="pointer-events-none absolute left-2 text-white/85">
-                  <FileText className={`h-3.5 w-3.5 transition-opacity duration-300 ${termsAccepted ? 'opacity-0' : 'opacity-100'}`} />
-                </span>
-                <span className="pointer-events-none absolute right-2 text-white/90">
-                  <Check className={`h-3.5 w-3.5 transition-opacity duration-300 ${termsAccepted ? 'opacity-100' : 'opacity-0'}`} />
-                </span>
-                <span
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(15,23,42,0.18)] transition-all duration-300 ease-out ${
-                    termsAccepted ? 'translate-x-6 text-emerald-600' : 'translate-x-0 text-slate-500'
+          {!isEditMode && (
+            <div className="group rounded-xl border border-slate-200 bg-white p-3 transition-all duration-200 hover:border-blue-200 hover:shadow-sm">
+              <div className="flex items-start justify-start gap-3">
+                <button
+                  id="terms"
+                  type="button"
+                  role="switch"
+                  aria-checked={termsAccepted}
+                  aria-label="Accept terms and conditions"
+                  onClick={() => {
+                    if (termsAccepted) {
+                      setTermsAccepted(false)
+                      return
+                    }
+                    handleOpenTerms()
+                  }}
+                  className={`relative mt-0.5 inline-flex h-8 w-14 shrink-0 items-center rounded-full border p-1 transition-all duration-300 ease-out focus:outline-none focus:ring-4 ${
+                    termsAccepted
+                      ? 'border-emerald-500 bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg shadow-emerald-200 focus:ring-emerald-100'
+                      : 'border-slate-300 bg-gradient-to-r from-slate-200 to-slate-300 focus:ring-slate-200'
                   }`}
                 >
-                  {termsAccepted ? <Check className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
-                </span>
-              </button>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center justify-start gap-2">
-                  <p className="text-sm font-medium text-slate-700 transition-colors group-hover:text-blue-600">
-                    I accept the terms and conditions <span className="text-red-500">*</span>
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleOpenTerms}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                  <span className="pointer-events-none absolute left-2 text-white/85">
+                    <FileText className={`h-3.5 w-3.5 transition-opacity duration-300 ${termsAccepted ? 'opacity-0' : 'opacity-100'}`} />
+                  </span>
+                  <span className="pointer-events-none absolute right-2 text-white/90">
+                    <Check className={`h-3.5 w-3.5 transition-opacity duration-300 ${termsAccepted ? 'opacity-100' : 'opacity-0'}`} />
+                  </span>
+                  <span
+                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-[0_4px_12px_rgba(15,23,42,0.18)] transition-all duration-300 ease-out ${
+                      termsAccepted ? 'translate-x-6 text-emerald-600' : 'translate-x-0 text-slate-500'
+                    }`}
                   >
-                    <FileText className="h-3.5 w-3.5" />
-                    Read terms
-                  </button>
+                    {termsAccepted ? <Check className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+                  </span>
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-start gap-2">
+                    <p className="text-sm font-medium text-slate-700 transition-colors group-hover:text-blue-600">
+                      I accept the terms and conditions <span className="text-red-500">*</span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleOpenTerms}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Read terms
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">Open the terms, read to the end, then accept them before submitting</p>
                 </div>
-                <p className="text-xs text-slate-500">Open the terms, read to the end, then accept them before submitting</p>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Form Actions */}
@@ -515,12 +551,13 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
                 Submitting...
               </span>
             ) : (
-              'Submit Idea'
+              isEditMode ? 'Save Changes' : 'Submit Idea'
             )}
           </button>
         </div>
       </form>
     </div>
+    {!isEditMode && (
     <Modal
       isOpen={isTermsModalOpen}
       onClose={() => setIsTermsModalOpen(false)}
@@ -626,6 +663,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
         </div>
       </div>
     </Modal>
+    )}
     </>
   )
 }

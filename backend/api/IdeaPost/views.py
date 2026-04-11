@@ -276,6 +276,54 @@ class MyDepartmentIdeasView(APIView):
         return _list_ideas_response(request, scope='my_department')
 
 
+class UpdateIdeaView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, idea_id):
+        role = _normalized_role(request.user)
+        if role != "staff":
+            return Response({"message": "Only staff can edit their ideas."}, status=status.HTTP_403_FORBIDDEN)
+
+        idea = Idea.objects.filter(idea_id=idea_id).select_related("closurePeriod", "user").first()
+        if not idea:
+            return Response({"message": "Idea not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if idea.user_id != request.user.user_id:
+            return Response({"message": "You can only edit your own idea."}, status=status.HTTP_403_FORBIDDEN)
+
+        if not getattr(idea.closurePeriod, "is_idea_open", True):
+            return Response(
+                {"message": "This idea can no longer be edited because the closure period has ended."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = IdeaCreateSerializer(idea, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                updated_idea = serializer.save()
+                files = request.FILES.getlist("documents")
+                for f in files:
+                    validate_uploaded_document(f)
+                    UploadedDocument.objects.create(
+                        idea=updated_idea,
+                        file=f,
+                        file_name=f.name,
+                    )
+        except Exception as exc:
+            return Response(
+                {"message": f"An error occurred while updating the idea: {str(exc)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(
+            IdeaListSerializer(updated_idea, context={"request": request, "viewer_role": role}).data,
+            status=status.HTTP_200_OK,
+        )
+
+
 class ReportIdeaView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
