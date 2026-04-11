@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
-import { Camera, Edit3, Eye, EyeOff, KeyRound, Mail, MapPin, Phone, Save, Shield, User, X } from "lucide-react";
+import { Camera, Edit3, Eye, EyeOff, KeyRound, Laptop, Mail, MapPin, Phone, Save, Shield, Smartphone, Trash2, User, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import useThemeMode from "../hooks/useThemeMode";
 
 type ProfileData = {
   user_id: number;
@@ -20,6 +23,19 @@ type ProfileData = {
   hire_date: string | null;
   active_status: boolean;
   profile_image: string | null;
+};
+
+type LoginSession = {
+  session_id: string;
+  device_type: string;
+  browser: string;
+  operating_system: string;
+  ip_address: string | null;
+  created_at: string;
+  last_used_at: string;
+  revoked_at: string | null;
+  is_active: boolean;
+  is_current: boolean;
 };
 
 const PROFILE_ENDPOINTS = ["/api/profile/me/", "/api/profile/me"] as const;
@@ -87,6 +103,8 @@ const updateProfile = async (payload: FormData) => {
 };
 
 export default function UserProfilePage() {
+  const navigate = useNavigate();
+  const isDarkMode = useThemeMode();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [form, setForm] = useState({
     first_name: "",
@@ -117,6 +135,13 @@ export default function UserProfilePage() {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [sessions, setSessions] = useState<LoginSession[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [sessionError, setSessionError] = useState("");
+  const [sessionSuccess, setSessionSuccess] = useState("");
+  const [sessionPassword, setSessionPassword] = useState("");
+  const [sessionActionTarget, setSessionActionTarget] = useState<"all" | string | null>(null);
+  const [isManagingSessions, setIsManagingSessions] = useState(false);
 
   const resolvedPreviewImage = useMemo(() => previewImage || profile?.profile_image || null, [previewImage, profile]);
   const displayName = useMemo(() => {
@@ -148,6 +173,18 @@ export default function UserProfilePage() {
     const timeoutId = window.setTimeout(() => setPasswordError(""), 3500);
     return () => window.clearTimeout(timeoutId);
   }, [passwordError]);
+
+  useEffect(() => {
+    if (!sessionError) return;
+    const timeoutId = window.setTimeout(() => setSessionError(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [sessionError]);
+
+  useEffect(() => {
+    if (!sessionSuccess) return;
+    const timeoutId = window.setTimeout(() => setSessionSuccess(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [sessionSuccess]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -187,6 +224,52 @@ export default function UserProfilePage() {
     };
 
     fetchProfile();
+  }, []);
+
+  const getCurrentSessionId = () => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) return "";
+      const parsed = JSON.parse(raw) as { session_id?: string };
+      return String(parsed?.session_id || "");
+    } catch {
+      return "";
+    }
+  };
+
+  const clearAuthAndRedirect = () => {
+    try {
+      localStorage.removeItem("authUser");
+    } catch {
+      // ignore
+    }
+    window.dispatchEvent(new Event("auth-changed"));
+    navigate("/", { replace: true });
+  };
+
+  const fetchSessions = async () => {
+    setIsLoadingSessions(true);
+    setSessionError("");
+    try {
+      const response = await axios.get<{ results?: LoginSession[] }>("/api/profile/sessions/", {
+        ...getAuthConfig(),
+        params: { current_session_id: getCurrentSessionId() || undefined },
+      });
+      setSessions(Array.isArray(response.data?.results) ? response.data.results : []);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined;
+        setSessionError(data?.message || data?.detail || "Failed to load sessions.");
+      } else {
+        setSessionError("Failed to load sessions.");
+      }
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchSessions();
   }, []);
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -391,6 +474,77 @@ export default function UserProfilePage() {
     } finally {
       setIsChangingPassword(false);
     }
+  };
+
+  const handleSessionAction = async (target: "all" | string) => {
+    if (!sessionPassword.trim()) {
+      setSessionError("Please enter your password to manage sessions.");
+      return;
+    }
+
+    setIsManagingSessions(true);
+    setSessionError("");
+    setSessionSuccess("");
+    try {
+      const currentSessionId = getCurrentSessionId();
+      const response =
+        target === "all"
+          ? await axios.post(
+              "/api/profile/sessions/revoke-all/",
+              {
+                password: sessionPassword,
+                revoke_all: true,
+                current_session_id: currentSessionId || undefined,
+              },
+              getAuthConfig(),
+            )
+          : await axios.post(
+              `/api/profile/sessions/${target}/revoke/`,
+              {
+                password: sessionPassword,
+                current_session_id: currentSessionId || undefined,
+              },
+              getAuthConfig(),
+            );
+
+      const data = response.data as {
+        message?: string;
+        current_session_revoked?: boolean;
+      };
+
+      setSessionSuccess(data.message || "Session updated successfully.");
+      setSessionPassword("");
+      setSessionActionTarget(null);
+
+      if (data.current_session_revoked) {
+        clearAuthAndRedirect();
+        return;
+      }
+
+      await fetchSessions();
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined;
+        setSessionError(data?.message || data?.detail || "Failed to update sessions.");
+      } else {
+        setSessionError("Failed to update sessions.");
+      }
+    } finally {
+      setIsManagingSessions(false);
+    }
+  };
+
+  const formatSessionTime = (value: string) => {
+    if (!value) return "-";
+    return new Date(value).toLocaleString();
+  };
+
+  const getSessionIcon = (deviceType: string) => {
+    const normalized = deviceType.toLowerCase();
+    if (normalized.includes("mobile") || normalized.includes("tablet")) {
+      return <Smartphone className="h-4 w-4" />;
+    }
+    return <Laptop className="h-4 w-4" />;
   };
 
   return (
@@ -615,6 +769,128 @@ export default function UserProfilePage() {
           </div>
           </form>
 
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="inline-flex items-center gap-2 text-lg font-semibold text-slate-900">
+                  <Laptop className="h-5 w-5" />
+                  Session Management
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Review devices signed in with this account and remove a session or all sessions when needed.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void fetchSessions()}
+                disabled={isLoadingSessions}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoadingSessions ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
+
+            {sessionError && (
+              <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {sessionError}
+              </div>
+            )}
+            {sessionSuccess && (
+              <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {sessionSuccess}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {isLoadingSessions ? (
+                <p className="text-sm text-slate-500">Loading sessions...</p>
+              ) : sessions.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                  No active sessions found.
+                </div>
+              ) : (
+                sessions.map((session) => (
+                  <div
+                    key={session.session_id}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                            {getSessionIcon(session.device_type)}
+                            {[session.browser || "Unknown Browser", session.operating_system || "Unknown OS"]
+                              .filter(Boolean)
+                              .join(" on ")}
+                          </span>
+                          {session.is_current && (
+                            <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                              Current session
+                            </span>
+                          )}
+                          {!session.is_active && (
+                            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500">
+                              Revoked
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid gap-1 text-sm text-slate-600">
+                          <p>Device type: {session.device_type || "Unknown"}</p>
+                          <p>IP address: {session.ip_address || "Unavailable"}</p>
+                          <p>Signed in: {formatSessionTime(session.created_at)}</p>
+                          <p>Last used: {formatSessionTime(session.last_used_at)}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={!session.is_active || isManagingSessions}
+                        onClick={() => {
+                          setSessionActionTarget(session.session_id);
+                          setSessionPassword("");
+                          setSessionSuccess("");
+                          setSessionError("");
+                        }}
+                        className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                          isDarkMode
+                            ? "border border-rose-500/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+                            : "border border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100"
+                        }`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove session
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {sessions.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs text-slate-500">
+                  Removing all sessions will also sign out this browser if it is included.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSessionActionTarget("all");
+                    setSessionPassword("");
+                    setSessionSuccess("");
+                    setSessionError("");
+                  }}
+                  disabled={isManagingSessions}
+                  className={`rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isDarkMode
+                      ? "border border-rose-400/30 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
+                      : "bg-slate-900 text-white hover:bg-slate-800"
+                  }`}
+                >
+                  Remove All Sessions
+                </button>
+              </div>
+            )}
+          </div>
+
           <form onSubmit={handleChangePassword} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4">
               <h2 className="inline-flex items-center gap-2 text-lg font-semibold text-slate-900">
@@ -714,6 +990,68 @@ export default function UserProfilePage() {
           Profile not found.
         </div>
       )}
+      {sessionActionTarget &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 px-4 py-6">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl sm:p-6">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {sessionActionTarget === "all" ? "Remove All Sessions" : "Remove Session"}
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                {sessionActionTarget === "all"
+                  ? "Enter your password to remove all active sessions for this account."
+                  : "Enter your password to remove this session."}
+              </p>
+              <div className="mt-4 space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  value={sessionPassword}
+                  onChange={(event) => setSessionPassword(event.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-400"
+                />
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSessionActionTarget(null);
+                    setSessionPassword("");
+                  }}
+                  disabled={isManagingSessions}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSessionAction(sessionActionTarget)}
+                  disabled={isManagingSessions}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60 ${
+                    sessionActionTarget === "all"
+                      ? isDarkMode
+                        ? "border border-rose-400/30 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
+                        : "bg-slate-900 text-white hover:bg-slate-800"
+                      : "bg-rose-600 text-white hover:bg-rose-700"
+                  }`}
+                >
+                  {isManagingSessions
+                    ? sessionActionTarget === "all"
+                      ? "Removing..."
+                      : "Confirming..."
+                    : sessionActionTarget === "all"
+                      ? "Confirm Remove All"
+                      : "Confirm Remove"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }

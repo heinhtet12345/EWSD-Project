@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Category, Department, Role, Notification
+from .models import Category, Department, Role, Notification, UserLoginSession
 
 User = get_user_model()
 
@@ -127,3 +127,25 @@ class NotificationSerializer(serializers.ModelSerializer):
             'idea',
         ]
         read_only_fields = fields
+
+
+class UserLoginSessionSerializer(serializers.ModelSerializer):
+    is_active = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserLoginSession
+        fields = [
+            "session_id",
+            "device_type",
+            "browser",
+            "operating_system",
+            "ip_address",
+            "created_at",
+            "last_used_at",
+            "revoked_at",
+            "is_active",
+        ]
+        read_only_fields = fields
+
+    def get_is_active(self, obj):
+        return obj.revoked_at is None

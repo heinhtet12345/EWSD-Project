@@ -2,8 +2,8 @@ from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views.categories_views import AddCategoryView
 from .views.categories_views import ViewCategoryView , DeleteCategoryView
-from .views.auth_views import LoginView 
-from .views.profile_views import UserProfileView, ChangePasswordView
+from .views.auth_views import LoginView, LogoutView
+from .views.profile_views import UserProfileView, ChangePasswordView, UserSessionListView, UserSessionRevokeView
 from .views.notifications_views import (
     ListNotificationsView,
     MarkNotificationReadView,
@@ -24,10 +24,14 @@ from .views.admin_views import (
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('password-reset/request/', ForgotPasswordRequestView.as_view(), name='password-reset-request'),
     path('profile/me/', UserProfileView.as_view(), name='profile-me'),
     path('profile/change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('profile/sessions/', UserSessionListView.as_view(), name='profile-sessions'),
+    path('profile/sessions/revoke-all/', UserSessionRevokeView.as_view(), name='profile-sessions-revoke-all'),
+    path('profile/sessions/<uuid:session_id>/revoke/', UserSessionRevokeView.as_view(), name='profile-sessions-revoke'),
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
     path('admin/users/meta/', AdminUserMetaView.as_view(), name='admin-user-meta'),
     path('admin/users/create/', AdminCreateUserView.as_view(), name='admin-user-create'),

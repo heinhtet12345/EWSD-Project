@@ -101,4 +101,34 @@ class Notification(models.Model):
         return f"{self.title} -> {self.recipient}"
 
 
+class UserLoginSession(models.Model):
+    session_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="login_sessions",
+    )
+    refresh_jti = models.CharField(max_length=255, unique=True)
+    refresh_token = models.TextField()
+    device_type = models.CharField(max_length=30, blank=True)
+    browser = models.CharField(max_length=50, blank=True)
+    operating_system = models.CharField(max_length=50, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(auto_now=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "UserLoginSession"
+        ordering = ["-last_used_at", "-created_at"]
+
+    @property
+    def is_active(self) -> bool:
+        return self.revoked_at is None
+
+    def __str__(self):
+        return f"{self.user} - {self.browser or 'Unknown Browser'} ({self.device_type or 'Unknown Device'})"
+
+
 

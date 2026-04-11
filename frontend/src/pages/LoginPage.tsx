@@ -27,6 +27,7 @@ type AuthResponse = {
   department?: string;
   message?: string;
   refresh?: string;
+  session_id?: string;
   active_status?: boolean;
   first_login?: boolean;
   last_login_at?: string | null;
@@ -119,6 +120,7 @@ export default function LoginPage() {
         active_status: payload?.active_status ?? true,
         token: payload?.access,
         refresh: payload?.refresh,
+        session_id: payload?.session_id,
       };
       localStorage.setItem("authUser", JSON.stringify(user));
       sessionStorage.setItem(
