@@ -1,16 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-
-type ActivityLog = {
-  activity_log_id: number;
-  username: string;
-  event_type: string;
-  path: string;
-  browser: string;
-  operating_system: string;
-  device_type: string;
-  created_at: string;
-};
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import ViewActivityTable, { type ActivityLog } from "../components/tables/ViewActivityTable";
 
 type ActivityLogsResponse = {
   results: ActivityLog[];
@@ -23,28 +14,53 @@ type ActivityLogsResponse = {
 export default function AdminAnalyticsPage() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [eventType, setEventType] = useState("");
   const [days, setDays] = useState(30);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const cacheRef = useRef(new Map<string, ActivityLogsResponse>());
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const effectivePageSize = pageSize === -1 ? Math.max(totalCount, 1) : pageSize;
+  const totalPages = pageSize === -1 ? 1 : Math.max(1, Math.ceil(totalCount / pageSize));
+  const skipSize = 5;
+  const nearbyPages = Array.from({ length: 4 }, (_, index) => currentPage - 4 + index).filter(
+    (page) => page >= 1 && page < currentPage,
+  );
 
   const fetchLogs = async () => {
     setError("");
+    const cacheKey = JSON.stringify({
+      page: currentPage,
+      pageSize: effectivePageSize,
+      days,
+      eventType: eventType || "",
+      search: search.trim(),
+    });
+
+    const cached = cacheRef.current.get(cacheKey);
+    if (cached) {
+      setLogs(cached.results || []);
+      setTotalCount(cached.count || 0);
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      setIsRefreshing(true);
       const response = await axios.get<ActivityLogsResponse>("/api/analytics/logs/", {
         params: {
           page: currentPage,
-          page_size: pageSize,
+          page_size: effectivePageSize,
           days,
           event_type: eventType || undefined,
           search: search.trim() || undefined,
         },
       });
+      cacheRef.current.set(cacheKey, response.data);
       setLogs(response.data.results || []);
       setTotalCount(response.data.count || 0);
     } catch (err) {
@@ -54,31 +70,36 @@ export default function AdminAnalyticsPage() {
       } else {
         setError("Failed to load activity logs.");
       }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    setIsLoading(true);
-    fetchLogs().finally(() => setIsLoading(false));
-  }, [currentPage, pageSize, days, eventType, search]);
+    if (logs.length === 0) {
+      setIsLoading(true);
+    }
+    fetchLogs();
+  }, [currentPage, effectivePageSize, days, eventType, search]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [days, eventType, search]);
+  }, [days, eventType, search, pageSize]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
       fetchLogs();
     }, 10000);
     return () => window.clearInterval(interval);
-  }, [currentPage, pageSize, days, eventType, search]);
+  }, [currentPage, effectivePageSize, days, eventType, search]);
 
   return (
-    <section className="space-y-4">
-      <div>
+    <section className="space-y-2">
+      {/* <div>
         <h1 className="text-2xl font-semibold text-slate-900">Activities Logs</h1>
         <p className="text-sm text-slate-500">Track who did what, where, and when.</p>
-      </div>
+      </div> */}
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-3">
@@ -117,114 +138,80 @@ export default function AdminAnalyticsPage() {
         {isLoading ? (
           <p className="px-4 py-10 text-center text-sm text-slate-500">Loading activity logs...</p>
         ) : (
-          <>
-            <div className="space-y-3 p-3 sm:hidden">
-              {logs.length === 0 ? (
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 shadow-sm">
-                  No activity logs found.
-                </div>
-              ) : (
-                logs.map((log) => (
-                  <article key={log.activity_log_id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">User</p>
-                        <p className="mt-1 truncate text-base font-semibold text-slate-900">{log.username || "Unknown"}</p>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-700">
-                        {log.event_type}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 grid gap-3">
-                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Browser</p>
-                        <p className="mt-1 text-sm text-slate-700">{log.browser || "-"}</p>
-                      </div>
-                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Page</p>
-                        <p className="mt-1 break-words text-sm text-slate-700">{log.path || "-"}</p>
-                      </div>
-                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">OS / Device</p>
-                        <p className="mt-1 text-sm text-slate-700">
-                          {(log.operating_system || "-") + " / " + (log.device_type || "-")}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Time</p>
-                        <p className="mt-1 text-sm text-slate-700">{new Date(log.created_at).toLocaleString()}</p>
-                      </div>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">User</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Browser</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Page</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">OS / Device</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {logs.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
-                        No activity logs found.
-                      </td>
-                    </tr>
-                  ) : (
-                    logs.map((log) => (
-                      <tr key={log.activity_log_id}>
-                        <td className="px-4 py-3 text-sm text-slate-700">{log.username || "Unknown"}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{log.browser || "-"}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{log.event_type}</td>
-                        <td className="max-w-[280px] truncate px-4 py-3 text-sm text-slate-700">{log.path || "-"}</td>
-                        <td className="px-4 py-3 text-sm text-slate-700">
-                          {(log.operating_system || "-") + " / " + (log.device_type || "-")}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-700">{new Date(log.created_at).toLocaleString()}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
+          <ViewActivityTable logs={logs} isRefreshing={isRefreshing} />
         )}
       </div>
 
       {!isLoading && totalCount > 0 && (
         <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-center sm:text-left">
           <p className="text-sm text-slate-600">
-            Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} logs
+            Showing {(currentPage - 1) * effectivePageSize + 1} to {Math.min(currentPage * effectivePageSize, totalCount)} of {totalCount} logs
           </p>
           <div className="flex items-center gap-2">
+            <select
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+              disabled={isRefreshing}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
+              <option value={50}>50 / page</option>
+              <option value={-1}>All</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
+              disabled={currentPage === 1 || isRefreshing}
+              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={`Skip back ${skipSize} pages`}
+              title={`Skip back ${skipSize} pages`}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={currentPage === 1 || isRefreshing}
+              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Previous page"
+              title="Previous page"
             >
-              Previous
+              <ChevronLeft className="h-4 w-4" />
             </button>
+            {nearbyPages.map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                disabled={isRefreshing}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {page}
+              </button>
+            ))}
             <span className="text-sm text-slate-600">
               Page {currentPage} / {totalPages}
             </span>
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={currentPage === totalPages || isRefreshing}
+              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Next page"
+              title="Next page"
             >
-              Next
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
+              disabled={currentPage === totalPages || isRefreshing}
+              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={`Skip forward ${skipSize} pages`}
+              title={`Skip forward ${skipSize} pages`}
+            >
+              <ChevronsRight className="h-4 w-4" />
             </button>
           </div>
         </div>

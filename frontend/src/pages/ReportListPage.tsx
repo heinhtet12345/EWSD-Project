@@ -1,24 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
-type ReportStatus = "IN_REVIEW" | "ACCEPTED" | "REJECTED" | "RESOLVED";
-
-type ReportItem = {
-  report_id: number;
-  reason: string;
-  details: string;
-  status: ReportStatus;
-  created_at: string;
-  reporter: number;
-  reporter_username?: string | null;
-  idea?: number | null;
-  idea_title?: string | null;
-  comment?: number | null;
-  comment_content?: string | null;
-  target_type: "POST" | "COMMENT" | "USER";
-  target_label?: string | null;
-};
+import ViewReportTable, { type ReportItem, type ReportStatus } from "../components/tables/ViewReportTable";
 
 const STATUS_OPTIONS: { value: ReportStatus; label: string }[] = [
   { value: "IN_REVIEW", label: "In Review" },
@@ -183,116 +166,15 @@ export default function ReportListPage() {
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="space-y-3 p-3 sm:hidden">
-            {filteredReports.map((report) => (
-              <article key={report.report_id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:bg-amber-50/40">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{formatReportedType(report.target_type)}</p>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenTarget(report)}
-                      className="mt-1 block w-full truncate text-left text-base font-semibold text-blue-700 hover:text-blue-800 hover:underline"
-                    >
-                      {report.target_label || (report.target_type === "POST" ? `Idea #${report.idea}` : `Comment #${report.comment}`)}
-                    </button>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                    {formatStatus(report.status)}
-                  </span>
-                </div>
-                <div className="mt-4 grid gap-3">
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Reporter</p>
-                    <p className="mt-1 text-sm text-slate-700">{report.reporter_username || `User #${report.reporter}`}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Reason</p>
-                    <p className="mt-1 text-sm text-slate-700">{report.reason}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Details</p>
-                    <p className="mt-1 text-sm text-slate-700">{report.details || "-"}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Date</p>
-                    <p className="mt-1 text-sm text-slate-700">{new Date(report.created_at).toLocaleString()}</p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <select
-                    value={report.status}
-                    onChange={(event) => handleStatusChange(report.report_id, event.target.value as ReportStatus)}
-                    disabled={savingReportId === report.report_id}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-slate-100"
-                  >
-                    {STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <div className="hidden overflow-x-auto sm:block">
-          <table className="w-full table-fixed divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="hidden w-[12%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 md:table-cell">Reported Type</th>
-                <th className="w-[30%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[22%]">Target</th>
-                <th className="hidden w-[16%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 lg:table-cell">Reporter</th>
-                <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[16%]">Reason</th>
-                <th className="hidden w-[19%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 xl:table-cell">Details</th>
-                <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[20%]">Status</th>
-                <th className="w-[28%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 sm:w-[24%]">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {filteredReports.map((report) => (
-                <tr key={report.report_id} className="transition hover:bg-amber-50/40">
-                  <td className="hidden px-4 py-3 text-sm text-slate-700 md:table-cell">{formatReportedType(report.target_type)}</td>
-                  <td className="px-4 py-3 text-sm text-slate-700">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenTarget(report)}
-                      className="block w-full truncate text-left text-blue-700 hover:text-blue-800 hover:underline"
-                    >
-                      {report.target_label || (report.target_type === "POST" ? `Idea #${report.idea}` : `Comment #${report.comment}`)}
-                    </button>
-                  </td>
-                  <td className="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">
-                    <div className="truncate">{report.reporter_username || `User #${report.reporter}`}</div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-700">{report.reason}</td>
-                  <td className="hidden px-4 py-3 text-sm text-slate-700 xl:table-cell">
-                    <div className="truncate">{report.details || "-"}</div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-700">
-                    <select
-                      value={report.status}
-                      onChange={(event) => handleStatusChange(report.report_id, event.target.value as ReportStatus)}
-                      disabled={savingReportId === report.report_id}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-slate-100"
-                    >
-                      {STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-700">
-                    <div>{new Date(report.created_at).toLocaleString()}</div>
-                    <div className="mt-1 text-xs text-slate-500">{formatStatus(report.status)}</div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+          <ViewReportTable
+            reports={filteredReports}
+            savingReportId={savingReportId}
+            statusOptions={STATUS_OPTIONS}
+            formatStatus={formatStatus}
+            formatReportedType={formatReportedType}
+            handleOpenTarget={handleOpenTarget}
+            handleStatusChange={handleStatusChange}
+          />
         </div>
       )}
     </section>

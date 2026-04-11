@@ -2,6 +2,7 @@ from os import name
 from unicodedata import category
 from urllib import request
 
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,6 +10,7 @@ from django.contrib.auth.models import update_last_login
 from ..serializer import LoginSerializer, UserSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from ..analytics.models import ActivityLog
+import requests
 
 
 def _extract_browser(user_agent: str) -> str:
@@ -52,6 +54,28 @@ def _extract_device_type(user_agent: str) -> str:
 class LoginView(APIView):
 
     def post(self, request):
+        # --- reCAPTCHA v2 verification ---
+        recaptcha_token = request.data.get("recaptcha")
+        if not recaptcha_token:
+            return Response({"message": "reCAPTCHA validation failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+
+        recaptcha_secret = "6LfaqrIsAAAAAJB9ygpNIHrD_q1nDO-gshIT1LaU"
+        recaptcha_url = "https://www.google.com/recaptcha/api/siteverify"
+        recaptcha_response = requests.post(
+            recaptcha_url,
+            data={
+                "secret": recaptcha_secret,
+                "response": recaptcha_token,
+                "remoteip": request.META.get("REMOTE_ADDR"),
+            },
+            timeout=5
+        )
+        recaptcha_result = recaptcha_response.json()
+        if not recaptcha_result.get("success"):
+            return Response({"message": "reCAPTCHA verification failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- End reCAPTCHA verification ---
+
         serializer = LoginSerializer(data=request.data)
 
         if serializer.is_valid():

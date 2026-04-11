@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import "primereact/resources/primereact.min.css";
 import "./index.css";
 import App from "./App";
 import { setupAxiosAuthInterceptors } from "./lib/axiosAuth";

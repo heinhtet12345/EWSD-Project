@@ -1,4 +1,6 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import ReCAPTCHA from "react-google-recaptcha";
+import { useRef } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Eye, EyeOff, X } from "lucide-react";
@@ -58,6 +60,8 @@ export default function LoginPage() {
   const isDarkMode = useThemeMode();
   const navigate = useNavigate();
   const [form, setForm] = useState<LoginFormState>({ username: "", password: "" });
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -80,8 +84,8 @@ export default function LoginPage() {
   }, []);
 
   const canSubmit = useMemo(() => {
-    return form.username.trim().length > 0 && form.password.length > 0;
-  }, [form]);
+    return form.username.trim().length > 0 && form.password.length > 0 && !!captchaToken;
+  }, [form, captchaToken]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -91,16 +95,14 @@ export default function LoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canSubmit || isSubmitting) return;
-
     setIsSubmitting(true);
     setError("");
-
     try {
       const response = await axios.post<AuthResponse & { access: string; refresh: string }>(API_PATH, {
         username: form.username.trim(),
         password: form.password,
+        recaptcha: captchaToken,
       });
-
       const payload = response.data;
       const firstName = (payload?.first_name || "").trim();
       const lastName = (payload?.last_name || "").trim();
@@ -118,7 +120,6 @@ export default function LoginPage() {
         token: payload?.access,
         refresh: payload?.refresh,
       };
-
       localStorage.setItem("authUser", JSON.stringify(user));
       sessionStorage.setItem(
         "loginNotice",
@@ -135,7 +136,6 @@ export default function LoginPage() {
           | { message?: string; detail?: string; non_field_errors?: string[] }
           | Record<string, string[] | string>
           | undefined;
-
         const firstValue = data ? Object.values(data)[0] : undefined;
         const derivedMessage = Array.isArray(firstValue) ? firstValue[0] : firstValue;
         const message =
@@ -145,8 +145,17 @@ export default function LoginPage() {
           (typeof derivedMessage === "string" ? derivedMessage : undefined) ||
           "Login failed. Please try again.";
         setError(message);
+        // Reset reCAPTCHA after a failed attempt
+        if (recaptchaRef.current) {
+          (recaptchaRef.current as any).reset();
+        }
+        setCaptchaToken(null);
       } else {
         setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+        if (recaptchaRef.current) {
+          (recaptchaRef.current as any).reset();
+        }
+        setCaptchaToken(null);
       }
     } finally {
       setIsSubmitting(false);
@@ -288,6 +297,14 @@ export default function LoginPage() {
               </button>
             </div>
 
+            <div className="flex justify-center">
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey="6LfaqrIsAAAAABv2dWWj-hHnap4xcL5W7ZCde6-S"
+                onChange={token => setCaptchaToken(token)}
+                theme={isDarkMode ? "dark" : "light"}
+              />
+            </div>
             <button
               type="submit"
               disabled={!canSubmit || isSubmitting}
