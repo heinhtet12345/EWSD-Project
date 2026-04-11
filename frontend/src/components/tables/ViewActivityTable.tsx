@@ -35,13 +35,15 @@ export default function ViewActivityTable({ logs, isRefreshing = false }: ViewAc
   );
 
   const renderSystem = (log: ActivityLog) => (
-    <span className="text-sm text-slate-700">
+    <span className="block truncate text-sm text-slate-700" title={(log.operating_system || "-") + " / " + (log.device_type || "-")}>
       {(log.operating_system || "-") + " / " + (log.device_type || "-")}
     </span>
   );
 
   const renderTimestamp = (log: ActivityLog) => (
-    <span className="text-sm text-slate-700">{new Date(log.created_at).toLocaleString()}</span>
+    <span className="block truncate text-sm text-slate-700" title={new Date(log.created_at).toLocaleString()}>
+      {new Date(log.created_at).toLocaleString()}
+    </span>
   );
 
   return (

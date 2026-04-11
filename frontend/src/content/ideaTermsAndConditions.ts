@@ -1,4 +1,4 @@
-export const IDEA_TERMS_TITLE = "Terms & Conditions (Full Version)"
+export const IDEA_TERMS_TITLE = "Terms & Conditions"
 
 export const IDEA_TERMS_SECTIONS = [
   {

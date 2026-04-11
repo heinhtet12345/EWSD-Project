@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, KeyRound, ShieldCheck, UserX } from "lucide-react";
+import { Column } from "primereact/column";
+import { DataTable } from "primereact/datatable";
 import { useLocation } from "react-router-dom";
 import Modal from "../common/Modal";
 import AddUserForm from "../../forms/AddUserForm";
@@ -59,7 +62,7 @@ export default function ViewUserTable() {
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [availableDepartments, setAvailableDepartments] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const highlightedUserId = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const raw = params.get("userId");
@@ -142,11 +145,15 @@ export default function ViewUserTable() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, roleFilter, departmentFilter]);
+  }, [searchTerm, roleFilter, departmentFilter, itemsPerPage]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage);
+  const skipSize = 5;
+  const nearbyPages = Array.from({ length: 4 }, (_, index) => currentPage - 4 + index).filter(
+    (page) => page >= 1 && page < currentPage,
+  );
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -265,61 +272,113 @@ export default function ViewUserTable() {
       setSuccess((response.data as { message?: string })?.message || `User "${payload.username}" created.`);
       setIsAddingUser(false);
       await fetchUsers();
-    } catch (err) {
-      throw err;
     } finally {
       setIsCreatingUser(false);
     }
   };
 
+  const renderStatusBadge = (user: AppUser) => (
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${user.active_status ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+      {user.active_status ? "Active" : "Disabled"}
+    </span>
+  );
+
+  const renderActionButtons = (user: AppUser) => {
+    const isProcessing = processingUserId === user.user_id;
+    const roleName = (user.role_name || "").trim().toLowerCase();
+    const isAdminUser = roleName === "admin";
+
+    return (
+      <div className="flex flex-nowrap gap-1.5">
+        {canResetPassword && (
+          <button
+            type="button"
+            onClick={() => handleResetPassword(user)}
+            disabled={isProcessing}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Reset password"
+            aria-label={`Reset password for ${user.username}`}
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {user.active_status ? (
+          <button
+            type="button"
+            onClick={() => handleDisableUser(user)}
+            disabled={isProcessing || isAdminUser}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Disable account"
+            aria-label={`Disable account for ${user.username}`}
+          >
+            <UserX className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleEnableUser(user)}
+            disabled={isProcessing}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Enable account"
+            aria-label={`Enable account for ${user.username}`}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div ref={tableTopRef} className="min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div ref={tableTopRef} className="min-w-0 space-y-2">
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {success && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>
       )}
 
-      <div className={`grid grid-cols-1 gap-3 ${canAddUser ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="Search by username, email, role, department..."
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-600"
-        />
-        <select
-          value={roleFilter}
-          onChange={(event) => setRoleFilter(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-600"
-        >
-          <option value="all">All roles</option>
-          {roleOptions.map((roleName) => (
-            <option key={roleName} value={roleName}>
-              {roleName}
-            </option>
-          ))}
-        </select>
-        <select
-          value={departmentFilter}
-          onChange={(event) => setDepartmentFilter(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-600"
-        >
-          <option value="all">All departments</option>
-          {departmentOptions.map((departmentName) => (
-            <option key={departmentName} value={departmentName}>
-              {departmentName}
-            </option>
-          ))}
-        </select>
-        {canAddUser && (
-          <button
-            type="button"
-            onClick={() => setIsAddingUser(true)}
-            className="w-full rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800 sm:w-auto"
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className={`grid grid-cols-1 gap-3 ${canAddUser ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search by username, email, role, department..."
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-600"
+          />
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-600"
           >
-            Add User
-          </button>
-        )}
+            <option value="all">All roles</option>
+            {roleOptions.map((roleName) => (
+              <option key={roleName} value={roleName}>
+                {roleName}
+              </option>
+            ))}
+          </select>
+          <select
+            value={departmentFilter}
+            onChange={(event) => setDepartmentFilter(event.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-600"
+          >
+            <option value="all">All departments</option>
+            {departmentOptions.map((departmentName) => (
+              <option key={departmentName} value={departmentName}>
+                {departmentName}
+              </option>
+            ))}
+          </select>
+          {canAddUser && (
+            <button
+              type="button"
+              onClick={() => setIsAddingUser(true)}
+              className="w-full rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800 sm:w-auto"
+            >
+              Add User
+            </button>
+          )}
+        </div>
       </div>
 
       <Modal
@@ -341,7 +400,7 @@ export default function ViewUserTable() {
       {isLoadingUsers ? (
         <p className="px-2 py-4 text-sm text-slate-500">Loading users...</p>
       ) : (
-        <div>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {paginatedUsers.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
               <p className="text-sm text-slate-500">No users found.</p>
@@ -361,7 +420,7 @@ export default function ViewUserTable() {
                         user.user_id === highlightedUserId ? "border-amber-300 ring-2 ring-amber-200 bg-amber-50/60" : "border-slate-200"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-10">
                         <div className="min-w-0">
                           <h3 className="truncate text-base font-semibold text-slate-900">{user.username}</h3>
                           <p className="mt-1 text-sm text-slate-500">{user.email || "-"}</p>
@@ -386,9 +445,11 @@ export default function ViewUserTable() {
                             type="button"
                             onClick={() => handleResetPassword(user)}
                             disabled={isProcessing}
-                            className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            title="Reset password"
+                            aria-label={`Reset password for ${user.username}`}
                           >
-                            Reset Password
+                            <KeyRound className="h-3.5 w-3.5" />
                           </button>
                         )}
                         {user.active_status ? (
@@ -396,18 +457,22 @@ export default function ViewUserTable() {
                             type="button"
                             onClick={() => handleDisableUser(user)}
                             disabled={isProcessing || isAdminUser}
-                            className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            title="Disable account"
+                            aria-label={`Disable account for ${user.username}`}
                           >
-                            Disable Account
+                            <UserX className="h-3.5 w-3.5" />
                           </button>
                         ) : (
                           <button
                             type="button"
                             onClick={() => handleEnableUser(user)}
                             disabled={isProcessing}
-                            className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            title="Enable account"
+                            aria-label={`Enable account for ${user.username}`}
                           >
-                            Enable Account
+                            <ShieldCheck className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>
@@ -416,88 +481,24 @@ export default function ViewUserTable() {
                 })}
               </div>
 
-              <div className="hidden min-w-0 overflow-x-auto sm:block">
-          <table className="w-full table-fixed divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="w-[16%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Username</th>
-                <th className="hidden w-[22%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 lg:table-cell">Email</th>
-                <th className="w-[14%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Role</th>
-                <th className="hidden w-[16%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 md:table-cell">Department</th>
-                <th className="w-[8%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
-                <th className="w-[24%] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {paginatedUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500 sm:col-span-5 lg:col-span-6">
-                    No users found.
-                  </td>
-                </tr>
-              ) : (
-                paginatedUsers.map((user) => {
-                  const isProcessing = processingUserId === user.user_id;
-                  const roleName = (user.role_name || "").trim().toLowerCase();
-                  const isAdminUser = roleName === "admin";
-
-                  return (
-                    <tr
-                      key={user.user_id}
-                      className={user.user_id === highlightedUserId ? "bg-amber-50/60" : undefined}
-                    >
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        <div className="truncate">{user.username}</div>
-                      </td>
-                      <td className="hidden px-4 py-3 text-sm text-slate-700 lg:table-cell">
-                        <div className="truncate">{user.email || "-"}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        <div className="truncate">{user.role_name || "-"}</div>
-                      </td>
-                      <td className="hidden px-4 py-3 text-sm text-slate-700 md:table-cell">
-                        <div className="truncate">{user.department_name || "-"}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">{user.active_status ? "Active" : "Disabled"}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-nowrap gap-1.5">
-                          {canResetPassword && (
-                            <button
-                              type="button"
-                              onClick={() => handleResetPassword(user)}
-                              disabled={isProcessing}
-                              className="whitespace-nowrap rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Reset Password
-                            </button>
-                          )}
-                          {user.active_status ? (
-                            <button
-                              type="button"
-                              onClick={() => handleDisableUser(user)}
-                              disabled={isProcessing || isAdminUser}
-                              className="whitespace-nowrap rounded-lg bg-rose-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Disable Account
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleEnableUser(user)}
-                              disabled={isProcessing}
-                              className="whitespace-nowrap rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Enable Account
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+              <div className="user-datatable hidden sm:block">
+                <DataTable
+                  value={paginatedUsers}
+                  dataKey="user_id"
+                  responsiveLayout="scroll"
+                  emptyMessage="No users found."
+                  rowHover
+                  showGridlines
+                  tableStyle={{ width: "100%", tableLayout: "fixed" }}
+                  rowClassName={(user) => (user.user_id === highlightedUserId ? "bg-amber-50/60" : "")}
+                >
+                  <Column field="username" header="Username" body={(user: AppUser) => <div className="truncate">{user.username}</div>} style={{ width: "16%" }} />
+                  <Column field="email" header="Email" body={(user: AppUser) => <div className="truncate">{user.email || "-"}</div>} style={{ width: "22%" }} />
+                  <Column field="role_name" header="Role" body={(user: AppUser) => <div className="truncate">{user.role_name || "-"}</div>} style={{ width: "14%" }} />
+                  <Column field="department_name" header="Department" body={(user: AppUser) => <div className="truncate">{user.department_name || "-"}</div>} style={{ width: "16%" }} />
+                  <Column field="active_status" header="Status" body={renderStatusBadge} style={{ width: "12%" }} />
+                  <Column header="Action" body={renderActionButtons} style={{ width: "20%" }} />
+                </DataTable>
               </div>
             </>
           )}
@@ -510,37 +511,67 @@ export default function ViewUserTable() {
             Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length}
           </p>
           <div className="flex items-center gap-2">
+            <select
+              value={itemsPerPage}
+              onChange={(event) => setItemsPerPage(Number(event.target.value))}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400"
+            >
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
+              <option value={50}>50 / page</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
+              disabled={currentPage === 1}
+              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={`Skip back ${skipSize} pages`}
+              title={`Skip back ${skipSize} pages`}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Previous page"
+              title="Previous page"
             >
-              Previous
+              <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="flex flex-wrap items-center gap-1">
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => setCurrentPage(page)}
-                  className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
-                    page === currentPage
-                      ? "bg-indigo-600 text-white"
-                      : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-            </div>
+            {nearbyPages.map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                {page}
+              </button>
+            ))}
+            <span className="text-sm text-slate-600">
+              Page {currentPage} / {totalPages}
+            </span>
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Next page"
+              title="Next page"
             >
-              Next
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
+              disabled={currentPage === totalPages}
+              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={`Skip forward ${skipSize} pages`}
+              title={`Skip forward ${skipSize} pages`}
+            >
+              <ChevronsRight className="h-4 w-4" />
             </button>
           </div>
         </div>
