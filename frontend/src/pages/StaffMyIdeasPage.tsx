@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { Edit3, MessageCircle, Paperclip, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { Edit3, MessageCircle, MoreVertical, Paperclip, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react'
 import AddIdeaSubmissionForm from '../forms/AddIdeaSubmissionForm'
 import UserAvatar from '../components/common/UserAvatar'
 
@@ -76,11 +76,14 @@ const StaffMyIdeasPage = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
+  const [openActionMenuIdeaId, setOpenActionMenuIdeaId] = useState<number | null>(null)
   const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set())
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
   const [totalIdeas, setTotalIdeas] = useState(0)
+  const [deletingIdeaId, setDeletingIdeaId] = useState<number | null>(null)
+  const [actionMessage, setActionMessage] = useState('')
 
   const skipSize = 5
 
@@ -204,6 +207,21 @@ const StaffMyIdeasPage = () => {
     fetchCategories()
     fetchClosurePeriods()
   }, [])
+
+  useEffect(() => {
+    const handleWindowClick = () => {
+      setOpenActionMenuIdeaId(null)
+    }
+
+    window.addEventListener('click', handleWindowClick)
+    return () => window.removeEventListener('click', handleWindowClick)
+  }, [])
+
+  useEffect(() => {
+    if (!actionMessage) return
+    const timeoutId = window.setTimeout(() => setActionMessage(''), 3500)
+    return () => window.clearTimeout(timeoutId)
+  }, [actionMessage])
 
   const handleAddIdeaClick = async () => {
     setError('')
@@ -421,6 +439,51 @@ const StaffMyIdeasPage = () => {
     }
   }
 
+  const handleDeleteIdea = async (idea: Idea) => {
+    const confirmed = window.confirm(`Delete "${idea.idea_title}"? This action cannot be undone.`)
+    if (!confirmed) return
+
+    setDeletingIdeaId(idea.idea_id)
+    setError('')
+    setActionMessage('')
+    setOpenActionMenuIdeaId(null)
+
+    try {
+      const response = await axios.delete(`/api/ideas/${idea.idea_id}/update/`, getAuthConfig())
+      const successMessage =
+        (response.data as { message?: string } | undefined)?.message || 'Idea deleted successfully.'
+
+      setIdeas((prev) => prev.filter((item) => item.idea_id !== idea.idea_id))
+      setCommentsByIdea((prev) => {
+        const next = { ...prev }
+        delete next[idea.idea_id]
+        return next
+      })
+      setOpenCommentIds((prev) => {
+        const next = new Set(prev)
+        next.delete(idea.idea_id)
+        return next
+      })
+      setExpandedIdeaIds((prev) => {
+        const next = new Set(prev)
+        next.delete(idea.idea_id)
+        return next
+      })
+      setTotalIdeas((prev) => Math.max(0, prev - 1))
+      setActionMessage(successMessage)
+      fetchIdeas(currentPage)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined
+        setError(data?.message || data?.detail || 'Failed to delete idea.')
+      } else {
+        setError('Failed to delete idea.')
+      }
+    } finally {
+      setDeletingIdeaId(null)
+    }
+  }
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -513,6 +576,11 @@ const StaffMyIdeasPage = () => {
           </div>
 
         {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+        {actionMessage && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {actionMessage}
+          </div>
+        )}
         {loading && <p className="text-sm text-slate-500">Loading ideas...</p>}
 
         {(!loading && ideas.length === 0 && (searchTerm.trim() || selectedCategory || selectedDepartment || openFilter !== 'all')) ? (
@@ -565,9 +633,56 @@ const StaffMyIdeasPage = () => {
                                 {idea.poster_name || 'You'} | {formatDisplayTime(idea.submit_datetime)}
                               </p>
                             </div>
-                            <span className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
-                              {idea.department_name || `Department #${idea.department}`}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+                                {idea.department_name || `Department #${idea.department}`}
+                              </span>
+                              <div className="relative" onClick={(event) => event.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setOpenActionMenuIdeaId((prev) =>
+                                      prev === idea.idea_id ? null : idea.idea_id,
+                                    )
+                                  }}
+                                  className="inline-flex h-8 w-8 items-center justify-center text-slate-500 transition hover:text-slate-700"
+                                  aria-label="Open idea actions"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+                                {openActionMenuIdeaId === idea.idea_id && (
+                                  <div className="absolute right-0 top-11 z-20 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                                    {canEditIdea && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenActionMenuIdeaId(null)
+                                          setEditingIdea(idea)
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+                                      >
+                                        <Edit3 className="h-4 w-4" />
+                                        Edit
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteIdea(idea)}
+                                      disabled={!canEditIdea || deletingIdeaId === idea.idea_id}
+                                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition ${
+                                        canEditIdea && deletingIdeaId !== idea.idea_id
+                                          ? 'text-rose-600 hover:bg-rose-50'
+                                          : 'cursor-not-allowed text-slate-400'
+                                      }`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      {deletingIdeaId === idea.idea_id ? 'Deleting...' : 'Delete'}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -617,15 +732,6 @@ const StaffMyIdeasPage = () => {
                         )}
 
                         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                          {canEditIdea && (
-                            <button
-                              type="button"
-                              onClick={() => setEditingIdea(idea)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
-                            >
-                              <Edit3 className="h-4 w-4" /> Edit Idea
-                            </button>
-                          )}
                           <button
                             type="button"
                             disabled={!commentOpen}

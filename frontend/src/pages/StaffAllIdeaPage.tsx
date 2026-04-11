@@ -850,18 +850,20 @@ const StaffAllIdeaPage = () => {
                 >
                   {'<'}
                 </button>
-                {Array.from({ length: 4 }, (_, index) => currentPage - 4 + index)
-                  .filter((page) => page >= 1 && page < currentPage)
-                  .map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      onClick={() => setCurrentPage(page)}
-                      className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {page}
-                    </button>
-                  ))}
+                {visiblePageNumbers.map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`rounded-md border px-3 py-1.5 text-sm ${
+                      page === currentPage
+                        ? 'border-blue-600 bg-blue-600 text-white'
+                        : 'border-slate-300 bg-white text-slate-700'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
                 <span className="text-sm text-slate-600">
                   Page {currentPage} / {totalPages}
                 </span>

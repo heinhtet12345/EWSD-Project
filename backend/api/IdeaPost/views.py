@@ -323,6 +323,27 @@ class UpdateIdeaView(APIView):
             status=status.HTTP_200_OK,
         )
 
+    def delete(self, request, idea_id):
+        role = _normalized_role(request.user)
+        if role != "staff":
+            return Response({"message": "Only staff can delete their ideas."}, status=status.HTTP_403_FORBIDDEN)
+
+        idea = Idea.objects.filter(idea_id=idea_id).select_related("closurePeriod", "user").first()
+        if not idea:
+            return Response({"message": "Idea not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if idea.user_id != request.user.user_id:
+            return Response({"message": "You can only delete your own idea."}, status=status.HTTP_403_FORBIDDEN)
+
+        if not getattr(idea.closurePeriod, "is_idea_open", True):
+            return Response(
+                {"message": "This idea can no longer be deleted because the closure period has ended."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        idea.delete()
+        return Response({"message": "Idea deleted successfully."}, status=status.HTTP_200_OK)
+
 
 class ReportIdeaView(APIView):
     permission_classes = [permissions.IsAuthenticated]
