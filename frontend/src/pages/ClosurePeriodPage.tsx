@@ -108,7 +108,8 @@ const ClosurePeriodPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const dashboardPath = location.pathname.startsWith('/admin') ? '/admin' : '/qa_manager'
-  const isQaManagerView = location.pathname.startsWith('/qa_manager')
+  const canManageClosurePeriods =
+    location.pathname.startsWith('/qa_manager') || location.pathname.startsWith('/admin')
   const [isAdding, setIsAdding] = useState(false)
   const [periods, setPeriods] = useState<ClosurePeriod[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -595,9 +596,9 @@ const ClosurePeriodPage = () => {
         {!isLoading && (
           <ViewClosurePeriodTable
             periods={filteredPeriods}
-            showDownload={isQaManagerView}
+            showDownload={canManageClosurePeriods}
             onDownloadAll={() => handleDownloadAll('all')}
-            onEditPeriod={isQaManagerView ? openEditPeriod : undefined}
+            onEditPeriod={canManageClosurePeriods ? openEditPeriod : undefined}
             isDownloading={isDownloading}
             downloadingPeriodId={downloadingPeriodId}
             searchTerm={searchTerm}

@@ -30,6 +30,7 @@ export default function App() {
         <Route path="admin/all-ideas" element={<StaffAllIdeaPage />} />
         <Route path="admin/users" element={<ViewUserTable />} />
         <Route path="admin/closure-period" element={<ClosurePeriodPage />} />
+        <Route path="admin/categories" element={<QAManagerCategoriesPage />} />
         <Route path="admin/analytics" element={<AdminAnalyticsPage />} />
         <Route path="admin/reports" element={<ReportListPage />} />
         <Route path="qa_coordinator" element={<QACoordDashboard />} />

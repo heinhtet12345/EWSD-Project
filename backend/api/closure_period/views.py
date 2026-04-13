@@ -67,9 +67,9 @@ class AddClosurePeriodView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if _normalized_role(request.user) != "qa_manager":
+        if _normalized_role(request.user) not in {"qa_manager", "admin"}:
             return Response(
-                {"message": "Not authorized. QA Manager role required."},
+                {"message": "Not authorized. QA Manager or Admin role required."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -106,9 +106,9 @@ class UpdateClosurePeriodView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, closure_period_id):
-        if _normalized_role(request.user) != "qa_manager":
+        if _normalized_role(request.user) not in {"qa_manager", "admin"}:
             return Response(
-                {"message": "Not authorized. QA Manager role required."},
+                {"message": "Not authorized. QA Manager or Admin role required."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

@@ -50,8 +50,18 @@ body,
 }
 
 body {
+    margin: 0;
     background-color: var(--dashboard_bg);
     color: var(--dashboard_text);
+}
+
+.app-scroll-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.app-scroll-hidden::-webkit-scrollbar {
+    display: none;
 }
 
 :root[data-theme='dark'] .bg-white {
@@ -651,6 +661,42 @@ body {
     color: #2563eb !important;
 }
 
+.admin-activity-datatable .p-paginator {
+    border-top: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    color: #475569;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+}
+
+.admin-activity-datatable .p-paginator .p-paginator-pages .p-paginator-page,
+.admin-activity-datatable .p-paginator .p-paginator-first,
+.admin-activity-datatable .p-paginator .p-paginator-prev,
+.admin-activity-datatable .p-paginator .p-paginator-next,
+.admin-activity-datatable .p-paginator .p-paginator-last {
+    min-width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    color: #475569;
+}
+
+.admin-activity-datatable .p-paginator .p-paginator-page.p-highlight {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+.admin-activity-datatable .p-paginator .p-dropdown {
+    height: 2.25rem;
+    align-items: center;
+}
+
+.admin-activity-datatable .p-paginator .p-paginator-current {
+    margin-left: auto;
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
 :root[data-theme='dark'] .admin-activity-datatable .p-datatable-wrapper,
 :root[data-theme='dark'] .admin-activity-datatable .p-datatable-table {
     background-color: var(--surface_base) !important;
@@ -686,6 +732,33 @@ body {
 
 :root[data-theme='dark'] .admin-activity-datatable .p-datatable-loading-icon {
     color: #93c5fd !important;
+}
+
+:root[data-theme='dark'] .admin-activity-datatable .p-paginator {
+    border-top-color: var(--border_subtle);
+    background-color: var(--surface_base);
+    color: var(--text_muted);
+}
+
+:root[data-theme='dark'] .admin-activity-datatable .p-paginator .p-paginator-pages .p-paginator-page,
+:root[data-theme='dark'] .admin-activity-datatable .p-paginator .p-paginator-first,
+:root[data-theme='dark'] .admin-activity-datatable .p-paginator .p-paginator-prev,
+:root[data-theme='dark'] .admin-activity-datatable .p-paginator .p-paginator-next,
+:root[data-theme='dark'] .admin-activity-datatable .p-paginator .p-paginator-last,
+:root[data-theme='dark'] .admin-activity-datatable .p-paginator .p-dropdown {
+    color: var(--text_body);
+    background-color: var(--surface_muted);
+    border-color: var(--border_subtle);
+}
+
+:root[data-theme='dark'] .admin-activity-datatable .p-paginator .p-paginator-page.p-highlight {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+:root[data-theme='dark'] .admin-activity-datatable .p-paginator .p-paginator-current {
+    color: var(--text_muted);
 }
 
 .report-datatable .p-datatable-thead > tr > th {
