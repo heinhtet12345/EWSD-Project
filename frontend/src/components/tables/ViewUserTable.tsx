@@ -552,14 +552,14 @@ export default function ViewUserTable() {
 
       {!isLoadingUsers && filteredUsers.length > 0 && (
         <div className="flex flex-col items-center gap-3 border-t border-slate-200 pt-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
-          <p className="text-sm text-slate-500">
+          <p className="text-xs text-slate-500 sm:text-sm">
             Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
             <select
               value={itemsPerPage}
               onChange={(event) => setItemsPerPage(Number(event.target.value))}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-400 sm:px-3 sm:py-1.5 sm:text-sm"
             >
               <option value={10}>10 / page</option>
               <option value={20}>20 / page</option>
@@ -569,7 +569,7 @@ export default function ViewUserTable() {
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
               disabled={currentPage === 1}
-              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
               aria-label={`Skip back ${skipSize} pages`}
               title={`Skip back ${skipSize} pages`}
             >
@@ -579,7 +579,7 @@ export default function ViewUserTable() {
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
               aria-label="Previous page"
               title="Previous page"
             >
@@ -590,19 +590,19 @@ export default function ViewUserTable() {
                 key={page}
                 type="button"
                 onClick={() => setCurrentPage(page)}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 sm:px-3 sm:py-1.5 sm:text-sm"
               >
                 {page}
               </button>
             ))}
-            <span className="text-sm text-slate-600">
+            <span className="text-xs text-slate-600 sm:text-sm">
               Page {currentPage} / {totalPages}
             </span>
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
-              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
               aria-label="Next page"
               title="Next page"
             >
@@ -612,7 +612,7 @@ export default function ViewUserTable() {
               type="button"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
               disabled={currentPage === totalPages}
-              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
               aria-label={`Skip forward ${skipSize} pages`}
               title={`Skip forward ${skipSize} pages`}
             >

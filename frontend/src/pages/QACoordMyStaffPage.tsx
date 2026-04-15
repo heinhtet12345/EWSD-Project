@@ -126,16 +126,16 @@ export default function QACoordMyStaffPage() {
         )}
 
         {!isLoading && filteredUsers.length > 0 && (
-          <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-500">
+          <div className="flex flex-col gap-2 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <p className="text-xs text-slate-500 sm:text-sm">
               Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={safeCurrentPage === 1}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm"
               >
                 Previous
               </button>
@@ -145,7 +145,7 @@ export default function QACoordMyStaffPage() {
                     key={page}
                     type="button"
                     onClick={() => setCurrentPage(page)}
-                    className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
+                    className={`rounded-md px-2.5 py-1 text-xs font-semibold sm:px-3 sm:py-1.5 sm:text-sm ${
                       page === safeCurrentPage
                         ? "bg-indigo-600 text-white"
                         : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"

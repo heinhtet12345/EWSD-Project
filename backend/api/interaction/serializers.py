@@ -24,6 +24,7 @@ class ReportSerializer(serializers.ModelSerializer):
     comment_content = serializers.SerializerMethodField()
     target_type = serializers.SerializerMethodField()
     target_label = serializers.SerializerMethodField()
+    target_user_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Report
@@ -41,6 +42,7 @@ class ReportSerializer(serializers.ModelSerializer):
             'comment_content',
             'target_type',
             'target_label',
+            'target_user_id',
         ]
         read_only_fields = [
             'report_id',
@@ -53,6 +55,7 @@ class ReportSerializer(serializers.ModelSerializer):
             'comment_content',
             'target_type',
             'target_label',
+            'target_user_id',
         ]
 
     def get_reporter_username(self, obj):
@@ -82,4 +85,11 @@ class ReportSerializer(serializers.ModelSerializer):
             return f"User #{obj.comment.user_id}" if obj.comment and obj.comment.user_id else f"Comment #{obj.comment_id}"
         if obj.idea_id:
             return f"User #{obj.idea.user_id}" if obj.idea and obj.idea.user_id else f"Idea #{obj.idea_id}"
+        return None
+
+    def get_target_user_id(self, obj):
+        if obj.comment_id and obj.comment and obj.comment.user_id:
+            return obj.comment.user_id
+        if obj.idea_id and obj.idea and obj.idea.user_id:
+            return obj.idea.user_id
         return None

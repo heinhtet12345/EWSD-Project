@@ -1,7 +1,9 @@
+import { useRef } from "react";
 import { Column } from "primereact/column";
 import { DataTable } from "primereact/datatable";
 
 export type ReportStatus = "IN_REVIEW" | "ACCEPTED" | "REJECTED" | "RESOLVED";
+const FINAL_REPORT_STATUSES: ReportStatus[] = ["REJECTED", "RESOLVED"];
 
 export type ReportItem = {
   report_id: number;
@@ -17,6 +19,7 @@ export type ReportItem = {
   comment_content?: string | null;
   target_type: "POST" | "COMMENT" | "USER";
   target_label?: string | null;
+  target_user_id?: number | null;
 };
 
 type StatusOption = {
@@ -31,7 +34,9 @@ type ViewReportTableProps = {
   formatStatus: (status: ReportStatus) => string;
   formatReportedType: (targetType: ReportItem["target_type"]) => string;
   handleOpenTarget: (report: ReportItem) => void;
+  handleOpenUser: (userId: number, report: ReportItem) => void;
   handleStatusChange: (reportId: number, nextStatus: ReportStatus) => void;
+  onSelectReport: (report: ReportItem) => void;
 };
 
 export default function ViewReportTable({
@@ -41,23 +46,79 @@ export default function ViewReportTable({
   formatStatus,
   formatReportedType,
   handleOpenTarget,
+  handleOpenUser,
   handleStatusChange,
+  onSelectReport,
 }: ViewReportTableProps) {
+  const clickTimeoutRef = useRef<number | null>(null);
+
+  const scheduleSelectReport = (report: ReportItem) => {
+    if (clickTimeoutRef.current !== null) {
+      window.clearTimeout(clickTimeoutRef.current);
+    }
+    clickTimeoutRef.current = window.setTimeout(() => {
+      onSelectReport(report);
+      clickTimeoutRef.current = null;
+    }, 220);
+  };
+
+  const handleRowDoubleClick = (report: ReportItem) => {
+    if (clickTimeoutRef.current !== null) {
+      window.clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+    handleOpenTarget(report);
+  };
+
+  const renderType = (report: ReportItem) => (
+    <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+      {formatReportedType(report.target_type)}
+    </span>
+  );
+
   const renderTarget = (report: ReportItem) => (
     <button
       type="button"
-      onClick={() => handleOpenTarget(report)}
-      className="block w-full truncate text-left text-blue-700 hover:text-blue-800 hover:underline"
+      onClick={(event) => {
+        event.stopPropagation();
+        if (report.target_user_id) {
+          handleOpenUser(report.target_user_id, report);
+        }
+      }}
+      className="block w-full truncate text-left text-slate-900 transition hover:text-slate-700 hover:underline dark:text-white dark:hover:text-slate-200"
     >
       {report.target_label || (report.target_type === "POST" ? `Idea #${report.idea}` : `Comment #${report.comment}`)}
     </button>
   );
 
+  const renderReporter = (report: ReportItem) => (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        handleOpenUser(report.reporter, report);
+      }}
+      className="block truncate text-left text-sm text-slate-700 transition hover:text-slate-900 hover:underline dark:text-slate-200 dark:hover:text-white"
+    >
+      {report.reporter_username || `User #${report.reporter}`}
+    </button>
+  );
+
+  const renderReason = (report: ReportItem) => (
+    <span className="block truncate text-sm text-slate-700 dark:text-slate-200" title={report.reason}>
+      {report.reason}
+    </span>
+  );
+
   const renderStatusSelect = (report: ReportItem) => (
     <select
       value={report.status}
-      onChange={(event) => handleStatusChange(report.report_id, event.target.value as ReportStatus)}
-      disabled={savingReportId === report.report_id}
+      onClick={(event) => event.stopPropagation()}
+      onChange={(event) => {
+        event.stopPropagation();
+        handleStatusChange(report.report_id, event.target.value as ReportStatus);
+      }}
+      disabled={savingReportId === report.report_id || FINAL_REPORT_STATUSES.includes(report.status)}
       className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-slate-100"
     >
       {statusOptions.map((option) => (
@@ -68,18 +129,39 @@ export default function ViewReportTable({
     </select>
   );
 
+  const renderDate = (report: ReportItem) => (
+    <div className="min-w-0">
+      <div className="whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
+        {new Date(report.created_at).toLocaleDateString()}
+      </div>
+      <div className="mt-1 whitespace-nowrap text-xs text-slate-500">
+        {new Date(report.created_at).toLocaleTimeString()}
+      </div>
+    </div>
+  );
+
   return (
     <>
       <div className="space-y-3 p-3 sm:hidden">
         {reports.map((report) => (
-          <article key={report.report_id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:bg-amber-50/40">
+          <article
+            key={report.report_id}
+            onClick={() => scheduleSelectReport(report)}
+            onDoubleClick={() => handleRowDoubleClick(report)}
+            className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:bg-amber-50/40"
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{formatReportedType(report.target_type)}</p>
                 <button
                   type="button"
-                  onClick={() => handleOpenTarget(report)}
-                  className="mt-1 block w-full truncate text-left text-base font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (report.target_user_id) {
+                      handleOpenUser(report.target_user_id, report);
+                    }
+                  }}
+                  className="mt-1 block w-full truncate text-left text-base font-semibold text-slate-900 transition hover:text-slate-700 hover:underline dark:text-white dark:hover:text-slate-200"
                 >
                   {report.target_label || (report.target_type === "POST" ? `Idea #${report.idea}` : `Comment #${report.comment}`)}
                 </button>
@@ -91,15 +173,20 @@ export default function ViewReportTable({
             <div className="mt-4 grid gap-3">
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Reporter</p>
-                <p className="mt-1 text-sm text-slate-700">{report.reporter_username || `User #${report.reporter}`}</p>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleOpenUser(report.reporter, report);
+                  }}
+                  className="mt-1 text-left text-sm text-slate-700 transition hover:text-slate-900 hover:underline dark:text-slate-200 dark:hover:text-white"
+                >
+                  {report.reporter_username || `User #${report.reporter}`}
+                </button>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Reason</p>
                 <p className="mt-1 text-sm text-slate-700">{report.reason}</p>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Details</p>
-                <p className="mt-1 text-sm text-slate-700">{report.details || "-"}</p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Date</p>
@@ -120,23 +207,20 @@ export default function ViewReportTable({
           rowHover
           showGridlines
           tableStyle={{ width: "100%", tableLayout: "fixed" }}
+          onRowClick={(event) => scheduleSelectReport(event.data as ReportItem)}
+          onRowDoubleClick={(event) => handleRowDoubleClick(event.data as ReportItem)}
+          rowClassName={() => "cursor-pointer"}
         >
-          <Column field="target_type" header="Reported Type" body={(report: ReportItem) => formatReportedType(report.target_type)} style={{ width: "12%" }} />
-          <Column field="target_label" header="Target" body={renderTarget} style={{ width: "22%" }} />
-          <Column field="reporter_username" header="Reporter" body={(report: ReportItem) => report.reporter_username || `User #${report.reporter}`} style={{ width: "16%" }} />
-          <Column field="reason" header="Reason" style={{ width: "16%" }} />
-          <Column field="details" header="Details" body={(report: ReportItem) => report.details || "-"} style={{ width: "18%" }} />
-          <Column header="Status" body={renderStatusSelect} style={{ width: "16%" }} />
+          <Column field="target_type" header="Reported Type" body={renderType} style={{ width: "15%" }} />
+          <Column field="target_label" header="Target" body={renderTarget} style={{ width: "15%" }} />
+          <Column field="reporter_username" header="Reporter" body={renderReporter} style={{ width: "15%" }} />
+          <Column field="reason" header="Reason" body={renderReason} style={{ width: "15%" }} />
+          <Column header="Status" body={renderStatusSelect} style={{ width: "15%" }} />
           <Column
             field="created_at"
             header="Date"
-            body={(report: ReportItem) => (
-              <div>
-                <div>{new Date(report.created_at).toLocaleString()}</div>
-                <div className="mt-1 text-xs text-slate-500">{formatStatus(report.status)}</div>
-              </div>
-            )}
-            style={{ width: "18%" }}
+            body={renderDate}
+            style={{ width: "16%" }}
           />
         </DataTable>
       </div>

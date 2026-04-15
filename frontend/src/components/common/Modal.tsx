@@ -69,7 +69,7 @@ export default function Modal({
       />
       <div className="relative flex min-h-full items-center justify-center px-4 py-6">
         <div
-          className={`relative mx-auto w-full ${maxWidthClassName} max-h-[90vh] overflow-y-auto transition-all duration-300 ease-out ${
+          className={`hide-scrollbar relative mx-auto w-full ${maxWidthClassName} max-h-[90vh] overflow-y-auto transition-all duration-300 ease-out ${
             isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.985] opacity-0"
           }`}
         >

@@ -177,6 +177,30 @@ class AdminUserListView(APIView):
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
 
 
+class AdminUserProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, user_id):
+        requester_role = _normalized_role(request.user)
+        if requester_role not in {"admin", "qa_manager"}:
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        target_user = (
+            User.objects.select_related("role", "department")
+            .exclude(user_id=DELETED_USER_ID)
+            .filter(user_id=user_id)
+            .first()
+        )
+        if not target_user:
+            return Response({"message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if requester_role == "qa_manager" and _normalized_role(target_user) not in {"staff", "qa_coordinator"}:
+            return Response({"message": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = UserSerializer(target_user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class AdminUserMetaView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

@@ -323,6 +323,9 @@ export default function QAManagerDepartmentIdeasPage() {
   const shouldShowDescriptionToggle = (content: string) =>
     content.length > 180 || content.includes('\n')
 
+  const getModerationDisplayName = (name: string | null | undefined, fallback: string) =>
+    name && name.trim().length > 0 ? name : fallback
+
   const toggleIdeaContent = (ideaId: number) => {
     setExpandedIdeaIds((prev) => {
       const next = new Set(prev)
@@ -537,10 +540,10 @@ export default function QAManagerDepartmentIdeasPage() {
                           <div>
                             <h2 className="text-lg font-semibold text-slate-900">{idea.idea_title}</h2>
                             <p className="mt-1 text-xs text-slate-500">
-                              {idea.poster_name
-                                ? `Posted by ${idea.poster_name}`
-                                : idea.anonymous_status
-                                  ? 'Posted anonymously'
+                              {idea.anonymous_status
+                                ? `Posted by ${getModerationDisplayName(idea.poster_name, `User #${idea.user}`)} (Anonymous)`
+                                : idea.poster_name
+                                  ? `Posted by ${idea.poster_name}`
                                   : `Posted by User #${idea.user}`} • {new Date(idea.submit_datetime).toLocaleString()}
                             </p>
                           </div>
@@ -550,7 +553,7 @@ export default function QAManagerDepartmentIdeasPage() {
                         </div>
 
                         <p
-                          className="whitespace-pre-wrap text-sm leading-6 text-slate-700"
+                          className="whitespace-pre-wrap text-justify text-sm leading-6 text-slate-700"
                           style={
                             expandedIdeaIds.has(idea.idea_id)
                               ? undefined
@@ -633,7 +636,8 @@ export default function QAManagerDepartmentIdeasPage() {
                           (commentsByIdea[idea.idea_id] || []).map((comment) => (
                             <div key={comment.cmt_id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                               <p className="text-xs text-slate-500">
-                                {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
+                                {comment.user}
+                                {comment.anonymous_status ? ' (Anonymous)' : ''} |{' '}
                                 {new Date(comment.cmt_datetime).toLocaleString()}
                               </p>
                               <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>

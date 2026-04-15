@@ -119,6 +119,9 @@ export default function ViewIdeaTable({
   onCommentAnonChange,
   onSubmitComment,
 }: ViewIdeaTableProps) {
+  const getModerationDisplayName = (name: string | null | undefined, fallback: string) =>
+    name && name.trim().length > 0 ? name : fallback
+
   if (loading) {
     return <p className="text-sm text-slate-500">Loading ideas...</p>
   }
@@ -135,7 +138,7 @@ export default function ViewIdeaTable({
     <div className="space-y-4">
       {groupedByClosure.map((group) => (
         <div key={group.closureId} className="space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-slate-700">Closure Period: {group.title}</p>
               <span
@@ -158,16 +161,20 @@ export default function ViewIdeaTable({
                 key={idea.idea_id}
                 ref={String(highlightIdeaId) === String(idea.idea_id) ? handleHighlightRef : undefined}
                 tabIndex={-1}
-                className={`rounded-2xl border bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5 ${
+                className={`rounded-2xl border bg-white p-3 shadow-sm transition hover:shadow-md sm:p-5 ${
                   String(highlightIdeaId) === String(idea.idea_id)
                     ? 'border-amber-300 ring-2 ring-amber-200 bg-amber-50'
                     : 'border-slate-200'
                 }`}
               >
-                <div className="mb-3 flex gap-3">
+                  <div className="mb-3 flex gap-2.5 sm:gap-3">
                   <UserAvatar
                     imageUrl={idea.poster_profile_image}
-                    name={idea.poster_name || (idea.anonymous_status ? 'Anonymous' : `User ${idea.user}`)}
+                    name={
+                      canModerateView
+                        ? getModerationDisplayName(idea.poster_name, `User ${idea.user}`)
+                        : idea.poster_name || (idea.anonymous_status ? 'Anonymous' : `User ${idea.user}`)
+                    }
                     className="mt-0.5 h-11 w-11 shrink-0"
                   />
                   <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -176,14 +183,26 @@ export default function ViewIdeaTable({
                         {idea.idea_title}
                       </h2>
                       <p className="mt-1 text-xs text-slate-500">
-                        {idea.poster_name ? (
+                        {canModerateView && idea.anonymous_status ? (
+                          <>
+                            Posted by{' '}
+                            <button
+                              type="button"
+                              onClick={() => onOpenUserRow(idea.user)}
+                              className="font-semibold text-inherit hover:underline"
+                            >
+                              {getModerationDisplayName(idea.poster_name, `User ${idea.user}`)}
+                            </button>{' '}
+                            (Anonymous)
+                          </>
+                        ) : idea.poster_name ? (
                           <>
                             Posted by{' '}
                             {canModerateView ? (
                               <button
                                 type="button"
                                 onClick={() => onOpenUserRow(idea.user)}
-                                className="font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                                className="font-semibold text-inherit hover:underline"
                               >
                                 {idea.poster_name}
                               </button>
@@ -230,7 +249,7 @@ export default function ViewIdeaTable({
                 )}
 
                 <p
-                  className="whitespace-pre-wrap text-sm leading-6 text-slate-700"
+                  className="whitespace-pre-wrap text-justify text-sm leading-6 text-slate-700"
                   style={
                     expandedIdeaIds.has(idea.idea_id)
                       ? undefined
@@ -311,7 +330,7 @@ export default function ViewIdeaTable({
                 </div>
 
                 {openCommentIds.has(idea.idea_id) && (
-                  <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
                     <div className="space-y-3">
                       {(commentsByIdea[idea.idea_id] || []).length === 0 ? (
                         <p className="text-sm text-slate-500">No comments yet.</p>
@@ -328,7 +347,21 @@ export default function ViewIdeaTable({
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0">
                                 <p className="text-xs text-slate-500">
-                                  {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
+                                  {canModerateView && comment.user_id ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => onOpenUserRow(comment.user_id as number)}
+                                      className="font-semibold text-inherit hover:underline"
+                                    >
+                                      {comment.user}
+                                    </button>
+                                  ) : comment.anonymous_status ? (
+                                    'Anonymous'
+                                  ) : (
+                                    comment.user
+                                  )}
+                                  {canModerateView && comment.anonymous_status ? ' (Anonymous)' : ''}{' '}
+                                  |{' '}
                                   {formatDisplayTime(comment.cmt_datetime)}
                                 </p>
                                 <p className="mt-1 break-words text-sm text-slate-700">

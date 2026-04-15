@@ -12,6 +12,7 @@ from .views.notifications_views import (
 from .views.admin_views import (
     ForgotPasswordRequestView,
     AdminUserListView,
+    AdminUserProfileView,
     AdminUserMetaView,
     AdminCreateUserView,
     AdminResetUserPasswordView,
@@ -33,6 +34,7 @@ urlpatterns = [
     path('profile/sessions/revoke-all/', UserSessionRevokeView.as_view(), name='profile-sessions-revoke-all'),
     path('profile/sessions/<uuid:session_id>/revoke/', UserSessionRevokeView.as_view(), name='profile-sessions-revoke'),
     path('admin/users/', AdminUserListView.as_view(), name='admin-user-list'),
+    path('admin/users/<int:user_id>/', AdminUserProfileView.as_view(), name='admin-user-profile'),
     path('admin/users/meta/', AdminUserMetaView.as_view(), name='admin-user-meta'),
     path('admin/users/create/', AdminCreateUserView.as_view(), name='admin-user-create'),
     path('admin/users/<int:user_id>/reset-password/', AdminResetUserPasswordView.as_view(), name='admin-user-reset-password'),

@@ -844,7 +844,7 @@ const StaffMyIdeasPage = () => {
                   <select
                     value={pageSize}
                     onChange={(event) => setPageSize(Number(event.target.value))}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm"
                   >
                     <option value={10}>10 / page</option>
                     <option value={20}>20 / page</option>
@@ -854,7 +854,7 @@ const StaffMyIdeasPage = () => {
                     type="button"
                     onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
                     disabled={currentPage === 1}
-                    className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
                     aria-label={`Skip back ${skipSize} pages`}
                     title={`Skip back ${skipSize} pages`}
                   >
@@ -864,7 +864,7 @@ const StaffMyIdeasPage = () => {
                     type="button"
                     onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
                     aria-label="Previous page"
                     title="Previous page"
                   >
@@ -875,19 +875,19 @@ const StaffMyIdeasPage = () => {
                       key={page}
                       type="button"
                       onClick={() => setCurrentPage(page)}
-                      className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm"
                     >
                       {page}
                     </button>
                   ))}
-                  <span className="text-sm text-slate-600">
+                  <span className="text-xs text-slate-600 sm:text-sm">
                     Page {currentPage} / {totalPages}
                   </span>
                   <button
                     type="button"
                     onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
-                    className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
                     aria-label="Next page"
                     title="Next page"
                   >
@@ -897,7 +897,7 @@ const StaffMyIdeasPage = () => {
                     type="button"
                     onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
                     disabled={currentPage === totalPages}
-                    className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
                     aria-label={`Skip forward ${skipSize} pages`}
                     title={`Skip forward ${skipSize} pages`}
                   >

@@ -55,6 +55,17 @@ body {
     color: var(--dashboard_text);
 }
 
+* {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
 .app-scroll-hidden {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -843,6 +854,41 @@ body {
     text-align: center;
 }
 
+.qa-closure-datatable .p-datatable-wrapper,
+.qa-closure-datatable .p-datatable-table {
+    background-color: #ffffff !important;
+}
+
+.qa-closure-datatable .p-datatable-thead > tr > th {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #475569 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.06em;
+    padding: 0.875rem 1rem !important;
+    text-transform: uppercase;
+}
+
+.qa-closure-datatable .p-datatable-tbody > tr > td {
+    background-color: #ffffff !important;
+    border-color: #f1f5f9 !important;
+    color: #334155 !important;
+    padding: 0.875rem 1rem !important;
+    font-size: 0.875rem !important;
+    vertical-align: middle;
+}
+
+.qa-closure-datatable .p-datatable-tbody > tr:hover > td {
+    background-color: #f8fafc !important;
+}
+
+.qa-closure-datatable .p-datatable-emptymessage > td {
+    color: #64748b !important;
+    padding: 2rem 1rem !important;
+    text-align: center;
+}
+
 :root[data-theme='dark'] .user-datatable .p-datatable-wrapper,
 :root[data-theme='dark'] .user-datatable .p-datatable-table {
     background-color: var(--surface_base) !important;
@@ -865,5 +911,30 @@ body {
 }
 
 :root[data-theme='dark'] .user-datatable .p-datatable-emptymessage > td {
+    color: var(--text_muted) !important;
+}
+
+:root[data-theme='dark'] .qa-closure-datatable .p-datatable-wrapper,
+:root[data-theme='dark'] .qa-closure-datatable .p-datatable-table {
+    background-color: var(--surface_base) !important;
+}
+
+:root[data-theme='dark'] .qa-closure-datatable .p-datatable-thead > tr > th {
+    background-color: var(--surface_muted) !important;
+    border-color: var(--border_subtle) !important;
+    color: var(--text_muted) !important;
+}
+
+:root[data-theme='dark'] .qa-closure-datatable .p-datatable-tbody > tr > td {
+    background-color: var(--surface_base) !important;
+    border-color: var(--border_subtle) !important;
+    color: var(--text_body) !important;
+}
+
+:root[data-theme='dark'] .qa-closure-datatable .p-datatable-tbody > tr:hover > td {
+    background-color: var(--surface_soft) !important;
+}
+
+:root[data-theme='dark'] .qa-closure-datatable .p-datatable-emptymessage > td {
     color: var(--text_muted) !important;
 }

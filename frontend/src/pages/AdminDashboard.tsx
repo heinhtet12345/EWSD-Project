@@ -6,6 +6,9 @@ import {
   Globe,
   Monitor,
   Network,
+  ShieldCheck,
+  Trash2,
+  UserX,
   Users,
 } from "lucide-react";
 import { Bar, Doughnut } from "react-chartjs-2";
@@ -19,6 +22,7 @@ import {
   Tooltip,
 } from "chart.js";
 import useThemeMode from "../hooks/useThemeMode";
+import Modal from "../components/common/Modal";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -71,6 +75,31 @@ type RecentActivity = {
   created_at: string;
 };
 
+type UserProfile = {
+  user_id: number;
+  username: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  name?: string | null;
+  email?: string | null;
+  role_name?: string | null;
+  department_name?: string | null;
+  dob?: string | null;
+  address_line_1?: string | null;
+  township?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  phone?: string | null;
+  hire_date?: string | null;
+  active_status: boolean;
+  profile_image?: string | null;
+};
+
+type AdminUserLookupRow = {
+  user_id: number;
+  username: string;
+};
+
 type DashboardResponse = {
   period_days: number;
   summary: DashboardSummary;
@@ -115,6 +144,18 @@ const headingClassName = "text-lg font-semibold text-slate-600 dark:text-slate-1
 const titleValueClassName = "text-slate-600 dark:text-slate-100";
 const bodyTextClassName = "text-slate-500 dark:text-slate-400";
 
+const getAuthConfig = () => {
+  try {
+    const raw = localStorage.getItem("authUser");
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as { token?: string };
+    if (!parsed?.token) return undefined;
+    return { headers: { Authorization: `Bearer ${parsed.token}` } };
+  } catch {
+    return undefined;
+  }
+};
+
 function MetricCard({
   label,
   value,
@@ -151,6 +192,12 @@ export default function AdminDashboard() {
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [userIdByUsername, setUserIdByUsername] = useState<Record<string, number>>({});
+  const [selectedUserProfile, setSelectedUserProfile] = useState<UserProfile | null>(null);
+  const [isUserProfileLoading, setIsUserProfileLoading] = useState(false);
+  const [userProfileError, setUserProfileError] = useState("");
+  const [processingUserId, setProcessingUserId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -175,6 +222,34 @@ export default function AdminDashboard() {
 
     fetchDashboard();
   }, [days]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await axios.get("/api/admin/users/", getAuthConfig());
+        const data = Array.isArray(response.data) ? response.data : response.data?.results;
+        const users = Array.isArray(data) ? (data as AdminUserLookupRow[]) : [];
+        setUserIdByUsername(
+          users.reduce<Record<string, number>>((acc, user) => {
+            if (user.username) {
+              acc[user.username.toLowerCase()] = user.user_id;
+            }
+            return acc;
+          }, {}),
+        );
+      } catch {
+        // Leave dashboard usable even if user lookup fails.
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    if (!success) return;
+    const timeoutId = window.setTimeout(() => setSuccess(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [success]);
 
   const topPagesChartData = useMemo(() => ({
     labels: (data?.charts.top_pages || []).map((item) => shortenPath(item.path)),
@@ -278,6 +353,113 @@ export default function AdminDashboard() {
   const selectedPeriodLabel =
     days === 7 ? "Last 7 days" : days === 30 ? "Last 30 days" : days === 90 ? "Last 90 days" : "Last 365 days";
 
+  const closeUserProfileModal = () => {
+    setSelectedUserProfile(null);
+    setUserProfileError("");
+    setIsUserProfileLoading(false);
+  };
+
+  const refreshSelectedUserProfile = async (userId: number) => {
+    const response = await axios.get<UserProfile>(`/api/admin/users/${userId}/`, getAuthConfig());
+    setSelectedUserProfile(response.data);
+  };
+
+  const handleOpenUserProfile = (username?: string | null) => {
+    const normalizedUsername = String(username || "").trim().toLowerCase();
+    const userId = userIdByUsername[normalizedUsername];
+    if (!userId) return;
+
+    const fetchUserProfile = async () => {
+      setIsUserProfileLoading(true);
+      setUserProfileError("");
+      setSelectedUserProfile(null);
+      try {
+        const response = await axios.get<UserProfile>(`/api/admin/users/${userId}/`, getAuthConfig());
+        setSelectedUserProfile(response.data);
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          const payload = err.response?.data as { message?: string; detail?: string } | undefined;
+          setUserProfileError(payload?.message || payload?.detail || "Failed to load user profile.");
+        } else {
+          setUserProfileError("Failed to load user profile.");
+        }
+      } finally {
+        setIsUserProfileLoading(false);
+      }
+    };
+
+    void fetchUserProfile();
+  };
+
+  const handleDisableUser = async (user: UserProfile) => {
+    const shouldDisable = window.confirm(`Disable account for "${user.username}"?`);
+    if (!shouldDisable) return;
+
+    setError("");
+    setSuccess("");
+    setProcessingUserId(user.user_id);
+    try {
+      const response = await axios.post(`/api/admin/users/${user.user_id}/disable/`, {}, getAuthConfig());
+      setSuccess((response.data as { message?: string })?.message || `Account disabled for ${user.username}.`);
+      await refreshSelectedUserProfile(user.user_id);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const payload = err.response?.data as { message?: string; detail?: string } | undefined;
+        setError(payload?.message || payload?.detail || "Failed to disable account.");
+      } else {
+        setError("Failed to disable account.");
+      }
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const handleEnableUser = async (user: UserProfile) => {
+    const shouldEnable = window.confirm(`Enable account for "${user.username}"?`);
+    if (!shouldEnable) return;
+
+    setError("");
+    setSuccess("");
+    setProcessingUserId(user.user_id);
+    try {
+      const response = await axios.post(`/api/admin/users/${user.user_id}/enable/`, {}, getAuthConfig());
+      setSuccess((response.data as { message?: string })?.message || `Account enabled for ${user.username}.`);
+      await refreshSelectedUserProfile(user.user_id);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const payload = err.response?.data as { message?: string; detail?: string } | undefined;
+        setError(payload?.message || payload?.detail || "Failed to enable account.");
+      } else {
+        setError("Failed to enable account.");
+      }
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (user: UserProfile) => {
+    const shouldDelete = window.confirm(`Delete account for "${user.username}"?\n\nAre you sure you want to delete this account?`);
+    if (!shouldDelete) return;
+
+    setError("");
+    setSuccess("");
+    setProcessingUserId(user.user_id);
+    try {
+      const response = await axios.post(`/api/admin/users/${user.user_id}/delete/`, {}, getAuthConfig());
+      setSuccess((response.data as { message?: string })?.message || `Account deleted for ${user.username}.`);
+      closeUserProfileModal();
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const payload = err.response?.data as { message?: string; detail?: string } | undefined;
+        setError(payload?.message || payload?.detail || "Failed to delete account.");
+      } else {
+        setError("Failed to delete account.");
+      }
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
   return (
     <section className="space-y-6">
       <div className={`${shellCardClassName} overflow-hidden`}>
@@ -335,6 +517,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {success && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>}
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
       {isLoading ? (
@@ -591,7 +774,14 @@ export default function AdminDashboard() {
               <div className="space-y-3">
                 {data.tables.top_users.map((item, index) => (
                   <div key={`${item.username}-${index}`} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
-                    <p className={`text-sm font-medium ${titleValueClassName}`}>{item.display_name || item.username || "Unknown"}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenUserProfile(item.username)}
+                      disabled={!item.username || !userIdByUsername[String(item.username).toLowerCase()]}
+                      className={`text-left text-sm font-medium ${titleValueClassName} disabled:cursor-default disabled:opacity-70`}
+                    >
+                      <span className="text-inherit hover:underline">{item.display_name || item.username || "Unknown"}</span>
+                    </button>
                     <span className="text-sm font-semibold text-emerald-700">{item.activity_count}</span>
                   </div>
                 ))}
@@ -608,7 +798,14 @@ export default function AdminDashboard() {
                 {data.tables.recent_activity.slice(0, 5).map((item) => (
                   <div key={item.activity_log_id} className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className={`text-sm font-semibold ${titleValueClassName}`}>{item.username}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenUserProfile(item.username)}
+                        disabled={!item.username || !userIdByUsername[String(item.username).toLowerCase()]}
+                        className={`text-left text-sm font-semibold ${titleValueClassName} disabled:cursor-default disabled:opacity-70`}
+                      >
+                        <span className="text-inherit hover:underline">{item.username}</span>
+                      </button>
                       <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                         {item.event_type}
                       </span>
@@ -623,6 +820,139 @@ export default function AdminDashboard() {
             </div>
         </>
       ) : null}
+
+      <Modal
+        isOpen={selectedUserProfile !== null || isUserProfileLoading || Boolean(userProfileError)}
+        onClose={closeUserProfileModal}
+        maxWidthClassName="max-w-3xl"
+      >
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">User Profile</h2>
+              <p className="mt-1 text-sm text-slate-500">View the full profile information for this user.</p>
+            </div>
+            <button
+              type="button"
+              onClick={closeUserProfileModal}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            >
+              Close
+            </button>
+          </div>
+
+          {isUserProfileLoading ? (
+            <p className="mt-6 text-sm text-slate-500">Loading profile...</p>
+          ) : userProfileError ? (
+            <div className="mt-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {userProfileError}
+            </div>
+          ) : selectedUserProfile ? (
+            <>
+              <div className="mt-6 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:items-center sm:text-left">
+                {selectedUserProfile.profile_image ? (
+                  <img
+                    src={selectedUserProfile.profile_image}
+                    alt={selectedUserProfile.name || selectedUserProfile.username}
+                    className="h-24 w-24 rounded-full object-cover ring-4 ring-slate-100"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-2xl font-semibold text-slate-500 ring-4 ring-slate-100">
+                    {(selectedUserProfile.name || selectedUserProfile.username || "?").charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="flex flex-col items-center sm:items-start">
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    {selectedUserProfile.name || selectedUserProfile.username}
+                  </h3>
+                  <p className="text-sm text-slate-500">@{selectedUserProfile.username}</p>
+                  {selectedUserProfile.department_name ? (
+                    <p className="mt-1 text-sm text-slate-500">{selectedUserProfile.department_name}</p>
+                  ) : null}
+                  <p className="mt-2 inline-flex rounded-full bg-slate-700 px-3 py-1 text-xs font-semibold text-white">
+                    {selectedUserProfile.role_name || "No role"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2 self-center sm:self-start">
+                  {selectedUserProfile.active_status ? (
+                    <button
+                      type="button"
+                      onClick={() => handleDisableUser(selectedUserProfile)}
+                      disabled={processingUserId === selectedUserProfile.user_id}
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <UserX className="h-4 w-4" />
+                      Disable Account
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleEnableUser(selectedUserProfile)}
+                      disabled={processingUserId === selectedUserProfile.user_id}
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                      Enable Account
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteUser(selectedUserProfile)}
+                    disabled={processingUserId === selectedUserProfile.user_id}
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Account
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.email || "-"}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Phone</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.phone || "-"}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Date of Birth</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.dob || "-"}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hire Date</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.hire_date || "-"}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Department</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.department_name || "-"}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Account Status</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">
+                    {selectedUserProfile.active_status ? "Active" : "Disabled"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Address</p>
+                <p className="mt-2 text-sm text-slate-700">
+                  {[
+                    selectedUserProfile.address_line_1,
+                    selectedUserProfile.township,
+                    selectedUserProfile.city,
+                    selectedUserProfile.postal_code,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") || "-"}
+                </p>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </Modal>
     </section>
   );
 }

@@ -1,9 +1,11 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import AddIdeaSubmissionForm from '../forms/AddIdeaSubmissionForm'
 import { useRef } from 'react'
 import ViewIdeaTable from '../components/tables/ViewIdeaTable'
+import Modal from '../components/common/Modal'
+import { ShieldCheck, Trash2, UserX } from 'lucide-react'
 
 type Idea = {
   idea_id: number
@@ -50,6 +52,26 @@ type DepartmentOption = {
   department_name: string
 }
 
+type UserProfile = {
+  user_id: number
+  username: string
+  first_name?: string | null
+  last_name?: string | null
+  name?: string | null
+  email?: string | null
+  role_name?: string | null
+  department_name?: string | null
+  dob?: string | null
+  address_line_1?: string | null
+  township?: string | null
+  city?: string | null
+  postal_code?: string | null
+  phone?: string | null
+  hire_date?: string | null
+  active_status: boolean
+  profile_image?: string | null
+}
+
 type IdeaListResponse = {
   results?: Idea[]
   count?: number
@@ -60,7 +82,6 @@ type IdeaListResponse = {
 
 const StaffAllIdeaPage = () => {
   const location = useLocation()
-  const navigate = useNavigate()
   const [isAdding, setIsAdding] = useState(false)
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [closurePeriods] = useState<ClosurePeriod[]>([])
@@ -91,6 +112,10 @@ const StaffAllIdeaPage = () => {
   const [reportReason, setReportReason] = useState('')
   const [reportDetails, setReportDetails] = useState('')
   const [isSubmittingReport, setIsSubmittingReport] = useState(false)
+  const [selectedUserProfile, setSelectedUserProfile] = useState<UserProfile | null>(null)
+  const [isUserProfileLoading, setIsUserProfileLoading] = useState(false)
+  const [userProfileError, setUserProfileError] = useState('')
+  const [processingUserId, setProcessingUserId] = useState<number | null>(null)
 
   const effectivePageSize = pageSize === -1 ? Math.max(totalIdeas, 1) : pageSize;
   const totalPages = pageSize === -1 ? 1 : Math.max(1, Math.ceil(totalIdeas / pageSize));
@@ -133,6 +158,7 @@ const StaffAllIdeaPage = () => {
 
   const isStaff = currentRole === 'staff'
   const canModerateView = currentRole === 'qa_manager' || currentRole === 'admin'
+  const canManageUsers = currentRole === 'admin'
   const currentUserId = useMemo(() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -690,10 +716,109 @@ const StaffAllIdeaPage = () => {
     return `/${url}`
   }
 
+  const closeUserProfileModal = () => {
+    setSelectedUserProfile(null)
+    setUserProfileError('')
+    setIsUserProfileLoading(false)
+  }
+
+  const refreshSelectedUserProfile = async (userId: number) => {
+    const response = await axios.get<UserProfile>(`/api/admin/users/${userId}/`, getAuthConfig())
+    setSelectedUserProfile(response.data)
+  }
+
   const handleOpenUserRow = (userId: number) => {
     if (!canModerateView) return
-    const basePath = currentRole === 'admin' ? '/admin/users' : '/qa_manager/users'
-    navigate(`${basePath}?userId=${userId}`)
+
+    const fetchUserProfile = async () => {
+      setIsUserProfileLoading(true)
+      setUserProfileError('')
+      setSelectedUserProfile(null)
+      try {
+        const response = await axios.get<UserProfile>(`/api/admin/users/${userId}/`, getAuthConfig())
+        setSelectedUserProfile(response.data)
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          const data = err.response?.data as { message?: string; detail?: string } | undefined
+          setUserProfileError(data?.message || data?.detail || 'Failed to load user profile.')
+        } else {
+          setUserProfileError('Failed to load user profile.')
+        }
+      } finally {
+        setIsUserProfileLoading(false)
+      }
+    }
+
+    void fetchUserProfile()
+  }
+
+  const handleDisableUser = async (user: UserProfile) => {
+    const shouldDisable = window.confirm(`Disable account for "${user.username}"?`)
+    if (!shouldDisable) return
+
+    setError('')
+    setActionMessage('')
+    setProcessingUserId(user.user_id)
+    try {
+      const response = await axios.post(`/api/admin/users/${user.user_id}/disable/`, {}, getAuthConfig())
+      setActionMessage((response.data as { message?: string })?.message || `Account disabled for ${user.username}.`)
+      await refreshSelectedUserProfile(user.user_id)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined
+        setError(data?.message || data?.detail || 'Failed to disable account.')
+      } else {
+        setError('Failed to disable account.')
+      }
+    } finally {
+      setProcessingUserId(null)
+    }
+  }
+
+  const handleEnableUser = async (user: UserProfile) => {
+    const shouldEnable = window.confirm(`Enable account for "${user.username}"?`)
+    if (!shouldEnable) return
+
+    setError('')
+    setActionMessage('')
+    setProcessingUserId(user.user_id)
+    try {
+      const response = await axios.post(`/api/admin/users/${user.user_id}/enable/`, {}, getAuthConfig())
+      setActionMessage((response.data as { message?: string })?.message || `Account enabled for ${user.username}.`)
+      await refreshSelectedUserProfile(user.user_id)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined
+        setError(data?.message || data?.detail || 'Failed to enable account.')
+      } else {
+        setError('Failed to enable account.')
+      }
+    } finally {
+      setProcessingUserId(null)
+    }
+  }
+
+  const handleDeleteUser = async (user: UserProfile) => {
+    const shouldDelete = window.confirm(`Delete account for "${user.username}"?\n\nAre you sure you want to delete this account?`)
+    if (!shouldDelete) return
+
+    setError('')
+    setActionMessage('')
+    setProcessingUserId(user.user_id)
+    try {
+      const response = await axios.post(`/api/admin/users/${user.user_id}/delete/`, {}, getAuthConfig())
+      setActionMessage((response.data as { message?: string })?.message || `Account deleted for ${user.username}.`)
+      closeUserProfileModal()
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { message?: string; detail?: string } | undefined
+        setError(data?.message || data?.detail || 'Failed to delete account.')
+      } else {
+        setError('Failed to delete account.')
+      }
+    } finally {
+      setProcessingUserId(null)
+    }
   }
 
   const handleHighlightRef = (element: HTMLDivElement | null) => {
@@ -727,7 +852,7 @@ const StaffAllIdeaPage = () => {
 
       {!isAdding && (
         <div className="space-y-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <input
                 type="text"
@@ -816,15 +941,15 @@ const StaffAllIdeaPage = () => {
 
           {/* Pagination Controls (AdminAnalyticsPage style) */}
           {!loading && totalIdeas > 0 && (
-            <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-center sm:text-left">
-              <p className="text-sm text-slate-600">
+            <div className="flex flex-col items-center justify-between gap-2 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left">
+              <p className="text-xs text-slate-600 sm:text-sm">
                 Showing {startIndex + 1} to {endIndex} of {totalIdeas} ideas
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
                 <select
                   value={pageSize}
                   onChange={(event) => setPageSize(Number(event.target.value))}
-                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm"
                 >
                   <option value={10}>10 / page</option>
                   <option value={20}>20 / page</option>
@@ -834,7 +959,7 @@ const StaffAllIdeaPage = () => {
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
                   disabled={currentPage === 1}
-                  className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
                   aria-label={`Skip back ${skipSize} pages`}
                   title={`Skip back ${skipSize} pages`}
                 >
@@ -844,7 +969,7 @@ const StaffAllIdeaPage = () => {
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
                   aria-label="Previous page"
                   title="Previous page"
                 >
@@ -855,7 +980,7 @@ const StaffAllIdeaPage = () => {
                     key={page}
                     type="button"
                     onClick={() => setCurrentPage(page)}
-                    className={`rounded-md border px-3 py-1.5 text-sm ${
+                    className={`rounded-md border px-2.5 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm ${
                       page === currentPage
                         ? 'border-blue-600 bg-blue-600 text-white'
                         : 'border-slate-300 bg-white text-slate-700'
@@ -864,14 +989,14 @@ const StaffAllIdeaPage = () => {
                     {page}
                   </button>
                 ))}
-                <span className="text-sm text-slate-600">
+                <span className="text-xs text-slate-600 sm:text-sm">
                   Page {currentPage} / {totalPages}
                 </span>
                 <button
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
                   aria-label="Next page"
                   title="Next page"
                 >
@@ -881,7 +1006,7 @@ const StaffAllIdeaPage = () => {
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
                   disabled={currentPage === totalPages}
-                  className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
                   aria-label={`Skip forward ${skipSize} pages`}
                   title={`Skip forward ${skipSize} pages`}
                 >
@@ -892,6 +1017,140 @@ const StaffAllIdeaPage = () => {
           )}
         </div>
       )}
+      <Modal
+        isOpen={selectedUserProfile !== null || isUserProfileLoading || Boolean(userProfileError)}
+        onClose={closeUserProfileModal}
+        maxWidthClassName="max-w-3xl"
+      >
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">User Profile</h2>
+              <p className="mt-1 text-sm text-slate-500">View the full profile information for this user.</p>
+            </div>
+            <button
+              type="button"
+              onClick={closeUserProfileModal}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            >
+              Close
+            </button>
+          </div>
+
+          {isUserProfileLoading ? (
+            <p className="mt-6 text-sm text-slate-500">Loading profile...</p>
+          ) : userProfileError ? (
+            <div className="mt-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {userProfileError}
+            </div>
+          ) : selectedUserProfile ? (
+            <>
+              <div className="mt-6 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:items-center sm:text-left">
+                {selectedUserProfile.profile_image ? (
+                  <img
+                    src={selectedUserProfile.profile_image}
+                    alt={selectedUserProfile.name || selectedUserProfile.username}
+                    className="h-24 w-24 rounded-full object-cover ring-4 ring-slate-100"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-2xl font-semibold text-slate-500 ring-4 ring-slate-100">
+                    {(selectedUserProfile.name || selectedUserProfile.username || '?').charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="flex flex-col items-center sm:items-start">
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    {selectedUserProfile.name || selectedUserProfile.username}
+                  </h3>
+                  <p className="text-sm text-slate-500">@{selectedUserProfile.username}</p>
+                  {selectedUserProfile.department_name ? (
+                    <p className="mt-1 text-sm text-slate-500">{selectedUserProfile.department_name}</p>
+                  ) : null}
+                  <p className="mt-2 inline-flex rounded-full bg-slate-700 px-3 py-1 text-xs font-semibold text-white">
+                    {selectedUserProfile.role_name || 'No role'}
+                  </p>
+                </div>
+                {canManageUsers && (
+                  <div className="flex flex-wrap justify-center gap-2 self-center sm:self-start">
+                    {selectedUserProfile.active_status ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDisableUser(selectedUserProfile)}
+                        disabled={processingUserId === selectedUserProfile.user_id}
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <UserX className="h-4 w-4" />
+                        Disable Account
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleEnableUser(selectedUserProfile)}
+                        disabled={processingUserId === selectedUserProfile.user_id}
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        Enable Account
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(selectedUserProfile)}
+                      disabled={processingUserId === selectedUserProfile.user_id}
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete Account
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Email</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.email || '-'}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Phone</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.phone || '-'}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Date of Birth</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.dob || '-'}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Hire Date</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.hire_date || '-'}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Department</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedUserProfile.department_name || '-'}</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Account Status</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">
+                    {selectedUserProfile.active_status ? 'Active' : 'Disabled'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Address</p>
+                <p className="mt-2 text-sm text-slate-700">
+                  {[
+                    selectedUserProfile.address_line_1,
+                    selectedUserProfile.township,
+                    selectedUserProfile.city,
+                    selectedUserProfile.postal_code,
+                  ]
+                    .filter(Boolean)
+                    .join(', ') || '-'}
+                </p>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </Modal>
       {reportTarget && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4 py-6">
           <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-6">
@@ -923,7 +1182,7 @@ const StaffAllIdeaPage = () => {
                   rows={3}
                   value={reportDetails}
                   onChange={(event) => setReportDetails(event.target.value)}
-                  className="mt-1 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400"
+                  className="mt-1 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400 text-justify"
                   style={{ resize: 'none' }}
                 />
               </div>

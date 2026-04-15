@@ -143,16 +143,16 @@ export default function AdminAnalyticsPage() {
       </div>
 
       {!isLoading && totalCount > 0 && (
-        <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-center sm:text-left">
-          <p className="text-sm text-slate-600">
+        <div className="flex flex-col items-center justify-between gap-2 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left">
+          <p className="text-xs text-slate-600 sm:text-sm">
             Showing {(currentPage - 1) * effectivePageSize + 1} to {Math.min(currentPage * effectivePageSize, totalCount)} of {totalCount} logs
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
             <select
               value={pageSize}
               onChange={(event) => setPageSize(Number(event.target.value))}
               disabled={isRefreshing}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm"
             >
               <option value={10}>10 / page</option>
               <option value={20}>20 / page</option>
@@ -163,7 +163,7 @@ export default function AdminAnalyticsPage() {
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
               disabled={currentPage === 1 || isRefreshing}
-              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
               aria-label={`Skip back ${skipSize} pages`}
               title={`Skip back ${skipSize} pages`}
             >
@@ -173,7 +173,7 @@ export default function AdminAnalyticsPage() {
               type="button"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1 || isRefreshing}
-              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
               aria-label="Previous page"
               title="Previous page"
             >
@@ -185,19 +185,19 @@ export default function AdminAnalyticsPage() {
                 type="button"
                 onClick={() => setCurrentPage(page)}
                 disabled={isRefreshing}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm"
               >
                 {page}
               </button>
             ))}
-            <span className="text-sm text-slate-600">
+            <span className="text-xs text-slate-600 sm:text-sm">
               Page {currentPage} / {totalPages}
             </span>
             <button
               type="button"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages || isRefreshing}
-              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
               aria-label="Next page"
               title="Next page"
             >
@@ -207,7 +207,7 @@ export default function AdminAnalyticsPage() {
               type="button"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
               disabled={currentPage === totalPages || isRefreshing}
-              className="rounded-md border border-slate-300 bg-white p-2 text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
               aria-label={`Skip forward ${skipSize} pages`}
               title={`Skip forward ${skipSize} pages`}
             >

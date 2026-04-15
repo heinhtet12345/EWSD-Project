@@ -516,7 +516,7 @@ const ClosurePeriodPage = () => {
         maxWidthClassName="max-w-lg"
       >
         {downloadTarget !== undefined && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="qa-export-options-modal rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <h2 className="text-xl font-semibold text-slate-900">Choose Export Type</h2>
             <p className="mt-2 text-sm text-slate-600">
               {downloadTarget
@@ -527,10 +527,10 @@ const ClosurePeriodPage = () => {
               <button
                 type="button"
                 onClick={() => setSelectedExportType('report')}
-                className={`rounded-xl border px-4 py-3 text-left transition ${
+                className={`rounded-xl border px-4 py-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 dark:focus-visible:ring-blue-500 ${
                   selectedExportType === 'report'
-                    ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100'
-                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                    ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100 dark:border-blue-500 dark:bg-blue-500/10 dark:ring-blue-500/20'
+                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-blue-500/50 dark:hover:bg-slate-800'
                 }`}
               >
                 <span className="block text-sm font-semibold text-slate-900">Report only</span>
@@ -539,10 +539,10 @@ const ClosurePeriodPage = () => {
               <button
                 type="button"
                 onClick={() => setSelectedExportType('documents')}
-                className={`rounded-xl border px-4 py-3 text-left transition ${
+                className={`rounded-xl border px-4 py-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 dark:focus-visible:ring-blue-500 ${
                   selectedExportType === 'documents'
-                    ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100'
-                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                    ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100 dark:border-blue-500 dark:bg-blue-500/10 dark:ring-blue-500/20'
+                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-blue-500/50 dark:hover:bg-slate-800'
                 }`}
               >
                 <span className="block text-sm font-semibold text-slate-900">Documents only</span>
@@ -551,10 +551,10 @@ const ClosurePeriodPage = () => {
               <button
                 type="button"
                 onClick={() => setSelectedExportType('all')}
-                className={`rounded-xl border px-4 py-3 text-left transition ${
+                className={`rounded-xl border px-4 py-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 dark:focus-visible:ring-blue-500 ${
                   selectedExportType === 'all'
-                    ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100'
-                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                    ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100 dark:border-blue-500 dark:bg-blue-500/10 dark:ring-blue-500/20'
+                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-blue-500/50 dark:hover:bg-slate-800'
                 }`}
               >
                 <span className="block text-sm font-semibold text-slate-900">All</span>
@@ -565,14 +565,14 @@ const ClosurePeriodPage = () => {
               <button
                 type="button"
                 onClick={() => setDownloadTarget(undefined)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => handleConfirmDownload(selectedExportType)}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 dark:focus-visible:ring-emerald-500"
               >
                 Download
               </button>
