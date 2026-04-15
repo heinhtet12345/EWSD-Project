@@ -16,6 +16,55 @@ TEMPORARY_PASSWORD = "Pass@123"
 DELETED_USER_ID = 0
 
 
+def _build_admin_email(*, title, greeting, intro, details, closing_note):
+    message = (
+        f"{greeting}\n\n"
+        f"{intro}\n\n"
+        + (
+            "Details:\n\n" + "\n".join(f"{label}: {value}" for label, value in details) + "\n\n"
+            if details
+            else ""
+        )
+        + f"{closing_note}\n\n"
+        "Best regards,\n"
+        "RBAC Contribution Platform\n"
+        "Group 5 University\n"
+        "system@ewsd.edu"
+    )
+    details_rows = "".join(
+        f"""
+            <tr>
+                <td style="padding:6px 0;font-weight:700;color:#475569;width:180px;">{label}:</td>
+                <td style="padding:6px 0;color:#0f172a;">{value}</td>
+            </tr>
+        """
+        for label, value in details
+    )
+    html_message = f"""
+        <div style="background:#f8fafc;padding:32px 16px;font-family:Arial,sans-serif;color:#0f172a;">
+            <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+                <div style="background:#0f766e;padding:24px 28px;color:#ffffff;">
+                    <p style="margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">RBAC Contribution Platform</p>
+                    <h1 style="margin:8px 0 0;font-size:22px;line-height:1.3;">{title}</h1>
+                </div>
+                <div style="padding:28px;">
+                    <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">{greeting}</p>
+                    <p style="margin:0 0 20px;font-size:15px;line-height:1.7;">{intro}</p>
+                    {"<div style='margin:0 0 24px;padding:20px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;'><p style='margin:0 0 12px;font-size:14px;font-weight:700;color:#334155;'>Details</p><table style='width:100%;border-collapse:collapse;font-size:14px;line-height:1.6;'>" + details_rows + "</table></div>" if details else ""}
+                    <p style="margin:0;font-size:15px;line-height:1.7;">{closing_note}</p>
+                </div>
+                <div style="padding:20px 28px;background:#f1f5f9;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#475569;">
+                    <p style="margin:0;font-weight:700;color:#0f172a;">Best regards,</p>
+                    <p style="margin:4px 0 0;">RBAC Contribution Platform</p>
+                    <p style="margin:0;">Group 5 University</p>
+                    <p style="margin:0;">system@ewsd.edu</p>
+                </div>
+            </div>
+        </div>
+    """
+    return message, html_message
+
+
 def _normalized_role(user) -> str:
     role_name = getattr(getattr(user, "role", None), "role_name", "") or ""
     return role_name.strip().lower().replace(" ", "_")
@@ -83,11 +132,22 @@ class ForgotPasswordRequestView(APIView):
 
             if admin.email:
                 try:
+                    message_text, html_message = _build_admin_email(
+                        title="Password Reset Request",
+                        greeting="Dear Admin,",
+                        intro="A user has submitted a password reset request through the university idea management system.",
+                        details=[
+                            ("Username", target_user.username),
+                            ("Email", target_user.email or "Not provided"),
+                        ],
+                        closing_note="Please review the request and reset the password if appropriate.",
+                    )
                     send_mail(
                         subject="Password Reset Request",
-                        message=f'User "{target_user.username}" requested a password reset.',
+                        message=message_text,
                         from_email="system@ewsd.edu",
                         recipient_list=[admin.email],
+                        html_message=html_message,
                         fail_silently=True,
                     )
                 except (BadHeaderError, OSError):
@@ -283,11 +343,21 @@ class AdminResetUserPasswordView(APIView):
 
         if target_user.email:
             try:
+                message_text, html_message = _build_admin_email(
+                    title="Your Password Has Been Reset",
+                    greeting=f"Dear {target_user.username},",
+                    intro="Your account password has been reset by an administrator.",
+                    details=[
+                        ("Temporary Password", TEMPORARY_PASSWORD),
+                    ],
+                    closing_note="Please sign in using this temporary password and change it as soon as possible.",
+                )
                 send_mail(
                     subject="Your Password Has Been Reset",
-                    message=f'Your password has been reset by admin. Temporary password: "{TEMPORARY_PASSWORD}".',
+                    message=message_text,
                     from_email="system@ewsd.edu",
                     recipient_list=[target_user.email],
+                    html_message=html_message,
                     fail_silently=True,
                 )
             except (BadHeaderError, OSError):
@@ -323,18 +393,24 @@ class AdminDisableUserAccountView(APIView):
             notification_type="account_disabled",
         )
 
-        # Send email notification to the user
-        from django.core.mail import send_mail
         if target_user.email:
             try:
+                message_text, html_message = _build_admin_email(
+                    title="Account Disabled",
+                    greeting=f"Dear {target_user.username},",
+                    intro="Your account has been disabled by an administrator due to a policy or user agreement violation.",
+                    details=[],
+                    closing_note="If you believe this action was taken in error, please contact the system administrator for assistance.",
+                )
                 send_mail(
                     subject="Account Disabled",
-                    message="Your account has been disabled due to Users' Agreement Violations",
-                    from_email=None,  # Uses DEFAULT_FROM_EMAIL from settings
+                    message=message_text,
+                    from_email="system@ewsd.edu",
                     recipient_list=[target_user.email],
+                    html_message=html_message,
                     fail_silently=True,
                 )
-            except Exception:
+            except (BadHeaderError, OSError):
                 pass
 
         return Response({"message": f'Account "{target_user.username}" disabled.'}, status=status.HTTP_200_OK)

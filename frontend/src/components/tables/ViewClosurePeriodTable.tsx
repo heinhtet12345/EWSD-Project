@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react'
 
 export type ClosurePeriod = {
@@ -61,10 +61,13 @@ const ViewClosurePeriodTable = ({
 	onOpenDownloadOptions,
 }: ViewClosurePeriodTableProps) => {
 	const [currentPage, setCurrentPage] = useState(1)
+	const [pageSearchTerm, setPageSearchTerm] = useState(searchTerm)
 	const itemsPerPage = 5
 
 	const totalPages = Math.max(1, Math.ceil(periods.length / itemsPerPage))
-	const safeCurrentPage = Math.min(currentPage, totalPages)
+	const isSearchStale = pageSearchTerm !== searchTerm
+	const effectiveCurrentPage = isSearchStale ? 1 : currentPage
+	const safeCurrentPage = Math.min(effectiveCurrentPage, totalPages)
 	const startIndex = (safeCurrentPage - 1) * itemsPerPage
 	const endIndex = startIndex + itemsPerPage
 	const visiblePeriods = useMemo(
@@ -77,15 +80,14 @@ const ViewClosurePeriodTable = ({
 		return Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index)
 	}, [safeCurrentPage, totalPages])
 
-	useEffect(() => {
-		setCurrentPage(1)
-	}, [searchTerm])
-
-	useEffect(() => {
-		if (currentPage > totalPages) {
-			setCurrentPage(totalPages)
-		}
-	}, [currentPage, totalPages])
+	const updateCurrentPage = (value: number | ((page: number) => number)) => {
+		setPageSearchTerm(searchTerm)
+		setCurrentPage((previousPage) => {
+			const basePage = pageSearchTerm !== searchTerm ? 1 : previousPage
+			const nextPage = typeof value === 'function' ? value(basePage) : value
+			return Math.min(Math.max(1, nextPage), totalPages)
+		})
+	}
 
 	return (
 		<div className="qa-closure-table overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -99,7 +101,11 @@ const ViewClosurePeriodTable = ({
 							id="closure-search"
 							type="text"
 							value={searchTerm}
-							onChange={(e) => onSearchChange?.(e.target.value)}
+							onChange={(e) => {
+								setPageSearchTerm(e.target.value)
+								setCurrentPage(1)
+								onSearchChange?.(e.target.value)
+							}}
 							placeholder="Search academic year..."
 							className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
 						/>
@@ -257,14 +263,14 @@ const ViewClosurePeriodTable = ({
 				<div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
 					<div className="flex flex-1 justify-between sm:hidden">
 						<button
-							onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+							onClick={() => updateCurrentPage((prev) => prev - 1)}
 							disabled={safeCurrentPage === 1}
 							className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							Previous
 						</button>
 						<button
-							onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+							onClick={() => updateCurrentPage((prev) => prev + 1)}
 							disabled={safeCurrentPage === totalPages}
 							className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
 						>
@@ -277,7 +283,7 @@ const ViewClosurePeriodTable = ({
 						</p>
 						<nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
 							<button
-								onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+								onClick={() => updateCurrentPage((prev) => prev - 1)}
 								disabled={safeCurrentPage === 1}
 								className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
 							>
@@ -287,7 +293,7 @@ const ViewClosurePeriodTable = ({
 							{visiblePageNumbers.map((page) => (
 								<button
 									key={page}
-									onClick={() => setCurrentPage(page)}
+									onClick={() => updateCurrentPage(page)}
 									className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
 										page === safeCurrentPage
 											? 'z-10 bg-indigo-600 text-white'
@@ -298,7 +304,7 @@ const ViewClosurePeriodTable = ({
 								</button>
 							))}
 							<button
-								onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+								onClick={() => updateCurrentPage((prev) => prev + 1)}
 								disabled={safeCurrentPage === totalPages}
 								className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
 							>

@@ -45,6 +45,87 @@ def _parse_pagination_params(request):
     return page, page_size
 
 
+def _build_idea_submission_email(idea):
+    submitter_name = getattr(idea.user, "username", "Unknown User")
+    department_name = getattr(idea.department, "dept_name", "Unknown Department")
+    submission_date = timezone.localtime(idea.submit_datetime).strftime("%d %b %Y, %I:%M %p")
+    idea_title = idea.idea_title or "Untitled Idea"
+
+    subject = f"New Idea Submitted for Review - {idea_title}"
+    message = (
+        "Dear QA Coordinator,\n\n"
+        "This is to inform you that a new idea has been successfully submitted to the university idea management system.\n\n"
+        "Submission Details:\n\n"
+        f"Idea Title: {idea_title}\n"
+        f"Submitted By: {submitter_name}\n"
+        f"Department / Faculty: {department_name}\n"
+        f"Submission Date: {submission_date}\n\n"
+        "Kindly review the submitted idea at your convenience and proceed with the necessary quality assurance evaluation.\n\n"
+        "If you require any additional information, please feel free to contact the system administrator.\n\n"
+        "Thank you for your attention and support.\n\n"
+        "Best regards,\n"
+        "RBAC Contribution Platform\n"
+        "Group 5 University\n"
+        "system@ewsd.edu"
+    )
+    html_message = f"""
+        <div style="background:#f8fafc;padding:32px 16px;font-family:Arial,sans-serif;color:#0f172a;">
+            <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+                <div style="background:#0f766e;padding:24px 28px;color:#ffffff;">
+                    <p style="margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">RBAC Contribution Platform</p>
+                    <h1 style="margin:8px 0 0;font-size:22px;line-height:1.3;">New Idea Submitted for Review</h1>
+                </div>
+                <div style="padding:28px;">
+                    <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Dear QA Coordinator,</p>
+                    <p style="margin:0 0 20px;font-size:15px;line-height:1.7;">
+                        This is to inform you that a new idea has been successfully submitted to the university idea management system.
+                    </p>
+
+                    <div style="margin:0 0 24px;padding:20px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;">
+                        <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#334155;">Submission Details</p>
+                        <table style="width:100%;border-collapse:collapse;font-size:14px;line-height:1.6;">
+                            <tr>
+                                <td style="padding:6px 0;font-weight:700;color:#475569;width:180px;">Idea Title:</td>
+                                <td style="padding:6px 0;color:#0f172a;">{idea_title}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:6px 0;font-weight:700;color:#475569;">Submitted By:</td>
+                                <td style="padding:6px 0;color:#0f172a;">{submitter_name}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:6px 0;font-weight:700;color:#475569;">Department / Faculty:</td>
+                                <td style="padding:6px 0;color:#0f172a;">{department_name}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:6px 0;font-weight:700;color:#475569;">Submission Date:</td>
+                                <td style="padding:6px 0;color:#0f172a;">{submission_date}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">
+                        Kindly review the submitted idea at your convenience and proceed with the necessary quality assurance evaluation.
+                    </p>
+                    <p style="margin:0 0 24px;font-size:15px;line-height:1.7;">
+                        If you require any additional information, please feel free to contact the system administrator.
+                    </p>
+
+                    <p style="margin:0;font-size:15px;line-height:1.7;">
+                        Thank you for your attention and support.
+                    </p>
+                </div>
+                <div style="padding:20px 28px;background:#f1f5f9;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#475569;">
+                    <p style="margin:0;font-weight:700;color:#0f172a;">Best regards,</p>
+                    <p style="margin:4px 0 0;">RBAC Contribution Platform</p>
+                    <p style="margin:0;">Group 5 University</p>
+                    <p style="margin:0;">system@ewsd.edu</p>
+                </div>
+            </div>
+        </div>
+    """
+    return subject, message, html_message
+
+
 def _build_idea_queryset(request, scope: str):
     role = _normalized_role(request.user)
     active_ideas = Idea.objects.filter(user__active_status=True)
@@ -232,11 +313,13 @@ class PostIdeaView(APIView):
 
             if coordinator.email:
                 try:
+                    subject, message, html_message = _build_idea_submission_email(idea)
                     send_mail(
-                        subject=f"New Idea Submitted: {idea.idea_title}",
-                        message=f"Staff {idea.user.username} submitted an idea in {idea.department.dept_name}.",
+                        subject=subject,
+                        message=message,
                         from_email="system@ewsd.edu",
                         recipient_list=[coordinator.email],
+                        html_message=html_message,
                         fail_silently=True,
                     )
                 except (BadHeaderError, OSError):

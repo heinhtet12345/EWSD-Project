@@ -13,6 +13,55 @@ from api.views.admin_views import _normalized_role
 User = get_user_model()
 
 
+def _build_notification_email(*, title, greeting, intro, details, closing_note):
+    message = (
+        f"{greeting}\n\n"
+        f"{intro}\n\n"
+        + (
+            "Details:\n\n" + "\n".join(f"{label}: {value}" for label, value in details) + "\n\n"
+            if details
+            else ""
+        )
+        + f"{closing_note}\n\n"
+        "Best regards,\n"
+        "RBAC Contribution Platform\n"
+        "Group 5 University\n"
+        "system@ewsd.edu"
+    )
+    details_rows = "".join(
+        f"""
+            <tr>
+                <td style="padding:6px 0;font-weight:700;color:#475569;width:180px;">{label}:</td>
+                <td style="padding:6px 0;color:#0f172a;">{value}</td>
+            </tr>
+        """
+        for label, value in details
+    )
+    html_message = f"""
+        <div style="background:#f8fafc;padding:32px 16px;font-family:Arial,sans-serif;color:#0f172a;">
+            <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+                <div style="background:#0f766e;padding:24px 28px;color:#ffffff;">
+                    <p style="margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">RBAC Contribution Platform</p>
+                    <h1 style="margin:8px 0 0;font-size:22px;line-height:1.3;">{title}</h1>
+                </div>
+                <div style="padding:28px;">
+                    <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">{greeting}</p>
+                    <p style="margin:0 0 20px;font-size:15px;line-height:1.7;">{intro}</p>
+                    {"<div style='margin:0 0 24px;padding:20px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;'><p style='margin:0 0 12px;font-size:14px;font-weight:700;color:#334155;'>Details</p><table style='width:100%;border-collapse:collapse;font-size:14px;line-height:1.6;'>" + details_rows + "</table></div>" if details else ""}
+                    <p style="margin:0;font-size:15px;line-height:1.7;">{closing_note}</p>
+                </div>
+                <div style="padding:20px 28px;background:#f1f5f9;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#475569;">
+                    <p style="margin:0;font-weight:700;color:#0f172a;">Best regards,</p>
+                    <p style="margin:4px 0 0;">RBAC Contribution Platform</p>
+                    <p style="margin:0;">Group 5 University</p>
+                    <p style="margin:0;">system@ewsd.edu</p>
+                </div>
+            </div>
+        </div>
+    """
+    return message, html_message
+
+
 def _manager_recipients():
     return [
         user
@@ -39,11 +88,24 @@ def _notify_managers_about_report(*, target_label, report_reason, reporter_usern
 
         if recipient.email:
             try:
+                message_text, html_message = _build_notification_email(
+                    title=notification_title,
+                    greeting="Dear QA Manager,",
+                    intro="A report has been submitted in the university idea management system and requires your review.",
+                    details=[
+                        ("Reported Item", target_type.title()),
+                        ("Item Reference", target_label),
+                        ("Reported By", reporter_username),
+                        ("Reason", report_reason),
+                    ],
+                    closing_note="Please review the reported content in the platform and take the appropriate action.",
+                )
                 send_mail(
                     subject=notification_title,
-                    message=notification_message,
+                    message=message_text,
                     from_email="system@ewsd.edu",
                     recipient_list=[recipient.email],
+                    html_message=html_message,
                     fail_silently=True,
                 )
             except (BadHeaderError, OSError):
@@ -72,11 +134,22 @@ def _notify_idea_author_about_comment(*, idea, commenter, comment):
 
     if idea_author.email:
         try:
+            message_text, html_message = _build_notification_email(
+                title=notification_title,
+                greeting="Dear User,",
+                intro="A new comment has been added to your submitted idea.",
+                details=[
+                    ("Idea Title", idea.idea_title),
+                    ("Commented By", commenter_label),
+                ],
+                closing_note="Please log in to the platform to read the comment and continue the discussion.",
+            )
             send_mail(
                 subject=notification_title,
-                message=notification_message,
+                message=message_text,
                 from_email="system@ewsd.edu",
                 recipient_list=[idea_author.email],
+                html_message=html_message,
                 fail_silently=True,
             )
         except (BadHeaderError, OSError):

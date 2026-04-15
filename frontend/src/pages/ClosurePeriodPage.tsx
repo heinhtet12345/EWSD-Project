@@ -402,7 +402,7 @@ const ClosurePeriodPage = () => {
 
   return (
     <section className="space-y-4">
-      <BreadCrumb
+      {/* <BreadCrumb
         model={breadcrumbItems}
         home={breadcrumbHome}
         separatorIcon={breadcrumbSeparator}
@@ -420,7 +420,7 @@ const ClosurePeriodPage = () => {
         >
           Add Closure Period
         </button>
-      </div>
+      </div> */}
 
       <Modal
         isOpen={isAdding}
