@@ -74,6 +74,7 @@ def _serialize_idea_card(idea):
     return {
         "idea_id": idea.idea_id,
         "idea_title": idea.idea_title,
+        "idea_content": getattr(idea, "idea_content", ""),
         "department_name": getattr(idea.department, "dept_name", ""),
         "submit_datetime": idea.submit_datetime,
         "comment_count": idea.comments.filter(user__active_status=True).count(),
@@ -696,6 +697,7 @@ class QAManagerDashboardView(APIView):
             scope = "all"
 
         today = timezone.now().date()
+        active_closure = _active_closure(today)
         ideas = (
             _visible_ideas_queryset()
             .select_related("department", "closurePeriod", "user")
@@ -739,17 +741,7 @@ class QAManagerDashboardView(APIView):
                 2,
             )
 
-        latest_ideas = [
-            {
-                "idea_id": idea.idea_id,
-                "idea_title": idea.idea_title,
-                "department_name": getattr(idea.department, "dept_name", ""),
-                "submit_datetime": idea.submit_datetime,
-                "comment_count": idea.comments.filter(user__active_status=True).count(),
-                "upvote_count": idea.votes.filter(vote_type=Vote.VoteType.UPVOTE).count(),
-            }
-            for idea in idea_list[:5]
-        ]
+        latest_ideas = [_serialize_idea_card(idea) for idea in idea_list[:5]]
 
         popular_ideas = sorted(
             idea_list,
@@ -760,17 +752,24 @@ class QAManagerDashboardView(APIView):
             ),
             reverse=True,
         )[:5]
-        popular_idea_results = [
-            {
-                "idea_id": idea.idea_id,
-                "idea_title": idea.idea_title,
-                "department_name": getattr(idea.department, "dept_name", ""),
-                "submit_datetime": idea.submit_datetime,
-                "comment_count": idea.comments.filter(user__active_status=True).count(),
-                "upvote_count": idea.votes.filter(vote_type=Vote.VoteType.UPVOTE).count(),
-            }
-            for idea in popular_ideas
-        ]
+        popular_idea_results = [_serialize_idea_card(idea) for idea in popular_ideas]
+
+        active_period_ideas = [
+            idea for idea in idea_list if active_closure and idea.closurePeriod_id == active_closure.id
+        ] if active_closure else []
+        popular_current_ideas = []
+        if active_closure:
+            popular_current_ideas = [
+                _serialize_idea_card(idea) for idea in sorted(
+                    active_period_ideas,
+                    key=lambda idea: (
+                        idea.votes.filter(vote_type=Vote.VoteType.UPVOTE).count(),
+                        idea.comments.filter(user__active_status=True).count(),
+                        idea.submit_datetime,
+                    ),
+                    reverse=True,
+                )[:5]
+            ]
 
         ideas_without_comments = [
             {
@@ -811,6 +810,11 @@ class QAManagerDashboardView(APIView):
                     "department_count": department_count,
                     "anonymous_idea_count": anonymous_idea_count,
                 },
+                "active_closure": {
+                    "academic_year": getattr(active_closure, "academic_year", None),
+                    "idea_closure_date": getattr(active_closure, "idea_closure_date", None),
+                    "comment_closure_date": getattr(active_closure, "comment_closure_date", None),
+                },
                 "filters": {
                     "department_options": [
                         {"department_id": dept.dept_id, "department_name": dept.dept_name}
@@ -832,6 +836,7 @@ class QAManagerDashboardView(APIView):
                 "ideas": {
                     "latest": latest_ideas,
                     "popular": popular_idea_results,
+                    "popular_current": popular_current_ideas,
                 },
                 "exception_reports": {
                     "without_comments": ideas_without_comments,

@@ -12,6 +12,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { useNavigate } from 'react-router-dom'
 import useThemeMode from '../hooks/useThemeMode'
+import DashboardAnnouncement from '../components/common/DashboardAnnouncement'
 import DashboardIdeaListSection from '../components/ideas/DashboardIdeaListSection'
 
 type DepartmentOption = {
@@ -29,6 +30,7 @@ type DepartmentChartItem = {
 type IdeaCardItem = {
   idea_id: number
   idea_title: string
+  idea_content?: string
   department_name: string
   submit_datetime: string
   comment_count?: number
@@ -47,16 +49,19 @@ type DashboardResponse = {
     selected_department_id: number | null
     scope: 'all' | 'active'
   }
+  active_closure: {
+    academic_year: string | null
+    idea_closure_date: string | null
+    comment_closure_date: string | null
+  }
   charts: {
     ideas_by_department: DepartmentChartItem[]
-    contributors_by_department: Array<{
-      department_name: string
-      contributor_count: number
-    }>
+    contributors_by_department: Array<{ department_name: string; contributor_count: number }>
   }
   ideas: {
     latest: IdeaCardItem[]
     popular: IdeaCardItem[]
+    popular_current: IdeaCardItem[]
   }
   exception_reports: {
     without_comments: IdeaCardItem[]
@@ -77,6 +82,11 @@ const getAuthConfig = () => {
 }
 
 const donutPalette = ['#0f766e', '#2563eb', '#d97706', '#16a34a', '#db2777', '#7c3aed', '#ea580c']
+
+const formatDate = (value?: string | null) => {
+  if (!value) return 'Not available'
+  return new Date(value).toLocaleDateString()
+}
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
@@ -218,6 +228,52 @@ export default function QAManagerDashboard() {
     navigate(`/qa_manager/all-ideas?highlightIdeaId=${ideaId}`)
   }
 
+  const announcementItems = useMemo(() => {
+    if (!data) return []
+
+    const items: Array<{ title: string; description: string; path: string }> = []
+    const activeClosure = data.active_closure
+
+    if (activeClosure.academic_year) {
+      items.push({
+        title: 'Current closure period',
+        description: `${activeClosure.academic_year}: idea deadline ${formatDate(activeClosure.idea_closure_date)}, comment deadline ${formatDate(activeClosure.comment_closure_date)}`,
+        path: '/qa_manager/all-ideas',
+      })
+
+      const today = new Date()
+      const ideaDeadline = activeClosure.idea_closure_date ? new Date(activeClosure.idea_closure_date) : null
+      const commentDeadline = activeClosure.comment_closure_date ? new Date(activeClosure.comment_closure_date) : null
+      const differenceInDays = (date: Date | null) => {
+        if (!date) return Number.POSITIVE_INFINITY
+        const diff = date.getTime() - today.getTime()
+        return Math.ceil(diff / (1000 * 60 * 60 * 24))
+      }
+      const ideaDays = differenceInDays(ideaDeadline)
+      const commentDays = differenceInDays(commentDeadline)
+      const upcomingDeadline = ideaDays >= 0 && ideaDays <= 5 ? `Idea deadline in ${ideaDays} day(s)` : commentDays >= 0 && commentDays <= 5 ? `Comment deadline in ${commentDays} day(s)` : ''
+      if (upcomingDeadline) {
+        items.push({
+          title: 'Deadline approaching',
+          description: `${activeClosure.academic_year} ${upcomingDeadline}. Review submissions before the deadline.`,
+          path: '/qa_manager/all-ideas',
+        })
+      }
+    }
+
+    const popularPosts = (data.ideas.popular_current.length ? data.ideas.popular_current : data.ideas.popular).slice(0, 3)
+    popularPosts.forEach((idea) => {
+      const content = idea.idea_content ? `${idea.idea_content}` : idea.idea_title
+      items.push({
+        title: `Check out Popular post: ${idea.idea_title}`,
+        description: content,
+        path: `/qa_manager/all-ideas?highlightIdeaId=${idea.idea_id}`,
+      })
+    })
+
+    return items
+  }, [data])
+
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -250,6 +306,7 @@ export default function QAManagerDashboard() {
       </div>
 
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {announcementItems.length > 0 && <DashboardAnnouncement items={announcementItems} />}
       {isLoading && <p className="text-sm text-slate-500">Loading dashboard...</p>}
 
       {!isLoading && data && (

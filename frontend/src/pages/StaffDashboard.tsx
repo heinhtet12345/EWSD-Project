@@ -12,6 +12,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { useNavigate } from 'react-router-dom'
 import useThemeMode from '../hooks/useThemeMode'
+import DashboardAnnouncement from '../components/common/DashboardAnnouncement'
 import DashboardIdeaListSection from '../components/ideas/DashboardIdeaListSection'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
@@ -19,6 +20,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Le
 type IdeaCardItem = {
   idea_id: number
   idea_title: string
+  idea_content?: string
   department_name: string
   submit_datetime: string
   comment_count: number
@@ -187,6 +189,54 @@ export default function StaffDashboard() {
     navigate(`/staff/all-ideas?highlightIdeaId=${ideaId}`)
   }
 
+  const announcementItems = useMemo(() => {
+    if (!data) return []
+
+    const items: Array<{ title: string; description: string; path: string }> = []
+    const activeClosure = data.active_closure
+
+    if (activeClosure.academic_year) {
+      items.push({
+        title: 'A Closure Period Currently Active',
+        description: `${activeClosure.academic_year}: idea deadline ${formatDate(activeClosure.idea_closure_date)}, comment deadline ${formatDate(activeClosure.comment_closure_date)}, contribute with ideas for improvement before the deadlines.`,
+        path: '/staff/all-ideas',
+      })
+
+      const today = new Date()
+      const ideaDeadline = activeClosure.idea_closure_date ? new Date(activeClosure.idea_closure_date) : null
+      const commentDeadline = activeClosure.comment_closure_date ? new Date(activeClosure.comment_closure_date) : null
+
+      const differenceInDays = (date: Date | null) => {
+        if (!date) return Number.POSITIVE_INFINITY
+        const diff = date.getTime() - today.getTime()
+        return Math.ceil(diff / (1000 * 60 * 60 * 24))
+      }
+
+      const ideaDays = differenceInDays(ideaDeadline)
+      const commentDays = differenceInDays(commentDeadline)
+      const upcomingDeadline = ideaDays >= 0 && ideaDays <= 5 ? `Idea deadline in ${ideaDays} day(s)` : commentDays >= 0 && commentDays <= 5 ? `Comment deadline in ${commentDays} day(s)` : ''
+      if (upcomingDeadline) {
+        items.push({
+          title: 'Deadline approaching',
+          description: `${activeClosure.academic_year} ${upcomingDeadline}. Make sure to admit submissions and comments before the deadline.`,
+          path: '/staff/all-ideas',
+        })
+      }
+    }
+
+    const popularPosts = data.lists.popular_department_ideas.slice(0, 3)
+    popularPosts.forEach((idea) => {
+      const content = idea.idea_content ? `${idea.idea_content}` : idea.idea_title
+      items.push({
+        title: `Check out Popular post: ${idea.idea_title}`,
+        description: content,
+        path: `/staff/all-ideas?highlightIdeaId=${idea.idea_id}`,
+      })
+    })
+
+    return items
+  }, [data])
+
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -200,6 +250,7 @@ export default function StaffDashboard() {
       </div>
 
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {announcementItems.length > 0 && <DashboardAnnouncement items={announcementItems} />}
       {isLoading && <p className="text-sm text-slate-500">Loading dashboard...</p>}
 
       {!isLoading && data && (
