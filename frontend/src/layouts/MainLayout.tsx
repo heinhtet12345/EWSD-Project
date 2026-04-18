@@ -118,6 +118,21 @@ export default function MainLayout() {
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [loginNotice]);
 
+  useEffect(() => {
+    if (!loginNotice) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [loginNotice]);
+
   if (role) {
     const isSidebarOpenForCurrentRoute =
       isMobileViewport && isMobileSidebarOpen && mobileSidebarRoute === pathname;
@@ -157,10 +172,10 @@ export default function MainLayout() {
           </main>
         </div>
         {loginNotice && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center px-4 pt-6">
+          <div className="fixed inset-0 z-50 flex min-h-screen w-screen items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
             <div
               ref={loginNoticeRef}
-              className="pointer-events-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
             >
               <h2 className="text-lg font-semibold text-slate-900">
                 {loginNotice.firstLogin ? "Welcome" : "Welcome back"}

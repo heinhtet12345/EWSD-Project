@@ -106,7 +106,7 @@ export default function QAManagerDashboard() {
   const [error, setError] = useState('')
   const [departmentId, setDepartmentId] = useState<string>('all')
   const [scope, setScope] = useState<'all' | 'active'>('all')
-  const announcementItems = useAnnouncementHighlights()
+  const announcementItems = useAnnouncementHighlights(data?.active_closure)
 
   useEffect(() => {
     const fetchDashboard = async () => {

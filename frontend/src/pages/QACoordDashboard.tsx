@@ -94,7 +94,7 @@ export default function QACoordDashboard() {
   const [data, setData] = useState<CoordinatorDashboardResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const announcementItems = useAnnouncementHighlights()
+  const announcementItems = useAnnouncementHighlights(data?.active_closure)
 
   useEffect(() => {
     const fetchDashboard = async () => {

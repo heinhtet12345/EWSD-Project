@@ -149,20 +149,20 @@ export default function AnnouncementPage() {
   };
 
   const handleSoftDelete = async (announcement: AnnouncementItem) => {
-    const confirmed = window.confirm(`Hide announcement "${announcement.a_title}"?`);
+    const confirmed = window.confirm(`Delete announcement "${announcement.a_title}"?\n\nThis will be a soft delete and can still be shown again by a QA Manager.`);
     if (!confirmed) return;
 
     try {
       setError("");
       await axios.delete(`/api/announcement/${announcement.a_id}/`);
-      setSuccessMessage("Announcement hidden.");
+      setSuccessMessage("Announcement deleted.");
       await fetchAnnouncements();
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const payload = err.response?.data as { message?: string; detail?: string } | undefined;
-        setError(payload?.message || payload?.detail || "Unable to hide announcement.");
+        setError(payload?.message || payload?.detail || "Unable to delete announcement.");
       } else {
-        setError("Unable to hide announcement.");
+        setError("Unable to delete announcement.");
       }
     }
   };
@@ -194,7 +194,7 @@ export default function AnnouncementPage() {
 
   const pageDescription =
     role === "qa_coordinator"
-      ? "Create, edit, and hide department announcements for your staff."
+      ? "Create, edit, and soft-delete department announcements for your staff."
       : role === "qa_manager"
         ? "Review announcements across departments and hide or show them."
         : role === "admin"
@@ -258,21 +258,25 @@ export default function AnnouncementPage() {
               }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                {/* LEFT */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-semibold text-slate-900">{announcement.a_title}</h2>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        announcement.is_active
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
-                    >
-                      {announcement.is_active ? "Visible" : "Hidden"}
-                    </span>
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{announcement.a_content}</p>
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    {announcement.a_title}
+                  </h2>
+
+                  <p className="mt-3 whitespace-pre-wrap break-all text-sm leading-6 text-slate-600">
+                    {announcement.a_content}
+                  </p>
                 </div>
+
+                {/* RIGHT */}
+                {!isReadOnly && (
+                  <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                    {/* buttons */}
+                  </div>
+                )}
+              </div>  
 
                 {!isReadOnly && (
                   <div className="flex flex-wrap items-center gap-2">
@@ -292,7 +296,7 @@ export default function AnnouncementPage() {
                           className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
                         >
                           <Trash2 className="h-4 w-4" />
-                          <span>Hide</span>
+                          <span>Delete</span>
                         </button>
                       </>
                     )}

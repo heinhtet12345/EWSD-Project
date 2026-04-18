@@ -87,7 +87,7 @@ export default function StaffDashboard() {
   const [data, setData] = useState<StaffDashboardResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const announcementItems = useAnnouncementHighlights()
+  const announcementItems = useAnnouncementHighlights(data?.active_closure)
 
   useEffect(() => {
     const fetchDashboard = async () => {
