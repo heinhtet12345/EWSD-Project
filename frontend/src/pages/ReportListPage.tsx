@@ -78,7 +78,6 @@ export default function ReportListPage() {
   const [success, setSuccess] = useState("");
   const [processingUserId, setProcessingUserId] = useState<number | null>(null);
   const [userProfileReportContext, setUserProfileReportContext] = useState<ReportItem | null>(null);
-  const [didTakeProfileAction, setDidTakeProfileAction] = useState(false);
 
   const currentRole = useMemo(() => {
     try {
@@ -163,7 +162,6 @@ export default function ReportListPage() {
     setUserProfileError("");
     setIsUserProfileLoading(false);
     setUserProfileReportContext(null);
-    setDidTakeProfileAction(false);
   };
 
   const handleOpenTarget = async (report: ReportItem) => {
@@ -200,7 +198,6 @@ export default function ReportListPage() {
       setUserProfileError("");
       setSelectedUserProfile(null);
       setUserProfileReportContext(report);
-      setDidTakeProfileAction(false);
       try {
         const response = await axios.get<UserProfile>(`/api/admin/users/${userId}/`, getAuthConfig());
         setSelectedUserProfile(response.data);
@@ -265,7 +262,6 @@ export default function ReportListPage() {
   const markReportResolvedFromProfileAction = async (report: ReportItem | null) => {
     if (!report) return;
     if (isFinalReportStatus(report.status)) return;
-    setDidTakeProfileAction(true);
     await handleStatusChange(report.report_id, "RESOLVED");
   };
 

@@ -138,11 +138,11 @@ export default function SideBar({
             ? `fixed inset-y-0 left-0 z-50 transition-transform duration-200 lg:hidden ${
                 isMobileOpen ? "translate-x-0" : "-translate-x-full"
               }`
-            : "sticky top-0 h-screen"
+            : "min-h-screen self-stretch"
         }`}
       >
       <nav
-        className={`flex h-full flex-col text-white shadow-sm transition-[width,transform] duration-200 ${
+        className={`flex h-full min-h-screen flex-col text-white shadow-sm transition-[width,transform] duration-200 ${
           isMobile ? "w-[272px]" : isCollapsed ? "w-16" : "w-[250px]"
         }`}
         style={{

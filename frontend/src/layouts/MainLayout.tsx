@@ -104,7 +104,7 @@ export default function MainLayout() {
       isMobileViewport && isMobileSidebarOpen && mobileSidebarRoute === pathname;
 
     return (
-      <div className="relative flex h-screen overflow-hidden">
+      <div className="relative flex min-h-screen items-stretch">
         <SideBar
           role={role}
           isMobile={isMobileViewport}
@@ -133,7 +133,7 @@ export default function MainLayout() {
                 : undefined
             }
           />
-          <main className="app-scroll-hidden min-h-0 flex-1 overflow-y-auto px-2 py-3 sm:p-4 lg:p-6">
+          <main className="flex-1 px-2 py-3 sm:p-4 lg:p-6">
             <Outlet />
           </main>
         </div>
