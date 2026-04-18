@@ -567,20 +567,26 @@ export default function QAManagerDepartmentIdeasPage() {
                         >
                           {idea.idea_content}
                         </p>
-                        {shouldShowDescriptionToggle(idea.idea_content) && (
+                  {shouldShowDescriptionToggle(idea.idea_content) && (
                     <button
                       type="button"
                       onClick={() => toggleIdeaContent(idea.idea_id)}
-                      className="mt-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                      className="mt-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
                     >
                       {expandedIdeaIds.has(idea.idea_id) ? 'Show less' : 'See more'}
                     </button>
                   )}
 
                   {idea.documents.length > 0 && (
-                    <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       {idea.documents.map((doc) => (
-                        <a key={doc.doc_id} href={resolveDocumentUrl(doc.file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
+                        <a
+                          key={doc.doc_id}
+                          href={resolveDocumentUrl(doc.file)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-500/30 dark:bg-slate-900 dark:text-blue-300 dark:hover:border-blue-400 dark:hover:bg-slate-700/80 dark:hover:text-blue-200"
+                        >
                           <Paperclip className="h-4 w-4" /> {doc.file_name}
                         </a>
                       ))}

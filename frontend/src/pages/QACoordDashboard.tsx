@@ -12,6 +12,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { useNavigate } from 'react-router-dom'
 import useThemeMode from '../hooks/useThemeMode'
+import useAnnouncementHighlights from '../hooks/useAnnouncementHighlights'
 import DashboardAnnouncement from '../components/common/DashboardAnnouncement'
 import DashboardIdeaListSection from '../components/ideas/DashboardIdeaListSection'
 
@@ -27,16 +28,6 @@ type IdeaCardItem = {
   upvote_count: number
   anonymous_status: boolean
   author_name: string
-}
-
-type ReportRow = {
-  report_id: number
-  status: string
-  target_type: string
-  reason: string
-  created_at: string
-  idea_id: number | null
-  idea_title: string
 }
 
 type CoordinatorDashboardResponse = {
@@ -80,7 +71,6 @@ type CoordinatorDashboardResponse = {
     latest_department_ideas: IdeaCardItem[]
     popular_department_ideas: IdeaCardItem[]
     ideas_without_comments: IdeaCardItem[]
-    reported_items: ReportRow[]
   }
 }
 
@@ -90,8 +80,6 @@ const formatDate = (value?: string | null) => {
   if (!value) return 'Not available'
   return new Date(value).toLocaleDateString()
 }
-
-const formatDateTime = (value: string) => new Date(value).toLocaleString()
 
 const StatCard = ({ label, value }: { label: string; value: number }) => (
   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -106,6 +94,7 @@ export default function QACoordDashboard() {
   const [data, setData] = useState<CoordinatorDashboardResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const announcementItems = useAnnouncementHighlights()
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -179,20 +168,6 @@ export default function QACoordDashboard() {
     [data],
   )
 
-  const moderationStatusData = useMemo(
-    () => ({
-      labels: (data?.charts.moderation_status || []).map((item) => item.label),
-      datasets: [
-        {
-          data: (data?.charts.moderation_status || []).map((item) => item.count),
-          backgroundColor: donutPalette,
-          borderWidth: 0,
-        },
-      ],
-    }),
-    [data],
-  )
-
   const barOptions = useMemo(
     () => ({
       responsive: true,
@@ -239,52 +214,9 @@ export default function QACoordDashboard() {
     navigate(`/qa_coordinator/all-ideas?highlightIdeaId=${ideaId}`)
   }
 
-  const announcementItems = useMemo(() => {
-    if (!data) return []
-
-    const items: Array<{ title: string; description: string; path: string }> = []
-    const activeClosure = data.active_closure
-
-    if (activeClosure.academic_year) {
-      items.push({
-        title: 'A Closure Period Currently Active',
-        description: `${activeClosure.academic_year}: idea deadline ${formatDate(activeClosure.idea_closure_date)}, comment deadline ${formatDate(activeClosure.comment_closure_date)}`,
-        path: '/qa_coordinator/all-ideas',
-      })
-
-      const today = new Date()
-      const ideaDeadline = activeClosure.idea_closure_date ? new Date(activeClosure.idea_closure_date) : null
-      const commentDeadline = activeClosure.comment_closure_date ? new Date(activeClosure.comment_closure_date) : null
-
-      const differenceInDays = (date: Date | null) => {
-        if (!date) return Number.POSITIVE_INFINITY
-        const diff = date.getTime() - today.getTime()
-        return Math.ceil(diff / (1000 * 60 * 60 * 24))
-      }
-
-      const ideaDays = differenceInDays(ideaDeadline)
-      const commentDays = differenceInDays(commentDeadline)
-      const upcomingDeadline = ideaDays >= 0 && ideaDays <= 5 ? `Idea deadline in ${ideaDays} day(s)` : commentDays >= 0 && commentDays <= 5 ? `Comment deadline in ${commentDays} day(s)` : ''
-      if (upcomingDeadline) {
-        items.push({
-          title: 'Deadline approaching',
-          description: `${activeClosure.academic_year} ${upcomingDeadline}. Make sure to review submissions before the deadline.`,
-          path: '/qa_coordinator/all-ideas',
-        })
-      }
-    }
-
-    const popularPosts = data.lists.popular_department_ideas.slice(0, 3)
-    popularPosts.forEach((idea) => {
-      const content = idea.idea_content ? `${idea.idea_content}` : idea.idea_title
-      items.push({
-        title: `Check out Popular post: ${idea.idea_title}`,
-        description: content,
-        path: `/qa_coordinator/all-ideas?highlightIdeaId=${idea.idea_id}`,
-      })
-    })
-
-    return items
+  const participationRate = useMemo(() => {
+    if (!data?.summary.staff_count) return 0
+    return Math.round((data.summary.participating_staff_count / data.summary.staff_count) * 100)
   }, [data])
 
   return (
@@ -362,10 +294,31 @@ export default function QACoordDashboard() {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Moderation Status</h2>
-              <p className="text-sm text-slate-500">Current report distribution for your department</p>
-              <div className="mt-5 h-[300px] overflow-hidden">
-                <Doughnut data={moderationStatusData} options={doughnutOptions} />
+              <h2 className="text-lg font-semibold text-slate-900">Department Snapshot</h2>
+              <p className="text-sm text-slate-500">A quick view of participation and follow-up needs in your department</p>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Participation Rate</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">{participationRate}%</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {data.summary.participating_staff_count} of {data.summary.staff_count} staff have contributed.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Ideas Needing Comments</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">{data.lists.ideas_without_comments.length}</p>
+                  <p className="mt-1 text-sm text-slate-500">Ideas still waiting for discussion from the department.</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Active Period Share</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">{data.summary.active_idea_count}</p>
+                  <p className="mt-1 text-sm text-slate-500">Ideas submitted in the current active closure period.</p>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Reports In Review</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">{data.summary.in_review_report_count}</p>
+                  <p className="mt-1 text-sm text-slate-500">Items that may still need coordinator attention.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -387,7 +340,7 @@ export default function QACoordDashboard() {
             />
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div>
             <DashboardIdeaListSection
               title="Ideas Without Comments"
               items={data.lists.ideas_without_comments}
@@ -395,34 +348,6 @@ export default function QACoordDashboard() {
               onOpen={openIdea}
               metaLabel={(item) => (item.anonymous_status ? 'Posted anonymously' : item.author_name || null)}
             />
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Recent Reported Items</h2>
-              <div className="mt-4 space-y-3">
-                {data.lists.reported_items.length === 0 ? (
-                  <p className="text-sm text-slate-500">There are no reports in this department right now.</p>
-                ) : (
-                  data.lists.reported_items.map((report) => (
-                    <button
-                      key={report.report_id}
-                      type="button"
-                      onClick={() => report.idea_id && openIdea(report.idea_id)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-900">{report.idea_title || 'Reported content'}</p>
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
-                          {report.status}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs text-slate-500">
-                        {report.target_type} | {report.reason} | {formatDateTime(report.created_at)}
-                      </p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
           </div>
         </>
       )}

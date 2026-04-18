@@ -34,7 +34,8 @@ function getRoleFromPath(pathname: string): Role | null {
 }
 
 export default function MainLayout() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname, state } = location;
   const navigate = useNavigate();
   const role = getRoleFromPath(pathname);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -42,18 +43,11 @@ export default function MainLayout() {
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
   );
-  const [loginNotice, setLoginNotice] = useState<LoginNotice | null>(() => {
-    try {
-      const raw = sessionStorage.getItem("loginNotice");
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as LoginNotice;
-      sessionStorage.removeItem("loginNotice");
-      return parsed;
-    } catch {
-      return null;
-    }
-  });
+  const [loginNotice, setLoginNotice] = useState<LoginNotice | null>(
+    () => (state as { loginNotice?: LoginNotice } | null)?.loginNotice ?? null,
+  );
   const lastTrackedPathRef = useRef<string | null>(null);
+  const loginNoticeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!role) return;
@@ -99,6 +93,31 @@ export default function MainLayout() {
     return () => window.clearTimeout(timeoutId);
   }, [pathname, role]);
 
+  useEffect(() => {
+    const stateNotice = (state as { loginNotice?: LoginNotice } | null)?.loginNotice;
+    if (stateNotice && !loginNotice) {
+      setLoginNotice(stateNotice);
+    }
+
+    if (stateNotice) {
+      navigate(pathname, { replace: true, state: null });
+    }
+  }, [loginNotice, navigate, pathname, state]);
+
+  useEffect(() => {
+    if (!loginNotice) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!loginNoticeRef.current) return;
+      if (!loginNoticeRef.current.contains(event.target as Node)) {
+        setLoginNotice(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [loginNotice]);
+
   if (role) {
     const isSidebarOpenForCurrentRoute =
       isMobileViewport && isMobileSidebarOpen && mobileSidebarRoute === pathname;
@@ -138,8 +157,11 @@ export default function MainLayout() {
           </main>
         </div>
         {loginNotice && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
-            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center px-4 pt-6">
+            <div
+              ref={loginNoticeRef}
+              className="pointer-events-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+            >
               <h2 className="text-lg font-semibold text-slate-900">
                 {loginNotice.firstLogin ? "Welcome" : "Welcome back"}
               </h2>

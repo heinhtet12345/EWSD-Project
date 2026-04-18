@@ -597,7 +597,9 @@ const ClosurePeriodPage = () => {
           <ViewClosurePeriodTable
             periods={filteredPeriods}
             showDownload={canManageClosurePeriods}
+            showCreate={canManageClosurePeriods}
             onDownloadAll={() => handleDownloadAll('all')}
+            onCreateClosurePeriod={() => setIsAdding(true)}
             onEditPeriod={canManageClosurePeriods ? openEditPeriod : undefined}
             isDownloading={isDownloading}
             downloadingPeriodId={downloadingPeriodId}

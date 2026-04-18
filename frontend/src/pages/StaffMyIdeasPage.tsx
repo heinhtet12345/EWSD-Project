@@ -600,12 +600,12 @@ const StaffMyIdeasPage = () => {
                   <p className="text-sm font-semibold text-slate-700">Closure Period: {group.title}</p>
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        group.commentOpen
+                        group.ideaOpen || group.commentOpen
                           ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
                           : "border border-rose-200 bg-rose-50 text-rose-700"
                       }`}
                     >
-                      {group.commentOpen ? "Comments Open" : "Comments Closed"}
+                      Idea: {group.ideaOpen ? "Open" : "Closed"} | Comment: {group.commentOpen ? "Open" : "Closed"}
                     </span>
                   </div>
                 </div>
@@ -653,19 +653,23 @@ const StaffMyIdeasPage = () => {
                                 </button>
                                 {openActionMenuIdeaId === idea.idea_id && (
                                   <div className="absolute right-0 top-11 z-20 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-                                    {canEditIdea && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenActionMenuIdeaId(null)
-                                          setEditingIdea(idea)
-                                        }}
-                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
-                                      >
-                                        <Edit3 className="h-4 w-4" />
-                                        Edit
-                                      </button>
-                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (!canEditIdea) return
+                                        setOpenActionMenuIdeaId(null)
+                                        setEditingIdea(idea)
+                                      }}
+                                      disabled={!canEditIdea}
+                                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition ${
+                                        canEditIdea
+                                          ? 'text-slate-700 hover:bg-slate-50'
+                                          : 'cursor-not-allowed text-slate-400'
+                                      }`}
+                                    >
+                                      <Edit3 className="h-4 w-4" />
+                                      Edit
+                                    </button>
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteIdea(idea)}
@@ -715,16 +719,22 @@ const StaffMyIdeasPage = () => {
                           <button
                             type="button"
                             onClick={() => toggleIdeaContent(idea.idea_id)}
-                            className="mt-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline"
+                            className="mt-1 text-xs font-semibold text-blue-700 hover:text-blue-800 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
                           >
                             {expandedIdeaIds.has(idea.idea_id) ? 'Show less' : 'See more'}
                           </button>
                         )}
 
                         {idea.documents.length > 0 && (
-                          <div className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                          <div className="mt-4 flex flex-wrap gap-2">
                             {idea.documents.map((doc) => (
-                              <a key={doc.doc_id} href={resolveDocumentUrl(doc.file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline">
+                              <a
+                                key={doc.doc_id}
+                                href={resolveDocumentUrl(doc.file)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-500/30 dark:bg-slate-900 dark:text-blue-300 dark:hover:border-blue-400 dark:hover:bg-slate-700/80 dark:hover:text-blue-200"
+                              >
                                 <Paperclip className="h-4 w-4" /> {doc.file_name}
                               </a>
                             ))}

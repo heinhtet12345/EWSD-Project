@@ -17,8 +17,10 @@ export type ClosurePeriod = {
 type ViewClosurePeriodTableProps = {
 	periods: ClosurePeriod[]
 	showDownload?: boolean
+	showCreate?: boolean
 	isDownloading?: boolean
 	onDownloadAll?: () => void
+	onCreateClosurePeriod?: () => void
 	onEditPeriod?: (period: ClosurePeriod) => void
 	downloadingPeriodId?: number | null
 	searchTerm?: string
@@ -54,8 +56,10 @@ const formatDate = (value: string) => {
 const ViewClosurePeriodTable = ({
 	periods,
 	showDownload = false,
+	showCreate = false,
 	isDownloading,
 	onDownloadAll,
+	onCreateClosurePeriod,
 	onEditPeriod,
 	downloadingPeriodId = null,
 	searchTerm = '',
@@ -150,14 +154,25 @@ const ViewClosurePeriodTable = ({
 							className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
 						/>
 					</div>
-					<button
-						type="button"
-						onClick={onDownloadAll}
-						disabled={isDownloading}
-						className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70 sm:text-xs"
-					>
-						{isDownloading ? 'Preparing...' : 'Download All'}
-					</button>
+					<div className="flex flex-wrap items-center gap-2">
+						{showCreate && onCreateClosurePeriod && (
+							<button
+								type="button"
+								onClick={onCreateClosurePeriod}
+								className="whitespace-nowrap rounded-md bg-blue-700 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-blue-800 sm:text-xs"
+							>
+								Add Closure Period
+							</button>
+						)}
+						<button
+							type="button"
+							onClick={onDownloadAll}
+							disabled={isDownloading}
+							className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70 sm:text-xs"
+						>
+							{isDownloading ? 'Preparing...' : 'Download All'}
+						</button>
+					</div>
 				</div>
 			)}
 			{periods.length === 0 ? (

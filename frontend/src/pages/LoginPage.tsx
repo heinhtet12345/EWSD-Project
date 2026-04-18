@@ -123,15 +123,16 @@ export default function LoginPage() {
         session_id: payload?.session_id,
       };
       localStorage.setItem("authUser", JSON.stringify(user));
-      sessionStorage.setItem(
-        "loginNotice",
-        JSON.stringify({
-          username: user.username,
-          firstLogin: Boolean(payload?.first_login),
-          lastLoginAt: payload?.last_login_at ?? null,
-        }),
-      );
-      navigate(ROLE_TO_PATH[user.role], { replace: true });
+      navigate(ROLE_TO_PATH[user.role], {
+        replace: true,
+        state: {
+          loginNotice: {
+            username: user.username,
+            firstLogin: Boolean(payload?.first_login),
+            lastLoginAt: payload?.last_login_at ?? null,
+          },
+        },
+      });
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const data = err.response?.data as

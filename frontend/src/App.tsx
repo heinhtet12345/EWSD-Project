@@ -17,6 +17,7 @@ import ReportListPage from "./pages/ReportListPage";
 import StaffDashboard from "./pages/StaffDashboard";
 import StaffAllIdeaPage from "./pages/StaffAllIdeaPage";
 import StaffMyIdeasPage from "./pages/StaffMyIdeasPage";
+import AnnouncementPage from "./pages/AnnouncementPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import NotFound from "./components/common/404NotFound";
 import ViewUserTable from "./components/tables/ViewUserTable";
@@ -28,12 +29,14 @@ export default function App() {
       <Route path="/*" element={<MainLayout />}>
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/all-ideas" element={<StaffAllIdeaPage />} />
+        <Route path="admin/announcements" element={<AnnouncementPage />} />
         <Route path="admin/users" element={<ViewUserTable />} />
         <Route path="admin/closure-period" element={<ClosurePeriodPage />} />
         <Route path="admin/categories" element={<QAManagerCategoriesPage />} />
         <Route path="admin/analytics" element={<AdminAnalyticsPage />} />
         <Route path="admin/reports" element={<ReportListPage />} />
         <Route path="qa_coordinator" element={<QACoordDashboard />} />
+        <Route path="qa_coordinator/announcements" element={<AnnouncementPage />} />
         <Route path="qa_coordinator/all-ideas" element={<StaffAllIdeaPage />} />
         <Route path="qa_coordinator/my-department" element={<QAManagerDepartmentIdeasPage />} />
         <Route path="qa_coordinator/my-staff" element={<QACoordMyStaffPage />} />
@@ -41,6 +44,7 @@ export default function App() {
         <Route path="005" element={<Navigate to="/qa_coordinator/my-department" replace />} />
         <Route path="006" element={<Navigate to="/qa_coordinator/all-ideas" replace />} />
         <Route path="qa_manager" element={<QAManagerDashboard />} />
+        <Route path="qa_manager/announcements" element={<AnnouncementPage />} />
         <Route path="qa_manager/all-ideas" element={<QAManagerAllIdeasPage />} />
         <Route path="qa_manager/users" element={<ViewUserTable />} />
         <Route path="qa_manager/categories" element={<QAManagerCategoriesPage />} />
@@ -50,6 +54,7 @@ export default function App() {
         <Route path="qa_coordinator/profile" element={<UserProfilePage />} />
         <Route path="admin/profile" element={<UserProfilePage />} />
         <Route path="staff" element={<StaffDashboard />} />
+        <Route path="staff/announcements" element={<AnnouncementPage />} />
         <Route path="staff/all-ideas" element={<StaffAllIdeaPage />} />
         <Route path="staff/my-ideas" element={<StaffMyIdeasPage />} />
         <Route path="staff/profile" element={<UserProfilePage />} />

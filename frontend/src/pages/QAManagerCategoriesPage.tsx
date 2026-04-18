@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { BreadCrumb } from "primereact/breadcrumb";
-import type { MenuItem } from "primereact/menuitem";
-import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, House } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import axios from "axios";
 
 import ViewCategoryTable from "../components/tables/ViewCategoryTable";
@@ -56,9 +53,6 @@ const sortCategoriesById = (items: Category[]) =>
   [...items].sort((a, b) => a.id - b.id);
 
 function QAManagerCategoriesPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const dashboardPath = location.pathname.startsWith("/admin") ? "/admin" : "/qa_manager";
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -371,7 +365,7 @@ function QAManagerCategoriesPage() {
         )}
       </Modal>
 
-      <div className="w-full max-w-7xl space-y-2">
+      <div className="w-full max-w-7xl space-y-2 pt-2">
         {isLoading && <p className="text-sm text-slate-500 text-center">Loading categories...</p>}
         {!isLoading && (
           <ViewCategoryTable

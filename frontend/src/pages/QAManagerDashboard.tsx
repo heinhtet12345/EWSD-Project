@@ -12,6 +12,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { useNavigate } from 'react-router-dom'
 import useThemeMode from '../hooks/useThemeMode'
+import useAnnouncementHighlights from '../hooks/useAnnouncementHighlights'
 import DashboardAnnouncement from '../components/common/DashboardAnnouncement'
 import DashboardIdeaListSection from '../components/ideas/DashboardIdeaListSection'
 
@@ -105,6 +106,7 @@ export default function QAManagerDashboard() {
   const [error, setError] = useState('')
   const [departmentId, setDepartmentId] = useState<string>('all')
   const [scope, setScope] = useState<'all' | 'active'>('all')
+  const announcementItems = useAnnouncementHighlights()
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -227,52 +229,6 @@ export default function QAManagerDashboard() {
   const openIdea = (ideaId: number) => {
     navigate(`/qa_manager/all-ideas?highlightIdeaId=${ideaId}`)
   }
-
-  const announcementItems = useMemo(() => {
-    if (!data) return []
-
-    const items: Array<{ title: string; description: string; path: string }> = []
-    const activeClosure = data.active_closure
-
-    if (activeClosure.academic_year) {
-      items.push({
-        title: 'Current closure period',
-        description: `${activeClosure.academic_year}: idea deadline ${formatDate(activeClosure.idea_closure_date)}, comment deadline ${formatDate(activeClosure.comment_closure_date)}`,
-        path: '/qa_manager/all-ideas',
-      })
-
-      const today = new Date()
-      const ideaDeadline = activeClosure.idea_closure_date ? new Date(activeClosure.idea_closure_date) : null
-      const commentDeadline = activeClosure.comment_closure_date ? new Date(activeClosure.comment_closure_date) : null
-      const differenceInDays = (date: Date | null) => {
-        if (!date) return Number.POSITIVE_INFINITY
-        const diff = date.getTime() - today.getTime()
-        return Math.ceil(diff / (1000 * 60 * 60 * 24))
-      }
-      const ideaDays = differenceInDays(ideaDeadline)
-      const commentDays = differenceInDays(commentDeadline)
-      const upcomingDeadline = ideaDays >= 0 && ideaDays <= 5 ? `Idea deadline in ${ideaDays} day(s)` : commentDays >= 0 && commentDays <= 5 ? `Comment deadline in ${commentDays} day(s)` : ''
-      if (upcomingDeadline) {
-        items.push({
-          title: 'Deadline approaching',
-          description: `${activeClosure.academic_year} ${upcomingDeadline}. Review submissions before the deadline.`,
-          path: '/qa_manager/all-ideas',
-        })
-      }
-    }
-
-    const popularPosts = (data.ideas.popular_current.length ? data.ideas.popular_current : data.ideas.popular).slice(0, 3)
-    popularPosts.forEach((idea) => {
-      const content = idea.idea_content ? `${idea.idea_content}` : idea.idea_title
-      items.push({
-        title: `Check out Popular post: ${idea.idea_title}`,
-        description: content,
-        path: `/qa_manager/all-ideas?highlightIdeaId=${idea.idea_id}`,
-      })
-    })
-
-    return items
-  }, [data])
 
   return (
     <section className="space-y-6">

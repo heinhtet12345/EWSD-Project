@@ -5,6 +5,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu,
   ShieldAlert,
   ShieldCheck,
@@ -29,6 +30,7 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Categories", to: "/admin/categories", icon: FileText },
     { label: "Closure Period", to: "/admin/closure-period", icon: ShieldCheck },
     { label: "All Ideas", to: "/admin/all-ideas", icon: FileText },
+    { label: "Announcement", to: "/admin/announcements", icon: Megaphone },
     { label: "Activities", to: "/admin/analytics", icon: BarChart3 },
     { label: "Reports", to: "/admin/reports", icon: ShieldAlert },
   ], 
@@ -36,12 +38,14 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Dashboard", to: "/qa_manager", icon: LayoutDashboard },
     { label: "Users", to: "/qa_manager/users", icon: User},
     { label: "All Ideas", to: "/qa_manager/all-ideas", icon: FileText },
+    { label: "Announcement", to: "/qa_manager/announcements", icon: Megaphone },
     { label: "Closure Period", to: "/qa_manager/closure-period", icon: ShieldCheck },
     { label: "Categories", to: "/qa_manager/categories", icon: FileText },
     { label: "Reports", to: "/qa_manager/reports", icon: ShieldAlert },
   ],
   "qa_coordinator": [
     { label: "Dashboard", to: "/qa_coordinator", icon: LayoutDashboard },
+    { label: "Announcement", to: "/qa_coordinator/announcements", icon: Megaphone },
     { label: "All Ideas", to: "/qa_coordinator/all-ideas", icon: FileText },
     { label: "My Department", to: "/qa_coordinator/my-department", icon: ShieldCheck },
     { label: "My Staff", to: "/qa_coordinator/my-staff", icon: Users },
@@ -49,6 +53,7 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
   ],
   staff: [
     { label: "Dashboard", to: "/staff", icon: LayoutDashboard },
+    { label: "Announcement", to: "/staff/announcements", icon: Megaphone },
     { label: "All Ideas", to: "/staff/all-ideas", icon: FileText },
     { label: "My Ideas", to: "/staff/my-ideas", icon: User },
   ],
@@ -70,6 +75,7 @@ export default function SideBar({
   const navigate = useNavigate();
   const tabs = ROLE_TABS[role] ?? ROLE_TABS.staff;
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const sidebarWidthClass = isCollapsed ? "w-16" : "w-[250px]";
 
   const handleLogout = async () => {
     let accessToken: string | undefined;
@@ -138,12 +144,14 @@ export default function SideBar({
             ? `fixed inset-y-0 left-0 z-50 transition-transform duration-200 lg:hidden ${
                 isMobileOpen ? "translate-x-0" : "-translate-x-full"
               }`
-            : "min-h-screen self-stretch"
+            : `${sidebarWidthClass} min-h-screen self-stretch`
         }`}
       >
       <nav
-        className={`flex h-full min-h-screen flex-col text-white shadow-sm transition-[width,transform] duration-200 ${
-          isMobile ? "w-[272px]" : isCollapsed ? "w-16" : "w-[250px]"
+        className={`flex h-full flex-col text-white shadow-sm transition-[width,transform] duration-200 ${
+          isMobile
+            ? "w-[272px]"
+            : `${sidebarWidthClass} min-h-full min-h-screen`
         }`}
         style={{
           backgroundColor: "var(--sidebar_bg)",
@@ -223,7 +231,7 @@ export default function SideBar({
           })}
         </ul>
 
-        <div className="p-3">
+        <div className="mt-auto p-3">
           <button
             type="button"
             className={`group relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white ${
