@@ -198,10 +198,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen w-screen overflow-hidden text-white">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${loginBackground})` }}
+    <div className="relative min-h-screen w-screen overflow-hidden bg-slate-950 text-white">
+      <img
+        src={loginBackground}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover object-top"
         aria-hidden="true"
       />
       <div className={`absolute inset-0 ${
