@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'api.IdeaPost',
     'api.analytics',
     'api.interaction',
+    'api.announcement',
 
 ]
 

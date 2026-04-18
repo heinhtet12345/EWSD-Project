@@ -50,6 +50,7 @@ urlpatterns = [
     path('notifications/<int:notification_id>/read/', MarkNotificationReadView.as_view(), name='mark-notification-read'),
     path('notifications/read-all/', MarkAllNotificationsReadView.as_view(), name='mark-all-notifications-read'),
     path('analytics/', include('api.analytics.urls')),
+    path('announcement/', include('api.announcement.urls')),
     path('closure-period/', include('api.closure_period.urls')),
     path('ideas/', include('api.IdeaPost.urls')),
     path('interaction/', include('api.interaction.urls')),
