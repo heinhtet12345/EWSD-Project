@@ -2,13 +2,22 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.models import update_last_login
-from django.utils import timezone
+from django.conf import settings
 from ..serializer import LoginSerializer, UserSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from ..analytics.models import ActivityLog
-from ..models import UserLoginSession
+from ..session_store import (
+    create_login_session,
+    get_login_session,
+    get_session_id_by_refresh_jti,
+    revoke_login_session,
+    touch_login_session,
+)
 import requests
 import uuid
 
@@ -59,22 +68,8 @@ def _extract_client_ip(request) -> str | None:
     return request.META.get("REMOTE_ADDR") or None
 
 
-def _blacklist_refresh_token(refresh_token: str) -> None:
-    token = RefreshToken(refresh_token)
-    try:
-        token.blacklist()
-    except AttributeError:
-        outstanding = OutstandingToken.objects.filter(jti=token.get("jti")).first()
-        if outstanding and not BlacklistedToken.objects.filter(token=outstanding).exists():
-            BlacklistedToken.objects.create(token=outstanding)
-
-
-def _revoke_session(login_session: UserLoginSession) -> None:
-    if login_session.revoked_at is not None:
-        return
-    _blacklist_refresh_token(login_session.refresh_token)
-    login_session.revoked_at = timezone.now()
-    login_session.save(update_fields=["revoked_at", "last_used_at"])
+def _get_login_session_ttl_seconds() -> int:
+    return int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
 
 class LoginView(APIView):
 
@@ -127,11 +122,11 @@ class LoginView(APIView):
             user_data = UserSerializer(user).data
 
             user_agent = request.META.get("HTTP_USER_AGENT", "")
-            login_session = UserLoginSession.objects.create(
-                session_id=session_id,
-                user=user,
+            login_session = create_login_session(
+                session_id=str(session_id),
+                user_id=user.pk,
                 refresh_jti=refresh_jti,
-                refresh_token=refresh_token,
+                ttl_seconds=_get_login_session_ttl_seconds(),
                 browser=_extract_browser(user_agent),
                 operating_system=_extract_os(user_agent),
                 device_type=_extract_device_type(user_agent),
@@ -163,7 +158,7 @@ class LoginView(APIView):
                 "last_login_at": previous_last_login,
                 "access": access_token,
                 "refresh": refresh_token,
-                "session_id": str(login_session.session_id),
+                "session_id": str(login_session["session_id"]),
             })
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -179,15 +174,41 @@ class LogoutView(APIView):
 
         try:
             refresh = RefreshToken(refresh_token)
-            session = UserLoginSession.objects.filter(
-                user=request.user,
-                refresh_jti=str(refresh["jti"]),
-            ).first()
-            if session:
-                _revoke_session(session)
-            else:
-                _blacklist_refresh_token(refresh_token)
+            session_id = get_session_id_by_refresh_jti(str(refresh["jti"]))
+            if session_id:
+                session = get_login_session(session_id)
+                if session and str(session.get("user_id")) != str(request.user.pk):
+                    raise AuthenticationFailed("Session does not belong to the current user.")
+                revoke_login_session(session_id)
         except Exception:
             return Response({"message": "Invalid refresh token."}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"message": "Logged out successfully."}, status=status.HTTP_200_OK)
+
+
+class SessionAwareTokenRefreshSerializer(TokenRefreshSerializer):
+    def validate(self, attrs):
+        raw_refresh_token = attrs.get("refresh", "")
+
+        try:
+            refresh = RefreshToken(raw_refresh_token)
+        except TokenError as exc:
+            raise InvalidToken(str(exc)) from exc
+
+        session_id = str(refresh.get("session_id", "")).strip()
+        if not session_id:
+            raise InvalidToken("Session is invalid.")
+
+        login_session = get_login_session(session_id)
+        if not login_session:
+            raise InvalidToken("Session has been revoked.")
+
+        if str(login_session.get("user_id")) != str(refresh.get("user_id")):
+            raise InvalidToken("Session is invalid.")
+
+        touch_login_session(session_id)
+        return super().validate(attrs)
+
+
+class SessionAwareTokenRefreshView(TokenRefreshView):
+    serializer_class = SessionAwareTokenRefreshSerializer

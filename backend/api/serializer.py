@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Category, Department, Role, Notification, UserLoginSession
+from .models import Category, Department, Role, Notification
 
 User = get_user_model()
 
@@ -129,23 +129,13 @@ class NotificationSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class UserLoginSessionSerializer(serializers.ModelSerializer):
-    is_active = serializers.SerializerMethodField()
-
-    class Meta:
-        model = UserLoginSession
-        fields = [
-            "session_id",
-            "device_type",
-            "browser",
-            "operating_system",
-            "ip_address",
-            "created_at",
-            "last_used_at",
-            "revoked_at",
-            "is_active",
-        ]
-        read_only_fields = fields
-
-    def get_is_active(self, obj):
-        return obj.revoked_at is None
+class UserLoginSessionSerializer(serializers.Serializer):
+    session_id = serializers.CharField(read_only=True)
+    device_type = serializers.CharField(read_only=True, allow_blank=True)
+    browser = serializers.CharField(read_only=True, allow_blank=True)
+    operating_system = serializers.CharField(read_only=True, allow_blank=True)
+    ip_address = serializers.CharField(read_only=True, allow_blank=True, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    last_used_at = serializers.DateTimeField(read_only=True)
+    revoked_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    is_active = serializers.BooleanField(read_only=True)

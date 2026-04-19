@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'api',
     'api.closure_period',
@@ -162,6 +161,8 @@ SIMPLE_JWT = {
     'USER_ID_FIELD': 'user_id', 
     'USER_ID_CLAIM': 'user_id',
 }
+
+REDIS_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/0')
 
 #profile image
 MEDIA_URL = '/media/'

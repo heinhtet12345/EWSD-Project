@@ -3,6 +3,7 @@ import axios from "axios";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import ViewActivityTable, { type ActivityLog } from "../components/tables/ViewActivityTable";
 
+// Response
 type ActivityLogsResponse = {
   results: ActivityLog[];
   count: number;
@@ -102,6 +103,7 @@ export default function AdminAnalyticsPage() {
       </div> */}
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        {/* Filter */}
         <div className="grid gap-3 md:grid-cols-3">
           <input
             type="text"
@@ -138,10 +140,12 @@ export default function AdminAnalyticsPage() {
         {isLoading ? (
           <p className="px-4 py-10 text-center text-sm text-slate-500">Loading activity logs...</p>
         ) : (
+          // Acitivity Log Table Component is called
           <ViewActivityTable logs={logs} isRefreshing={isRefreshing} />
         )}
       </div>
-
+      
+      {/* Pagination, Jump Skip and n Per Page */}
       {!isLoading && totalCount > 0 && (
         <div className="flex flex-col items-center justify-between gap-2 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left">
           <p className="text-xs text-slate-600 sm:text-sm">

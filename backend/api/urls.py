@@ -1,8 +1,7 @@
 from django.urls import path, include
-from rest_framework_simplejwt.views import TokenRefreshView
 from .views.categories_views import AddCategoryView
 from .views.categories_views import ViewCategoryView , DeleteCategoryView, UpdateCategoryView
-from .views.auth_views import LoginView, LogoutView
+from .views.auth_views import LoginView, LogoutView, SessionAwareTokenRefreshView
 from .views.profile_views import UserProfileView, ChangePasswordView, UserSessionListView, UserSessionRevokeView
 from .views.notifications_views import (
     ListNotificationsView,
@@ -26,7 +25,7 @@ from .views.admin_views import (
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('token/refresh/', SessionAwareTokenRefreshView.as_view(), name='token-refresh'),
     path('password-reset/request/', ForgotPasswordRequestView.as_view(), name='password-reset-request'),
     path('profile/me/', UserProfileView.as_view(), name='profile-me'),
     path('profile/change-password/', ChangePasswordView.as_view(), name='change-password'),

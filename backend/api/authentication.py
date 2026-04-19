@@ -1,8 +1,7 @@
-from django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import UserLoginSession
+from .session_store import get_login_session, touch_login_session
 
 
 class SessionAwareJWTAuthentication(JWTAuthentication):
@@ -16,13 +15,11 @@ class SessionAwareJWTAuthentication(JWTAuthentication):
         if not session_id:
             raise AuthenticationFailed("Session is invalid.", code="session_invalid")
 
-        login_session = UserLoginSession.objects.filter(
-            user=user,
-            session_id=session_id,
-            revoked_at__isnull=True,
-        ).first()
+        login_session = get_login_session(str(session_id))
         if not login_session:
             raise AuthenticationFailed("Session has been revoked.", code="session_revoked")
+        if str(login_session.get("user_id")) != str(user.pk):
+            raise AuthenticationFailed("Session is invalid.", code="session_invalid")
 
-        UserLoginSession.objects.filter(session_id=login_session.session_id).update(last_used_at=timezone.now())
+        touch_login_session(str(session_id))
         return user, validated_token
