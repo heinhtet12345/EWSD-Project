@@ -7,7 +7,7 @@ type AddCategoriesFromProps = {
   onSubmit?: (category: { name: string; description: string }) => void
 }
 
-export const AddCategoriesFrom = ({ onCancel, onClose, onSubmit }: AddCategoriesFromProps) => {
+export const AddCategoriesFrom = ({ onCancel, onSubmit }: AddCategoriesFromProps) => {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
 
@@ -23,7 +23,7 @@ export const AddCategoriesFrom = ({ onCancel, onClose, onSubmit }: AddCategories
           <h2 className="text-xl font-semibold text-slate-900">Add Category</h2>
           <p className="text-sm text-slate-500">Create a new category name.</p>
         </div>
-        <button
+        {/* <button
           type="button"
           aria-label="Back"
           onClick={onClose}
@@ -33,7 +33,7 @@ export const AddCategoriesFrom = ({ onCancel, onClose, onSubmit }: AddCategories
             <ArrowLeft className="h-3.5 w-3.5" />
           </span>
           <span>Back</span>
-        </button>
+        </button> */}
       </div>
 
       <form className="space-y-6" onSubmit={handleSubmit}>

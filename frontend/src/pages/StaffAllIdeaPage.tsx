@@ -158,7 +158,8 @@ const StaffAllIdeaPage = () => {
 
   const isStaff = currentRole === 'staff'
   const canModerateView = currentRole === 'qa_manager' || currentRole === 'admin'
-  const canManageUsers = currentRole === 'admin'
+  const canToggleUsers = currentRole === 'qa_manager' || currentRole === 'admin'
+  const canDeleteUsers = currentRole === 'admin'
   const currentUserId = useMemo(() => {
     try {
       const raw = localStorage.getItem('authUser')
@@ -416,7 +417,7 @@ const StaffAllIdeaPage = () => {
 
     // Ensure the element is rendered in the DOM before scrolling.
     requestAnimationFrame(() => {
-      highlightElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      highlightElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
       highlightElement.focus({ preventScroll: true })
     })
   }, [highlightIdeaId, currentPage, highlightElement])
@@ -427,6 +428,7 @@ const StaffAllIdeaPage = () => {
     sectionTopRef.current?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
+      inline: 'nearest',
     })
   }, [currentPage, loading])
 
@@ -1046,30 +1048,32 @@ const StaffAllIdeaPage = () => {
           ) : selectedUserProfile ? (
             <>
               <div className="mt-6 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:items-center sm:text-left">
-                {selectedUserProfile.profile_image ? (
-                  <img
-                    src={selectedUserProfile.profile_image}
-                    alt={selectedUserProfile.name || selectedUserProfile.username}
-                    className="h-24 w-24 rounded-full object-cover ring-4 ring-slate-100"
-                  />
-                ) : (
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-2xl font-semibold text-slate-500 ring-4 ring-slate-100">
-                    {(selectedUserProfile.name || selectedUserProfile.username || '?').charAt(0).toUpperCase()}
+                <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
+                  {selectedUserProfile.profile_image ? (
+                    <img
+                      src={selectedUserProfile.profile_image}
+                      alt={selectedUserProfile.name || selectedUserProfile.username}
+                      className="h-24 w-24 rounded-full object-cover ring-4 ring-slate-100"
+                    />
+                  ) : (
+                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-2xl font-semibold text-slate-500 ring-4 ring-slate-100">
+                      {(selectedUserProfile.name || selectedUserProfile.username || '?').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex flex-col items-center sm:items-start">
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      {selectedUserProfile.name || selectedUserProfile.username}
+                    </h3>
+                    <p className="text-sm text-slate-500">@{selectedUserProfile.username}</p>
+                    {selectedUserProfile.department_name ? (
+                      <p className="mt-1 text-sm text-slate-500">{selectedUserProfile.department_name}</p>
+                    ) : null}
+                    <p className="mt-2 inline-flex rounded-full bg-slate-700 px-3 py-1 text-xs font-semibold text-white">
+                      {selectedUserProfile.role_name || 'No role'}
+                    </p>
                   </div>
-                )}
-                <div className="flex flex-col items-center sm:items-start">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {selectedUserProfile.name || selectedUserProfile.username}
-                  </h3>
-                  <p className="text-sm text-slate-500">@{selectedUserProfile.username}</p>
-                  {selectedUserProfile.department_name ? (
-                    <p className="mt-1 text-sm text-slate-500">{selectedUserProfile.department_name}</p>
-                  ) : null}
-                  <p className="mt-2 inline-flex rounded-full bg-slate-700 px-3 py-1 text-xs font-semibold text-white">
-                    {selectedUserProfile.role_name || 'No role'}
-                  </p>
                 </div>
-                {canManageUsers && (
+                {canToggleUsers && (
                   <div className="flex flex-wrap justify-center gap-2 self-center sm:self-start">
                     {selectedUserProfile.active_status ? (
                       <button
@@ -1092,15 +1096,17 @@ const StaffAllIdeaPage = () => {
                         Enable Account
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteUser(selectedUserProfile)}
-                      disabled={processingUserId === selectedUserProfile.user_id}
-                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete Account
-                    </button>
+                    {canDeleteUsers && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteUser(selectedUserProfile)}
+                        disabled={processingUserId === selectedUserProfile.user_id}
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete Account
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

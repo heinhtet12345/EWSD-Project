@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { useLocation } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, MessageCircle, Paperclip, ShieldCheck, ThumbsDown, ThumbsUp, XCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MessageCircle, Paperclip, ShieldCheck, ThumbsDown, ThumbsUp, XCircle } from 'lucide-react'
 
 type Idea = {
   idea_id: number
@@ -53,6 +53,7 @@ export default function QAManagerDepartmentIdeasPage() {
   const [error, setError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
   const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set())
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
@@ -82,7 +83,7 @@ export default function QAManagerDepartmentIdeasPage() {
     return () => window.clearTimeout(timeoutId)
   }, [highlightIdeaId])
 
-  const itemsPerPage = 5
+  const skipSize = 5
 
   const getStoredRole = () => {
     try {
@@ -124,6 +125,9 @@ export default function QAManagerDepartmentIdeasPage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + ideas.length
   const currentIdeas = ideas
+  const nearbyPages = Array.from({ length: 4 }, (_, index) => currentPage - 4 + index).filter(
+    (page) => page >= 1 && page < currentPage,
+  )
 
   const categoryOptions = useMemo(
     () =>
@@ -216,7 +220,7 @@ export default function QAManagerDepartmentIdeasPage() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, selectedCategory, openFilter])
+  }, [searchTerm, selectedCategory, openFilter, itemsPerPage])
 
   useEffect(() => {
     if (!highlightIdeaId || ideas.length === 0) return
@@ -242,7 +246,7 @@ export default function QAManagerDepartmentIdeasPage() {
 
   useEffect(() => {
     fetchIdeas(currentPage)
-  }, [currentPage, searchTerm, selectedCategory, openFilter])
+  }, [currentPage, searchTerm, selectedCategory, openFilter, itemsPerPage])
 
   const fetchIdeas = async (page = 1) => {
     setLoading(true)
@@ -452,10 +456,10 @@ export default function QAManagerDepartmentIdeasPage() {
 
   return (
     <section className="space-y-4">
-      <div>
+      {/* <div>
         <h1 className="text-2xl font-semibold text-black">My Department Ideas</h1>
         <p className="text-sm text-slate-500">Department-only listing with moderation actions.</p>
-      </div>
+      </div> */}
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-3">
@@ -705,20 +709,74 @@ export default function QAManagerDepartmentIdeasPage() {
           ))}
 
           {totalIdeas > 0 && (
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
-              <div className="flex flex-1 justify-between sm:hidden">
-                <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
-                <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
-              </div>
-              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-700">Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span> — Showing <span className="font-medium">{totalIdeas === 0 ? 0 : startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, totalIdeas)}</span> of <span className="font-medium">{totalIdeas}</span> results</p>
-                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                  <button onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><span className="sr-only">Previous</span><ChevronLeft className="h-5 w-5" /></button>
-                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                    <button key={page} onClick={() => setCurrentPage(page)} className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${page === currentPage ? 'z-10 bg-indigo-600 text-white' : 'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'}`}>{page}</button>
-                  ))}
-                  <button onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><span className="sr-only">Next</span><ChevronRight className="h-5 w-5" /></button>
-                </nav>
+            <div className="flex flex-col items-center justify-between gap-2 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left">
+              <p className="text-xs text-slate-600 sm:text-sm">
+                Showing {totalIdeas === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, totalIdeas)} of {totalIdeas} ideas
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+                <select
+                  value={itemsPerPage}
+                  onChange={(event) => setItemsPerPage(Number(event.target.value))}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-400 sm:px-3 sm:py-1.5 sm:text-sm"
+                >
+                  <option value={5}>5 / page</option>
+                  <option value={10}>10 / page</option>
+                  <option value={20}>20 / page</option>
+                  <option value={50}>50 / page</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
+                  disabled={currentPage === 1}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
+                  aria-label={`Skip back ${skipSize} pages`}
+                  title={`Skip back ${skipSize} pages`}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
+                  aria-label="Previous page"
+                  title="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                {nearbyPages.map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 sm:px-3 sm:py-1.5 sm:text-sm"
+                  >
+                    {page}
+                  </button>
+                ))}
+                <span className="text-xs text-slate-600 sm:text-sm">
+                  Page {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
+                  aria-label="Next page"
+                  title="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
+                  aria-label={`Skip forward ${skipSize} pages`}
+                  title={`Skip forward ${skipSize} pages`}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </button>
               </div>
             </div>
           )}
@@ -727,3 +785,4 @@ export default function QAManagerDepartmentIdeasPage() {
     </section>
   )
 }
+

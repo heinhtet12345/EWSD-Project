@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import axios from "axios";
-import { Eye, EyeOff, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, EyeOff, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import Modal from "../components/common/Modal";
@@ -52,6 +52,8 @@ export default function AnnouncementPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementItem | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const canCreate = role === "qa_coordinator";
   const canManageVisibility = role === "qa_manager";
@@ -95,6 +97,29 @@ export default function AnnouncementPage() {
         .includes(normalized),
     );
   }, [announcements, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, pageSize]);
+
+  const effectivePageSize = pageSize === -1 ? Math.max(filteredAnnouncements.length, 1) : pageSize;
+  const totalCount = filteredAnnouncements.length;
+  const totalPages = pageSize === -1 ? 1 : Math.max(1, Math.ceil(totalCount / pageSize));
+  const skipSize = 5;
+  const nearbyPages = Array.from({ length: 4 }, (_, index) => currentPage - 4 + index).filter(
+    (page) => page >= 1 && page < currentPage,
+  );
+  const paginatedAnnouncements = useMemo(() => {
+    if (pageSize === -1) return filteredAnnouncements;
+    const startIndex = (currentPage - 1) * effectivePageSize;
+    return filteredAnnouncements.slice(startIndex, startIndex + effectivePageSize);
+  }, [currentPage, effectivePageSize, filteredAnnouncements, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const openCreateModal = () => {
     setEditingAnnouncement(null);
@@ -250,11 +275,11 @@ export default function AnnouncementPage() {
             </p>
           </div>
         ) : (
-          filteredAnnouncements.map((announcement) => (
+          paginatedAnnouncements.map((announcement) => (
             <article
               key={announcement.a_id}
               className={`rounded-2xl border bg-white p-5 shadow-sm transition ${
-                announcement.is_active ? "border-slate-200" : "border-amber-200 bg-amber-50/50"
+                announcement.is_active ? "border-slate-200" : "border-slate-300 bg-slate-50"
               }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -324,6 +349,79 @@ export default function AnnouncementPage() {
           ))
         )}
       </div>
+
+      {!isLoading && totalCount > 0 && (
+        <div className="flex flex-col items-center justify-between gap-2 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left">
+          <p className="text-xs text-slate-600 sm:text-sm">
+            Showing {(currentPage - 1) * effectivePageSize + 1} to {Math.min(currentPage * effectivePageSize, totalCount)} of {totalCount} announcements
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+            <select
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-400 sm:px-3 sm:py-1.5 sm:text-sm"
+            >
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
+              <option value={50}>50 / page</option>
+              <option value={-1}>All</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}
+              disabled={currentPage === 1}
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
+              aria-label={`Skip back ${skipSize} pages`}
+              title={`Skip back ${skipSize} pages`}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
+              aria-label="Previous page"
+              title="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {nearbyPages.map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 sm:px-3 sm:py-1.5 sm:text-sm"
+              >
+                {page}
+              </button>
+            ))}
+            <span className="text-xs text-slate-600 sm:text-sm">
+              Page {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
+              aria-label="Next page"
+              title="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + skipSize))}
+              disabled={currentPage === totalPages}
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:p-2 sm:text-sm"
+              aria-label={`Skip forward ${skipSize} pages`}
+              title={`Skip forward ${skipSize} pages`}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <Modal
         isOpen={isModalOpen}

@@ -30,7 +30,6 @@ const ROLE_TABS: Record<Role, RoleTab[]> = {
     { label: "Categories", to: "/admin/categories", icon: FileText },
     { label: "Closure Period", to: "/admin/closure-period", icon: ShieldCheck },
     { label: "All Ideas", to: "/admin/all-ideas", icon: FileText },
-    { label: "Announcement", to: "/admin/announcements", icon: Megaphone },
     { label: "Activities", to: "/admin/analytics", icon: BarChart3 },
     { label: "Reports", to: "/admin/reports", icon: ShieldAlert },
   ], 
@@ -144,14 +143,14 @@ export default function SideBar({
             ? `fixed inset-y-0 left-0 z-50 transition-transform duration-200 lg:hidden ${
                 isMobileOpen ? "translate-x-0" : "-translate-x-full"
               }`
-            : `${sidebarWidthClass} min-h-screen self-stretch`
+            : `${sidebarWidthClass} sticky top-0 h-screen self-start`
         }`}
       >
       <nav
         className={`flex h-full flex-col text-white shadow-sm transition-[width,transform] duration-200 ${
           isMobile
             ? "w-[272px]"
-            : `${sidebarWidthClass} min-h-full min-h-screen`
+            : `${sidebarWidthClass} h-screen`
         }`}
         style={{
           backgroundColor: "var(--sidebar_bg)",

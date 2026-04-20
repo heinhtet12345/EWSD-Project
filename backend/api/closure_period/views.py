@@ -80,6 +80,7 @@ def _notify_closure_period_change(*, title, message, notification_type, email_de
     recipients = _closure_notification_recipients()
     email_details = email_details or []
     closing_note = closing_note or "Please log in to the platform for the latest closure period information."
+    emailed_addresses: set[str] = set()
 
     for recipient in recipients:
         Notification.objects.create(
@@ -90,6 +91,9 @@ def _notify_closure_period_change(*, title, message, notification_type, email_de
         )
 
         if recipient.email:
+            normalized_email = str(recipient.email).strip().lower()
+            if normalized_email in emailed_addresses:
+                continue
             try:
                 message_text, html_message = _build_closure_period_email(
                     title=title,
@@ -105,6 +109,7 @@ def _notify_closure_period_change(*, title, message, notification_type, email_de
                     html_message=html_message,
                     fail_silently=True,
                 )
+                emailed_addresses.add(normalized_email)
             except (BadHeaderError, OSError):
                 continue
 
