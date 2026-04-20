@@ -74,27 +74,30 @@ def _get_login_session_ttl_seconds() -> int:
 class LoginView(APIView):
 
     def post(self, request):
-        # --- reCAPTCHA v2 verification ---
-        recaptcha_token = request.data.get("recaptcha")
-        if not recaptcha_token:
-            return Response({"message": "reCAPTCHA validation failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+        if settings.ENABLE_RECAPTCHA:
+            recaptcha_token = request.data.get("recaptcha")
+            if not recaptcha_token:
+                return Response({"message": "reCAPTCHA validation failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
-        recaptcha_secret = "6LfaqrIsAAAAAJB9ygpNIHrD_q1nDO-gshIT1LaU"
-        recaptcha_url = "https://www.google.com/recaptcha/api/siteverify"
-        recaptcha_response = requests.post(
-            recaptcha_url,
-            data={
-                "secret": recaptcha_secret,
-                "response": recaptcha_token,
-                "remoteip": request.META.get("REMOTE_ADDR"),
-            },
-            timeout=5
-        )
-        recaptcha_result = recaptcha_response.json()
-        if not recaptcha_result.get("success"):
-            return Response({"message": "reCAPTCHA verification failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+            if not settings.RECAPTCHA_SECRET_KEY:
+                return Response(
+                    {"message": "reCAPTCHA is enabled but the server is not configured correctly."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
-        # --- End reCAPTCHA verification ---
+            recaptcha_url = "https://www.google.com/recaptcha/api/siteverify"
+            recaptcha_response = requests.post(
+                recaptcha_url,
+                data={
+                    "secret": settings.RECAPTCHA_SECRET_KEY,
+                    "response": recaptcha_token,
+                    "remoteip": request.META.get("REMOTE_ADDR"),
+                },
+                timeout=5
+            )
+            recaptcha_result = recaptcha_response.json()
+            if not recaptcha_result.get("success"):
+                return Response({"message": "reCAPTCHA verification failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = LoginSerializer(data=request.data)
 

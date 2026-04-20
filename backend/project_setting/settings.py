@@ -164,6 +164,9 @@ SIMPLE_JWT = {
 
 REDIS_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/0')
 
+ENABLE_RECAPTCHA = os.getenv('ENABLE_RECAPTCHA', 'false').strip().lower() == 'true'
+RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '')
+
 #profile image
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

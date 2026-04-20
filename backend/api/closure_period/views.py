@@ -1,7 +1,8 @@
 import threading
 
 from django.contrib.auth import get_user_model
-from django.core.mail import BadHeaderError, send_mail
+from django.core.mail import BadHeaderError, EmailMultiAlternatives
+from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -80,52 +81,64 @@ def _notify_closure_period_change(*, title, message, notification_type, email_de
     recipients = _closure_notification_recipients()
     email_details = email_details or []
     closing_note = closing_note or "Please log in to the platform for the latest closure period information."
-    emailed_addresses: set[str] = set()
+    email_addresses: list[str] = []
+    seen_addresses: set[str] = set()
+
+    message_text, html_message = _build_closure_period_email(
+        title=title,
+        intro=message,
+        details=email_details,
+        closing_note=closing_note,
+    )
 
     for recipient in recipients:
-        Notification.objects.create(
+        notification, created = Notification.objects.get_or_create(
             recipient=recipient,
-            title=title,
             message=message,
             notification_type=notification_type,
+            defaults={
+                "title": title,
+            },
         )
+        if not created:
+            continue
 
         if recipient.email:
             normalized_email = str(recipient.email).strip().lower()
-            if normalized_email in emailed_addresses:
-                continue
-            try:
-                message_text, html_message = _build_closure_period_email(
-                    title=title,
-                    intro=message,
-                    details=email_details,
-                    closing_note=closing_note,
-                )
-                send_mail(
-                    subject=title,
-                    message=message_text,
-                    from_email="system@ewsd.edu",
-                    recipient_list=[recipient.email],
-                    html_message=html_message,
-                    fail_silently=True,
-                )
-                emailed_addresses.add(normalized_email)
-            except (BadHeaderError, OSError):
-                continue
+            if normalized_email and normalized_email not in seen_addresses:
+                seen_addresses.add(normalized_email)
+                email_addresses.append(recipient.email)
+
+    if email_addresses:
+        try:
+            email_message = EmailMultiAlternatives(
+                subject=title,
+                body=message_text,
+                from_email="system@ewsd.edu",
+                to=["system@ewsd.edu"],
+                bcc=email_addresses,
+            )
+            email_message.attach_alternative(html_message, "text/html")
+            email_message.send(fail_silently=True)
+        except (BadHeaderError, OSError):
+            pass
 
 
 def _dispatch_closure_period_notifications_async(*, title, message, notification_type, email_details=None, closing_note=None):
-    threading.Thread(
-        target=_notify_closure_period_change,
-        kwargs={
-            "title": title,
-            "message": message,
-            "notification_type": notification_type,
-            "email_details": email_details or [],
-            "closing_note": closing_note,
-        },
-        daemon=True,
-    ).start()
+    def _start_notification_thread():
+        threading.Thread(
+            target=_notify_closure_period_change,
+            kwargs={
+                "title": title,
+                "message": message,
+                "notification_type": notification_type,
+                "email_details": email_details or [],
+                "closing_note": closing_note,
+            },
+            daemon=True,
+        ).start()
+
+    transaction.on_commit(_start_notification_thread)
 
 
 class AddClosurePeriodView(APIView):
@@ -182,42 +195,53 @@ class UpdateClosurePeriodView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        closure_period = ClosurePeriod.objects.filter(id=closure_period_id).first()
-        if not closure_period:
-            return Response({"message": "Closure period not found."}, status=status.HTTP_404_NOT_FOUND)
+        with transaction.atomic():
+            closure_period = ClosurePeriod.objects.select_for_update().filter(id=closure_period_id).first()
+            if not closure_period:
+                return Response({"message": "Closure period not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        previous_idea_closure_date = closure_period.idea_closure_date
-        previous_comment_closure_date = closure_period.comment_closure_date
-        serializer = ClosurePeriodSerializer(closure_period, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        updated_closure_period = serializer.save()
+            previous_idea_closure_date = closure_period.idea_closure_date
+            previous_comment_closure_date = closure_period.comment_closure_date
+            serializer = ClosurePeriodSerializer(closure_period, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            updated_closure_period = serializer.save()
 
-        changed_parts = []
-        if updated_closure_period.idea_closure_date != previous_idea_closure_date:
-            changed_parts.append(
-                f"Idea deadline moved from {previous_idea_closure_date} to {updated_closure_period.idea_closure_date}"
-            )
-        if updated_closure_period.comment_closure_date != previous_comment_closure_date:
-            changed_parts.append(
-                f"Comment deadline moved from {previous_comment_closure_date} to {updated_closure_period.comment_closure_date}"
-            )
+            changed_parts = []
+            if updated_closure_period.idea_closure_date != previous_idea_closure_date:
+                changed_parts.append(
+                    f"Idea deadline moved from {previous_idea_closure_date} to {updated_closure_period.idea_closure_date}"
+                )
+            if updated_closure_period.comment_closure_date != previous_comment_closure_date:
+                changed_parts.append(
+                    f"Comment deadline moved from {previous_comment_closure_date} to {updated_closure_period.comment_closure_date}"
+                )
 
-        if changed_parts:
-            _dispatch_closure_period_notifications_async(
-                title="Closure period extended",
-                message=(
-                    f'Closure period "{updated_closure_period.academic_year}" was extended. '
-                    + " | ".join(changed_parts)
-                ),
-                notification_type="closure_period_extended",
-                email_details=[
-                    ("Academic Year", updated_closure_period.academic_year),
-                    *[
-                        ("Deadline Update", part)
-                        for part in changed_parts
+            should_send_notification = False
+            if changed_parts:
+                notification_signature = (
+                    f"{updated_closure_period.idea_closure_date}|{updated_closure_period.comment_closure_date}"
+                )
+                if updated_closure_period.last_extension_notification_signature != notification_signature:
+                    updated_closure_period.last_extension_notification_signature = notification_signature
+                    updated_closure_period.save(update_fields=["last_extension_notification_signature"])
+                    should_send_notification = True
+
+            if should_send_notification:
+                _dispatch_closure_period_notifications_async(
+                    title="Closure period extended",
+                    message=(
+                        f'Closure period "{updated_closure_period.academic_year}" was extended. '
+                        + " | ".join(changed_parts)
+                    ),
+                    notification_type="closure_period_extended",
+                    email_details=[
+                        ("Academic Year", updated_closure_period.academic_year),
+                        *[
+                            ("Deadline Update", part)
+                            for part in changed_parts
+                        ],
                     ],
-                ],
-                closing_note="Please review the revised deadlines in the platform before submitting ideas or comments.",
-            )
+                    closing_note="Please review the revised deadlines in the platform before submitting ideas or comments.",
+                )
 
         return Response(ClosurePeriodSerializer(updated_closure_period).data, status=status.HTTP_200_OK)

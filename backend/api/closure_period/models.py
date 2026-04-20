@@ -9,6 +9,7 @@ class ClosurePeriod(models.Model):
     comment_closure_date = models.DateField()
     is_active = models.BooleanField(default=True)
     academic_year = models.CharField(max_length=20)
+    last_extension_notification_signature = models.CharField(max_length=128, blank=True, default="")
 
     class Meta:
         db_table = "ClosurePeriod"
