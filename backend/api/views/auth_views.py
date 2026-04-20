@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.models import update_last_login
 from django.conf import settings
+import os
 from ..serializer import LoginSerializer, UserSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -79,17 +80,17 @@ class LoginView(APIView):
             if not recaptcha_token:
                 return Response({"message": "reCAPTCHA validation failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if not settings.RECAPTCHA_SECRET_KEY:
-                return Response(
-                    {"message": "reCAPTCHA is enabled but the server is not configured correctly."},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
+            recaptcha_secret = str(
+                settings.RECAPTCHA_SECRET_KEY or os.getenv("RECAPTCHA_SECRET_KEY", "")
+            ).strip()
+            if not recaptcha_secret:
+                return Response({"message": "reCAPTCHA verification failed. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
             recaptcha_url = "https://www.google.com/recaptcha/api/siteverify"
             recaptcha_response = requests.post(
                 recaptcha_url,
                 data={
-                    "secret": settings.RECAPTCHA_SECRET_KEY,
+                    "secret": recaptcha_secret,
                     "response": recaptcha_token,
                     "remoteip": request.META.get("REMOTE_ADDR"),
                 },
