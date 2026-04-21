@@ -1,0 +1,1 @@
+***Use these batch command carefully since it bypass the system administrator authorization to start/stop/check the services***
