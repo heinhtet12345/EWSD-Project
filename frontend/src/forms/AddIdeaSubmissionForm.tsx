@@ -230,7 +230,7 @@ const AddIdeaSubmissionForm: React.FC<AddIdeaSubmissionFormProps> = ({ onCancel,
   // Custom item template for category options
   const categoryOptionTemplate = (option: Category) => {
     return (
-      <div className="flex items-start gap-3 p-2 hover:bg-blue-50/50 rounded-lg transition-colors">
+      <div className="qa-category-option flex items-start gap-3 px-2 py-1.5 rounded-md transition-colors">
         <div className="flex-shrink-0 mt-0.5">
           <Tag className="h-4 w-4 text-blue-500" />
         </div>

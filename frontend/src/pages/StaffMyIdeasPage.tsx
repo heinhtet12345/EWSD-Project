@@ -43,6 +43,7 @@ type Comment = {
   anonymous_status: boolean
   cmt_datetime: string
   user: string
+  user_id?: number
   idea: number
 }
 
@@ -61,7 +62,16 @@ type IdeaListResponse = {
 
 const StaffMyIdeasPage = () => {
   const [ideas, setIdeas] = useState<Idea[]>([])
-  const [closurePeriods, setClosurePeriods] = useState<Array<{ id: number; academic_year: string; is_active: boolean }>>([])
+  const [closurePeriods, setClosurePeriods] = useState<
+    Array<{
+      id: number
+      academic_year: string
+      is_active: boolean
+      start_date?: string
+      idea_closure_date?: string
+      comment_closure_date?: string
+    }>
+  >([])
   const [categoryMap, setCategoryMap] = useState<Record<number, string>>({})
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
@@ -79,6 +89,9 @@ const StaffMyIdeasPage = () => {
   const [openActionMenuIdeaId, setOpenActionMenuIdeaId] = useState<number | null>(null)
   const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set())
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
+  const [editingCommentDraft, setEditingCommentDraft] = useState('')
+  const [isSavingCommentEdit, setIsSavingCommentEdit] = useState(false)
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
   const [totalIdeas, setTotalIdeas] = useState(0)
@@ -118,6 +131,17 @@ const StaffMyIdeasPage = () => {
   const nearbyPages = Array.from({ length: 4 }, (_, index) => currentPage - 4 + index).filter(
     (page) => page >= 1 && page < currentPage,
   )
+  const currentUserId = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as { user_id?: number | string; id?: number | string }
+      const numericId = Number(parsed.user_id ?? parsed.id)
+      return Number.isFinite(numericId) ? numericId : null
+    } catch {
+      return null
+    }
+  }, [])
 
   const categoryOptions = useMemo(
     () =>
@@ -223,6 +247,12 @@ const StaffMyIdeasPage = () => {
     return () => window.clearTimeout(timeoutId)
   }, [actionMessage])
 
+  useEffect(() => {
+    if (!error) return
+    const timeoutId = window.setTimeout(() => setError(''), 3500)
+    return () => window.clearTimeout(timeoutId)
+  }, [error])
+
   const handleAddIdeaClick = async () => {
     setError('')
     setIsCheckingAccount(true)
@@ -233,9 +263,33 @@ const StaffMyIdeasPage = () => {
         setError('User cannot use this feature when account is disabled.')
         return
       }
+
+      const closureResponse = await axios.get('/api/closure-period/list/', getAuthConfig())
+      const closureData = Array.isArray(closureResponse.data)
+        ? closureResponse.data
+        : closureResponse.data?.results
+      const periods = Array.isArray(closureData) ? closureData : []
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const hasOpenIdeaPeriod = periods.some((period) => {
+        if (!period.start_date || !period.idea_closure_date || !period.comment_closure_date) return false
+        const startDate = new Date(`${period.start_date}T00:00:00`)
+        const ideaClosureDate = new Date(`${period.idea_closure_date}T00:00:00`)
+        const commentClosureDate = new Date(`${period.comment_closure_date}T00:00:00`)
+        return startDate <= today && today < commentClosureDate && today < ideaClosureDate
+      })
+
+      if (!hasOpenIdeaPeriod) {
+        const message = 'The current idea closure date has already passed. New idea submission is closed.'
+        setError(message)
+        return
+      }
+
       setIsAdding(true)
     } catch {
-      setError('Unable to verify account status. Please try again.')
+      const message = 'Unable to verify account status or closure period. Please try again.'
+      setError(message)
     } finally {
       setIsCheckingAccount(false)
     }
@@ -283,7 +337,7 @@ const StaffMyIdeasPage = () => {
 
   const fetchClosurePeriods = async () => {
     try {
-      const response = await axios.get('/api/closure-period/', getAuthConfig())
+      const response = await axios.get('/api/closure-period/list/', getAuthConfig())
       const data = Array.isArray(response.data) ? response.data : response.data?.results
       if (!Array.isArray(data)) return
       setClosurePeriods(data)
@@ -439,6 +493,74 @@ const StaffMyIdeasPage = () => {
     }
   }
 
+  const handleStartEditComment = (comment: Comment) => {
+    setEditingCommentId(comment.cmt_id)
+    setEditingCommentDraft(comment.cmt_content)
+    setError('')
+  }
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null)
+    setEditingCommentDraft('')
+    setIsSavingCommentEdit(false)
+  }
+
+  const handleSaveEditComment = async (commentId: number, ideaId: number) => {
+    if (!isAccountActive()) {
+      setError('Your account is disabled. You cannot edit comments.')
+      return
+    }
+
+    const idea = ideas.find((item) => item.idea_id === ideaId)
+    if (idea && idea.closure_period_comment_open === false) {
+      setError('Comment editing is closed for this closure period.')
+      return
+    }
+
+    const content = editingCommentDraft.trim()
+    if (!content) {
+      setError('Comment content cannot be empty.')
+      return
+    }
+
+    setIsSavingCommentEdit(true)
+    setError('')
+    try {
+      const response = await axios.patch(
+        `/api/interaction/comment/${commentId}/`,
+        { cmt_content: content },
+        getAuthConfig(),
+      )
+      const data = response.data as { comment?: Comment; comment_count?: number }
+      if (data.comment) {
+        setCommentsByIdea((prev) => ({
+          ...prev,
+          [ideaId]: (prev[ideaId] || []).map((comment) =>
+            comment.cmt_id === commentId ? (data.comment as Comment) : comment,
+          ),
+        }))
+      }
+      if (typeof data.comment_count === 'number') {
+        setIdeas((prev) =>
+          prev.map((idea) =>
+            idea.idea_id === ideaId ? { ...idea, comment_count: data.comment_count } : idea,
+          ),
+        )
+      }
+      setActionMessage('Comment updated successfully.')
+      handleCancelEditComment()
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { error?: string; message?: string; detail?: string } | undefined
+        setError(data?.error || data?.message || data?.detail || 'Failed to update comment.')
+      } else {
+        setError('Failed to update comment.')
+      }
+    } finally {
+      setIsSavingCommentEdit(false)
+    }
+  }
+
   const handleDeleteIdea = async (idea: Idea) => {
     const confirmed = window.confirm(`Delete "${idea.idea_title}"? This action cannot be undone.`)
     if (!confirmed) return
@@ -484,6 +606,13 @@ const StaffMyIdeasPage = () => {
     }
   }
 
+  const handleIdeaSubmitted = async () => {
+    setIsAdding(false)
+    setEditingIdea(null)
+    setCurrentPage(1)
+    await fetchIdeas(1)
+  }
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -521,11 +650,7 @@ const StaffMyIdeasPage = () => {
               setIsAdding(false)
               setEditingIdea(null)
             }}
-            onSubmit={() => {
-              setIsAdding(false)
-              setEditingIdea(null)
-              fetchIdeas()
-            }}
+            onSubmit={handleIdeaSubmitted}
           />
         </div>
       )}
@@ -782,11 +907,72 @@ const StaffMyIdeasPage = () => {
                               ) : (
                                 (commentsByIdea[idea.idea_id] || []).map((comment) => (
                                   <div key={comment.cmt_id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                                    <p className="text-xs text-slate-500">
-                                      {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
-                                      {formatDisplayTime(comment.cmt_datetime)}
-                                    </p>
-                                    <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
+                                    {(() => {
+                                      const isOwnComment = comment.user_id === currentUserId
+                                      const isEditingComment = editingCommentId === comment.cmt_id
+
+                                      return (
+                                        <div
+                                          className={`flex flex-col gap-2 ${
+                                            isEditingComment ? '' : 'sm:flex-row sm:items-start sm:justify-between'
+                                          }`}
+                                        >
+                                          <div className="min-w-0 flex-1">
+                                            <p className="text-xs text-slate-500">
+                                              {comment.anonymous_status ? 'Anonymous' : comment.user} |{' '}
+                                              {formatDisplayTime(comment.cmt_datetime)}
+                                            </p>
+                                            {isEditingComment ? (
+                                              <textarea
+                                                rows={3}
+                                                value={editingCommentDraft}
+                                                onChange={(event) => setEditingCommentDraft(event.target.value)}
+                                                className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400"
+                                                style={{ resize: 'none' }}
+                                              />
+                                            ) : (
+                                              <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
+                                            )}
+                                          </div>
+                                          <div
+                                            className={`flex gap-2 ${
+                                              isEditingComment ? 'justify-end' : 'shrink-0 items-center self-start'
+                                            }`}
+                                          >
+                                            {isOwnComment &&
+                                              (isEditingComment ? (
+                                                <>
+                                                  <button
+                                                    type="button"
+                                                    onClick={handleCancelEditComment}
+                                                    className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                                                  >
+                                                    Cancel
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleSaveEditComment(comment.cmt_id, idea.idea_id)}
+                                                    disabled={!editingCommentDraft.trim() || isSavingCommentEdit}
+                                                    className="rounded-lg bg-blue-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                                  >
+                                                    {isSavingCommentEdit ? 'Saving...' : 'Save'}
+                                                  </button>
+                                                </>
+                                              ) : (
+                                                commentOpen && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleStartEditComment(comment)}
+                                                    className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                                  >
+                                                    Edit
+                                                  </button>
+                                                )
+                                              ))}
+                                          </div>
+                                        </div>
+                                      )
+                                    })()}
                                   </div>
                                 ))
                               )}

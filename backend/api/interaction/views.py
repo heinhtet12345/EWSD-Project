@@ -206,6 +206,55 @@ class CommentListCreateView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class CommentDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, comment_id):
+        if not bool(getattr(request.user, "active_status", True)):
+            return Response(
+                {"error": "Your account is disabled. You cannot edit comments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        comment = (
+            Comment.objects.filter(cmt_id=comment_id)
+            .select_related("idea", "idea__closurePeriod", "user")
+            .first()
+        )
+        if not comment:
+            return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if comment.user_id != request.user.user_id:
+            return Response(
+                {"error": "You can only edit your own comments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not getattr(comment.idea.closurePeriod, "is_comment_open", True):
+            return Response(
+                {"error": "Comment editing is closed for this closure period."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = CommentSerializer(comment, data=request.data, partial=True)
+        if serializer.is_valid():
+            updated_comment = serializer.save()
+            comment_count = Comment.objects.filter(
+                idea_id=comment.idea_id,
+                user__active_status=True,
+                idea__user__active_status=True,
+            ).count()
+            return Response(
+                {
+                    "comment": CommentSerializer(updated_comment).data,
+                    "comment_count": comment_count,
+                },
+                status=status.HTTP_200_OK,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class VoteToggleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

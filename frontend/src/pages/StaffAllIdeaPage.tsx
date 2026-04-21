@@ -45,6 +45,9 @@ type ClosurePeriod = {
   id: number
   academic_year: string
   is_active: boolean
+  start_date?: string
+  idea_closure_date?: string
+  comment_closure_date?: string
 }
 
 type DepartmentOption = {
@@ -102,6 +105,9 @@ const StaffAllIdeaPage = () => {
   const [actionMessage, setActionMessage] = useState('')
   const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set())
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
+  const [editingCommentDraft, setEditingCommentDraft] = useState('')
+  const [isSavingCommentEdit, setIsSavingCommentEdit] = useState(false)
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
   const [reportTarget, setReportTarget] = useState<
@@ -412,6 +418,12 @@ const StaffAllIdeaPage = () => {
   }, [actionMessage])
 
   useEffect(() => {
+    if (!error) return
+    const timeoutId = window.setTimeout(() => setError(''), 3500)
+    return () => window.clearTimeout(timeoutId)
+  }, [error])
+
+  useEffect(() => {
     if (!highlightCommentId) return
 
     if (highlightIdeaId) {
@@ -537,9 +549,33 @@ const StaffAllIdeaPage = () => {
         setError('User cannot use this feature when account is disabled.')
         return
       }
+
+      const closureResponse = await axios.get('/api/closure-period/list/', getAuthConfig())
+      const closureData = Array.isArray(closureResponse.data)
+        ? closureResponse.data
+        : closureResponse.data?.results
+      const periods = Array.isArray(closureData) ? (closureData as ClosurePeriod[]) : []
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const hasOpenIdeaPeriod = periods.some((period) => {
+        if (!period.start_date || !period.idea_closure_date || !period.comment_closure_date) return false
+        const startDate = new Date(`${period.start_date}T00:00:00`)
+        const ideaClosureDate = new Date(`${period.idea_closure_date}T00:00:00`)
+        const commentClosureDate = new Date(`${period.comment_closure_date}T00:00:00`)
+        return startDate <= today && today < commentClosureDate && today < ideaClosureDate
+      })
+
+      if (!hasOpenIdeaPeriod) {
+        const message = 'The current idea closure date has already passed. New idea submission is closed.'
+        setError(message)
+        return
+      }
+
       setIsAdding(true)
     } catch {
-      setError('Unable to verify account status. Please try again.')
+      const message = 'Unable to verify account status or closure period. Please try again.'
+      setError(message)
     } finally {
       setIsCheckingAccount(false)
     }
@@ -706,6 +742,74 @@ const StaffAllIdeaPage = () => {
     }
   }
 
+  const handleStartEditComment = (comment: Comment) => {
+    setEditingCommentId(comment.cmt_id)
+    setEditingCommentDraft(comment.cmt_content)
+    setError('')
+  }
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null)
+    setEditingCommentDraft('')
+    setIsSavingCommentEdit(false)
+  }
+
+  const handleSaveEditComment = async (commentId: number, ideaId: number) => {
+    if (!isAccountActive()) {
+      setError('Your account is disabled. You cannot edit comments.')
+      return
+    }
+
+    const idea = ideas.find((item) => item.idea_id === ideaId)
+    if (idea && idea.closure_period_comment_open === false) {
+      setError('Comment editing is closed for this closure period.')
+      return
+    }
+
+    const content = editingCommentDraft.trim()
+    if (!content) {
+      setError('Comment content cannot be empty.')
+      return
+    }
+
+    setIsSavingCommentEdit(true)
+    setError('')
+    try {
+      const response = await axios.patch(
+        `/api/interaction/comment/${commentId}/`,
+        { cmt_content: content },
+        getAuthConfig(),
+      )
+      const data = response.data as { comment?: Comment; comment_count?: number }
+      if (data.comment) {
+        setCommentsByIdea((prev) => ({
+          ...prev,
+          [ideaId]: (prev[ideaId] || []).map((comment) =>
+            comment.cmt_id === commentId ? (data.comment as Comment) : comment,
+          ),
+        }))
+      }
+      if (typeof data.comment_count === 'number') {
+        setIdeas((prev) =>
+          prev.map((idea) =>
+            idea.idea_id === ideaId ? { ...idea, comment_count: data.comment_count } : idea,
+          ),
+        )
+      }
+      setActionMessage('Comment updated successfully.')
+      handleCancelEditComment()
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { error?: string; message?: string; detail?: string } | undefined
+        setError(data?.error || data?.message || data?.detail || 'Failed to update comment.')
+      } else {
+        setError('Failed to update comment.')
+      }
+    } finally {
+      setIsSavingCommentEdit(false)
+    }
+  }
+
   const shouldShowDescriptionToggle = (content: string) =>
     content.length > 180 || content.includes('\n')
 
@@ -837,6 +941,14 @@ const StaffAllIdeaPage = () => {
   setHighlightElement(element);
   };
 
+  const handleIdeaSubmitted = async () => {
+    setIsAdding(false)
+    ideaPageCacheRef.current = {}
+    setPendingHighlightIdeaId(null)
+    setCurrentPage(1)
+    await fetchIdeas(1)
+  }
+
   return (
     <section ref={sectionTopRef} className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -858,7 +970,7 @@ const StaffAllIdeaPage = () => {
 
       {isAdding && (
         <div className="w-full space-y-3">
-          <AddIdeaSubmissionForm onCancel={() => setIsAdding(false)} onSubmit={() => { setIsAdding(false); fetchIdeas() }} />
+          <AddIdeaSubmissionForm onCancel={() => setIsAdding(false)} onSubmit={handleIdeaSubmitted} />
         </div>
       )}
 
@@ -940,6 +1052,13 @@ const StaffAllIdeaPage = () => {
             onToggleComments={toggleComments}
             openCommentIds={openCommentIds}
             commentsByIdea={commentsByIdea}
+            editingCommentId={editingCommentId}
+            editingCommentDraft={editingCommentDraft}
+            isSavingCommentEdit={isSavingCommentEdit}
+            onStartEditComment={handleStartEditComment}
+            onEditingCommentDraftChange={setEditingCommentDraft}
+            onCancelEditComment={handleCancelEditComment}
+            onSaveEditComment={handleSaveEditComment}
             commentDrafts={commentDrafts}
             onCommentDraftChange={(ideaId, value) =>
               setCommentDrafts((prev) => ({ ...prev, [ideaId]: value }))

@@ -555,6 +555,15 @@ body {
     background-color: #f8fafc !important;
 }
 
+.qa-category-panel .qa-category-option {
+    border: 1px solid transparent;
+}
+
+.qa-category-panel .p-multiselect-item:hover .qa-category-option {
+    background-color: transparent !important;
+    border-color: transparent !important;
+}
+
 .qa-add-idea-form .p-multiselect-item.p-highlight {
     background-color: #3b82f6 !important;
     color: white !important;
@@ -600,6 +609,11 @@ body {
     background-color: rgba(255, 255, 255, 0.12) !important;
     color: #ffffff !important;
     border-left: 3px solid #60a5fa !important;
+}
+
+:root[data-theme='dark'] .qa-category-panel .p-multiselect-item:hover .qa-category-option {
+    background-color: transparent !important;
+    border-color: transparent !important;
 }
 
 .p-checkbox .p-checkbox-input {

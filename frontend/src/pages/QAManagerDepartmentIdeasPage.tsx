@@ -32,6 +32,7 @@ type Comment = {
   anonymous_status: boolean
   cmt_datetime: string
   user: string
+  user_id?: number
   idea: number
 }
 
@@ -56,6 +57,9 @@ export default function QAManagerDepartmentIdeasPage() {
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
   const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set())
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
+  const [editingCommentDraft, setEditingCommentDraft] = useState('')
+  const [isSavingCommentEdit, setIsSavingCommentEdit] = useState(false)
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({})
   const [commentAnon, setCommentAnon] = useState<Record<number, boolean>>({})
   const [totalIdeas, setTotalIdeas] = useState(0)
@@ -97,6 +101,17 @@ export default function QAManagerDepartmentIdeasPage() {
   }
 
   const canModerate = getStoredRole() !== 'qa_coordinator'
+  const currentUserId = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('authUser')
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as { user_id?: number | string; id?: number | string }
+      const numericId = Number(parsed.user_id ?? parsed.id)
+      return Number.isFinite(numericId) ? numericId : null
+    } catch {
+      return null
+    }
+  }, [])
 
   const getAuthConfig = () => {
     try {
@@ -242,7 +257,7 @@ export default function QAManagerDepartmentIdeasPage() {
 
   const fetchClosurePeriods = useCallback(async () => {
     try {
-      const response = await axios.get('/api/closure-period/', getAuthConfig())
+      const response = await axios.get('/api/closure-period/list/', getAuthConfig())
       const data = Array.isArray(response.data) ? response.data : response.data?.results
       if (!Array.isArray(data)) return
       setClosurePeriods(data)
@@ -454,6 +469,74 @@ export default function QAManagerDepartmentIdeasPage() {
     }
   }
 
+  const handleStartEditComment = (comment: Comment) => {
+    setEditingCommentId(comment.cmt_id)
+    setEditingCommentDraft(comment.cmt_content)
+    setError('')
+  }
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null)
+    setEditingCommentDraft('')
+    setIsSavingCommentEdit(false)
+  }
+
+  const handleSaveEditComment = async (commentId: number, ideaId: number) => {
+    if (!isAccountActive()) {
+      setError('Your account is disabled. You cannot edit comments.')
+      return
+    }
+
+    const idea = ideas.find((item) => item.idea_id === ideaId)
+    if (idea && idea.closure_period_comment_open === false) {
+      setError('Comment editing is closed for this closure period.')
+      return
+    }
+
+    const content = editingCommentDraft.trim()
+    if (!content) {
+      setError('Comment content cannot be empty.')
+      return
+    }
+
+    setIsSavingCommentEdit(true)
+    setError('')
+    try {
+      const response = await axios.patch(
+        `/api/interaction/comment/${commentId}/`,
+        { cmt_content: content },
+        getAuthConfig(),
+      )
+      const data = response.data as { comment?: Comment; comment_count?: number }
+      if (data.comment) {
+        setCommentsByIdea((prev) => ({
+          ...prev,
+          [ideaId]: (prev[ideaId] || []).map((comment) =>
+            comment.cmt_id === commentId ? (data.comment as Comment) : comment,
+          ),
+        }))
+      }
+      if (typeof data.comment_count === 'number') {
+        setIdeas((prev) =>
+          prev.map((idea) =>
+            idea.idea_id === ideaId ? { ...idea, comment_count: data.comment_count } : idea,
+          ),
+        )
+      }
+      setActionMessage('Comment updated successfully.')
+      handleCancelEditComment()
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data as { error?: string; message?: string; detail?: string } | undefined
+        setError(data?.error || data?.message || data?.detail || 'Failed to update comment.')
+      } else {
+        setError('Failed to update comment.')
+      }
+    } finally {
+      setIsSavingCommentEdit(false)
+    }
+  }
+
   return (
     <section className="space-y-4">
       {/* <div>
@@ -645,12 +728,73 @@ export default function QAManagerDepartmentIdeasPage() {
                         ) : (
                           (commentsByIdea[idea.idea_id] || []).map((comment) => (
                             <div key={comment.cmt_id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                              <p className="text-xs text-slate-500">
-                                {comment.user}
-                                {comment.anonymous_status ? ' (Anonymous)' : ''} |{' '}
-                                {new Date(comment.cmt_datetime).toLocaleString()}
-                              </p>
-                              <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
+                              {(() => {
+                                const isOwnComment = comment.user_id === currentUserId
+                                const isEditingComment = editingCommentId === comment.cmt_id
+
+                                return (
+                                  <div
+                                    className={`flex flex-col gap-2 ${
+                                      isEditingComment ? '' : 'sm:flex-row sm:items-start sm:justify-between'
+                                    }`}
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs text-slate-500">
+                                        {comment.user}
+                                        {comment.anonymous_status ? ' (Anonymous)' : ''} |{' '}
+                                        {new Date(comment.cmt_datetime).toLocaleString()}
+                                      </p>
+                                      {isEditingComment ? (
+                                        <textarea
+                                          rows={3}
+                                          value={editingCommentDraft}
+                                          onChange={(event) => setEditingCommentDraft(event.target.value)}
+                                          className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400"
+                                          style={{ resize: 'none' }}
+                                        />
+                                      ) : (
+                                        <p className="mt-1 text-sm text-slate-700">{comment.cmt_content}</p>
+                                      )}
+                                    </div>
+                                    <div
+                                      className={`flex gap-2 ${
+                                        isEditingComment ? 'justify-end' : 'shrink-0 items-center self-start'
+                                      }`}
+                                    >
+                                      {isOwnComment &&
+                                        (isEditingComment ? (
+                                          <>
+                                            <button
+                                              type="button"
+                                              onClick={handleCancelEditComment}
+                                              className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                                            >
+                                              Cancel
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleSaveEditComment(comment.cmt_id, idea.idea_id)}
+                                              disabled={!editingCommentDraft.trim() || isSavingCommentEdit}
+                                              className="rounded-lg bg-blue-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                              {isSavingCommentEdit ? 'Saving...' : 'Save'}
+                                            </button>
+                                          </>
+                                        ) : (
+                                          commentOpen && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleStartEditComment(comment)}
+                                              className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                            >
+                                              Edit
+                                            </button>
+                                          )
+                                        ))}
+                                    </div>
+                                  </div>
+                                )
+                              })()}
                             </div>
                           ))
                         )}

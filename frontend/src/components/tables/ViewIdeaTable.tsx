@@ -83,6 +83,13 @@ type ViewIdeaTableProps = {
   onToggleComments: (ideaId: number) => void
   openCommentIds: Set<number>
   commentsByIdea: Record<number, Comment[]>
+  editingCommentId: number | null
+  editingCommentDraft: string
+  isSavingCommentEdit: boolean
+  onStartEditComment: (comment: Comment) => void
+  onEditingCommentDraftChange: (value: string) => void
+  onCancelEditComment: () => void
+  onSaveEditComment: (commentId: number, ideaId: number) => void
   commentDrafts: Record<number, string>
   onCommentDraftChange: (ideaId: number, value: string) => void
   commentAnon: Record<number, boolean>
@@ -113,6 +120,13 @@ export default function ViewIdeaTable({
   onToggleComments,
   openCommentIds,
   commentsByIdea,
+  editingCommentId,
+  editingCommentDraft,
+  isSavingCommentEdit,
+  onStartEditComment,
+  onEditingCommentDraftChange,
+  onCancelEditComment,
+  onSaveEditComment,
   commentDrafts,
   onCommentDraftChange,
   commentAnon,
@@ -344,8 +358,17 @@ export default function ViewIdeaTable({
                                 : 'border-slate-200'
                             }`}
                           >
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                              <div className="min-w-0">
+                            {(() => {
+                              const isOwnComment = comment.user_id === currentUserId
+                              const isEditingComment = editingCommentId === comment.cmt_id
+
+                              return (
+                            <div
+                              className={`flex flex-col gap-2 ${
+                                isEditingComment ? '' : 'sm:flex-row sm:items-start sm:justify-between'
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1">
                                 <p className="text-xs text-slate-500">
                                   {canModerateView && comment.user_id ? (
                                     <button
@@ -364,20 +387,71 @@ export default function ViewIdeaTable({
                                   |{' '}
                                   {formatDisplayTime(comment.cmt_datetime)}
                                 </p>
-                                <p className="mt-1 break-words text-sm text-slate-700">
-                                  {comment.cmt_content}
-                                </p>
+                                {isEditingComment ? (
+                                  <textarea
+                                    rows={3}
+                                    value={editingCommentDraft}
+                                    onChange={(event) => onEditingCommentDraftChange(event.target.value)}
+                                    className="mt-2 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400"
+                                    style={{ resize: 'none' }}
+                                  />
+                                ) : (
+                                  <p className="mt-1 break-words text-sm text-slate-700">
+                                    {comment.cmt_content}
+                                  </p>
+                                )}
                               </div>
-                              {isStaff && comment.user_id !== currentUserId && (
-                                <button
-                                  type="button"
-                                  onClick={() => onReportComment(comment.cmt_id)}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
-                                >
-                                  <Flag className="h-3.5 w-3.5" /> Report
-                                </button>
-                              )}
+                              <div
+                                className={`flex gap-2 ${
+                                  isEditingComment ? 'justify-end' : 'shrink-0 items-center self-start'
+                                }`}
+                              >
+                                {isOwnComment ? (
+                                  isEditingComment ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={onCancelEditComment}
+                                        className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => onSaveEditComment(comment.cmt_id, idea.idea_id)}
+                                        disabled={!editingCommentDraft.trim() || isSavingCommentEdit}
+                                        className="rounded-lg bg-blue-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                      >
+                                        {isSavingCommentEdit ? 'Saving...' : 'Save'}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    commentOpen && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onStartEditComment(comment)}
+                                        className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                      >
+                                        Edit
+                                      </button>
+                                    )
+                                  )
+                                ) : (
+                                  isStaff &&
+                                  comment.user_id !== currentUserId && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onReportComment(comment.cmt_id)}
+                                      className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                                    >
+                                      <Flag className="h-3.5 w-3.5" /> Report
+                                    </button>
+                                  )
+                                )}
+                              </div>
                             </div>
+                              )
+                            })()}
                           </div>
                         ))
                       )}
