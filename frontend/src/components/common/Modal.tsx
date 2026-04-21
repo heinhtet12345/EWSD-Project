@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 type ModalProps = {
@@ -18,33 +18,18 @@ export default function Modal({
   children,
   maxWidthClassName = "max-w-2xl",
 }: ModalProps) {
-  const [shouldRender, setShouldRender] = useState(isOpen);
-  const [isVisible, setIsVisible] = useState(false);
-
   useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-      const frameId = window.requestAnimationFrame(() => setIsVisible(true));
-      return () => window.cancelAnimationFrame(frameId);
-    }
-
-    setIsVisible(false);
-    const timeoutId = window.setTimeout(() => setShouldRender(false), 260);
-    return () => window.clearTimeout(timeoutId);
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!shouldRender) return;
+    if (!isOpen) return;
 
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = originalOverflow;
     };
-  }, [shouldRender]);
+  }, [isOpen]);
 
   useEffect(() => {
-    if (!shouldRender) return;
+    if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -54,24 +39,20 @@ export default function Modal({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [shouldRender, onClose]);
+  }, [isOpen, onClose]);
 
-  if (!shouldRender) return null;
+  if (!isOpen) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50">
       <div
-        className={`absolute inset-0 bg-slate-950/45 transition-opacity duration-300 ease-out ${
-          isVisible ? "opacity-100" : "opacity-0"
-        }`}
+        className="absolute inset-0 bg-slate-950/45 transition-opacity duration-300 ease-out opacity-100"
         aria-hidden="true"
         onClick={onClose}
       />
       <div className="relative flex min-h-full items-center justify-center px-4 py-6">
         <div
-          className={`hide-scrollbar relative mx-auto w-full ${maxWidthClassName} max-h-[90vh] overflow-y-auto transition-all duration-300 ease-out ${
-            isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.985] opacity-0"
-          }`}
+          className={`hide-scrollbar relative mx-auto w-full ${maxWidthClassName} max-h-[90vh] overflow-y-auto transition-all duration-300 ease-out translate-y-0 scale-100 opacity-100`}
         >
           {(title || description) && (
             <div className="mb-5 rounded-3xl bg-white p-6 shadow-2xl">

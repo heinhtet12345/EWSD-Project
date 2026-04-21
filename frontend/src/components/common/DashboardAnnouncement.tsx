@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-type AnnouncementItem = {
+type Announcement = {
   id?: string | number
   title: string
   description: string
@@ -12,7 +12,7 @@ type AnnouncementItem = {
 }
 
 type DashboardAnnouncementProps = {
-  items: AnnouncementItem[]
+  items: Announcement[]
 }
 
 export default function DashboardAnnouncement({ items }: DashboardAnnouncementProps) {
@@ -20,7 +20,6 @@ export default function DashboardAnnouncement({ items }: DashboardAnnouncementPr
   const [currentIndex, setCurrentIndex] = useState(0)
 
   useEffect(() => {
-    setCurrentIndex(0)
     if (!items.length) return undefined
 
     const interval = window.setInterval(() => {
@@ -34,9 +33,10 @@ export default function DashboardAnnouncement({ items }: DashboardAnnouncementPr
     return null
   }
 
-  const active = items[currentIndex]
+  const safeIndex = currentIndex % items.length
+  const active = items[safeIndex]
   const isClickable = Boolean(active.path)
-  const progressWidth = `${((currentIndex + 1) / items.length) * 100}%`
+  const progressWidth = `${((safeIndex + 1) / items.length) * 100}%`
 
   const content = (
     <>
@@ -58,7 +58,7 @@ export default function DashboardAnnouncement({ items }: DashboardAnnouncementPr
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-xs font-medium text-slate-500 shadow-sm dark:bg-slate-800/90 dark:text-slate-300">
-          {currentIndex + 1}/{items.length}
+          {safeIndex + 1}/{items.length}
         </span>
       </div>
 

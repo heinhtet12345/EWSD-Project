@@ -186,6 +186,11 @@ const StaffAllIdeaPage = () => {
     return Number.isFinite(parsed) ? parsed : null
   }, [location.search])
 
+  const searchTermFromQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    return params.get('search')?.trim() || ''
+  }, [location.search])
+
   const [highlightIdeaId, setHighlightIdeaId] = useState<number | null>(null)
   const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null)
   const [highlightElement, setHighlightElement] = useState<HTMLDivElement | null>(null)
@@ -202,6 +207,11 @@ const StaffAllIdeaPage = () => {
   useEffect(() => {
     setHighlightCommentId(highlightCommentIdFromQuery)
   }, [highlightCommentIdFromQuery])
+
+  useEffect(() => {
+    setSearchTerm(searchTermFromQuery)
+    setCurrentPage(1)
+  }, [searchTermFromQuery])
 
   useEffect(() => {
     if (!highlightIdeaId) return
@@ -901,7 +911,7 @@ const StaffAllIdeaPage = () => {
           {actionMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{actionMessage}</div>}
           <ViewIdeaTable
             loading={loading}
-            ideas={ideas}
+            ideas={currentIdeas}
             hasActiveFilters={Boolean(searchTerm.trim() || selectedCategory || selectedDepartment || openFilter !== 'all')}
             groupedByClosure={groupedByClosure}
             highlightIdeaId={highlightIdeaId}

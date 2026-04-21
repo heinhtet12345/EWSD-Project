@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Bell, ChevronDown, Menu, Moon, Search, Sun, User } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -98,6 +98,7 @@ export default function ToolBar({ userName = "", onMenuToggle }: ToolBarProps) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
   const notificationRef = useRef<HTMLDivElement | null>(null);
 
   const fetchNotifications = useCallback(async () => {
@@ -174,6 +175,27 @@ export default function ToolBar({ userName = "", onMenuToggle }: ToolBarProps) {
   }, []);
 
   const displayName = user?.name || userName || "User";
+
+  const getAllIdeasPath = () => {
+    const role = getStoredRole();
+    if (role === "qa_manager") return "/qa_manager/all-ideas";
+    if (role === "admin") return "/admin/all-ideas";
+    if (role === "qa_coordinator") return "/qa_coordinator/all-ideas";
+    return "/staff/all-ideas";
+  };
+
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedSearch = searchTerm.trim();
+    const targetPath = getAllIdeasPath();
+    if (!trimmedSearch) {
+      navigate(targetPath);
+      return;
+    }
+
+    const params = new URLSearchParams({ search: trimmedSearch });
+    navigate(`${targetPath}?${params.toString()}`);
+  };
 
   const handleGoToProfile = () => {
     const role = getStoredRole();
@@ -268,22 +290,26 @@ export default function ToolBar({ userName = "", onMenuToggle }: ToolBarProps) {
             <Menu className="h-5 w-5" />
           </button>
         )}
-        <div className="relative hidden w-full max-w-md sm:block">
-          <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${
-            isDarkMode ? "text-slate-500" : "text-slate-400"
-          }`}>
-            <Search className="h-4 w-4" />
-          </span>
-          <input
-            type="text"
-            placeholder="Search..."
-            className={`w-full rounded-lg border py-2 pl-10 pr-3 text-sm outline-none transition ${
-              isDarkMode
-                ? "border-slate-700 bg-slate-900/70 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:bg-slate-900"
-                : "border-slate-200 bg-slate-50 text-slate-700 focus:border-indigo-400 focus:bg-white"
-            }`}
-          />
-        </div>
+        <form onSubmit={handleSearchSubmit} className="hidden w-full max-w-md sm:block">
+          <div className="relative">
+            <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${
+              isDarkMode ? "text-slate-500" : "text-slate-400"
+            }`}>
+              <Search className="h-4 w-4" />
+            </span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search ideas and press Enter..."
+              className={`w-full rounded-lg border py-2 pl-10 pr-3 text-sm outline-none transition ${
+                isDarkMode
+                  ? "border-slate-700 bg-slate-900/70 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:bg-slate-900"
+                  : "border-slate-200 bg-slate-50 text-slate-700 focus:border-indigo-400 focus:bg-white"
+              }`}
+            />
+          </div>
+        </form>
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-3">

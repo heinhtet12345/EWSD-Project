@@ -105,9 +105,9 @@ const extractApiErrorMessage = (error: unknown, fallback: string): string => {
 }
 
 const ClosurePeriodPage = () => {
-  const navigate = useNavigate()
+  // const navigate = useNavigate()
   const location = useLocation()
-  const dashboardPath = location.pathname.startsWith('/admin') ? '/admin' : '/qa_manager'
+  // const dashboardPath = location.pathname.startsWith('/admin') ? '/admin' : '/qa_manager'
   const canManageClosurePeriods =
     location.pathname.startsWith('/qa_manager') || location.pathname.startsWith('/admin')
   const [isAdding, setIsAdding] = useState(false)
@@ -126,6 +126,18 @@ const ClosurePeriodPage = () => {
   const [editIdeaClosureDate, setEditIdeaClosureDate] = useState('')
   const [editCommentClosureDate, setEditCommentClosureDate] = useState('')
   const [isUpdatingPeriod, setIsUpdatingPeriod] = useState(false)
+
+  const hasEditableIdeaChange = Boolean(
+    editingPeriod?.canExtendIdeaDeadline &&
+      editIdeaClosureDate &&
+      editIdeaClosureDate !== editingPeriod?.ideaClosureDate,
+  )
+  const hasEditableCommentChange = Boolean(
+    editingPeriod?.canExtendCommentDeadline &&
+      editCommentClosureDate &&
+      editCommentClosureDate !== editingPeriod?.commentClosureDate,
+  )
+  const hasPendingEditChanges = hasEditableIdeaChange || hasEditableCommentChange
 
   useEffect(() => {
     let isMounted = true
@@ -204,60 +216,6 @@ const ClosurePeriodPage = () => {
     }
   }
 
-  const breadcrumbItems = useMemo<MenuItem[]>(() => {
-    if (isAdding) {
-      return [
-        {
-          label: 'Closure Periods',
-          command: () => setIsAdding(false),
-          template: (item: MenuItem) => (
-            <button
-              type="button"
-              onClick={() => item.command?.({ originalEvent: undefined as never, item })}
-              className="rounded-md px-2 py-1 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              {item.label}
-            </button>
-          ),
-        },
-        {
-          label: 'Add Closure Period',
-          template: (item: MenuItem) => (
-            <span className="px-2 py-1 text-sm font-semibold text-slate-900">{item.label}</span>
-          ),
-        },
-      ]
-    }
-
-    return [
-      {
-        label: 'Closure Periods',
-        template: (item: MenuItem) => (
-          <span className="px-2 py-1 text-sm font-semibold text-slate-900">{item.label}</span>
-        ),
-      },
-    ]
-  }, [isAdding])
-
-  const breadcrumbHome = useMemo(
-    () => ({
-      label: 'Dashboard',
-      command: () => navigate(dashboardPath),
-      template: (item: MenuItem) => (
-        <button
-          type="button"
-          onClick={() => item.command?.({ originalEvent: undefined as never, item })}
-          className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
-        >
-          <House className="h-4 w-4" />
-          <span>{item.label}</span>
-        </button>
-      ),
-    }),
-    [dashboardPath, navigate],
-  )
-
-  const breadcrumbSeparator = <ChevronRight className="h-4 w-4 text-slate-400" />
 
   const handleDownloadAll = async (exportType: ExportType) => {
     setDownloadError('')
@@ -307,15 +265,21 @@ const ClosurePeriodPage = () => {
     if (!editingPeriod) return
 
     setFormError('')
+    const payload: Record<string, string> = {}
+    if (hasEditableIdeaChange) {
+        payload.idea_closure_date = editIdeaClosureDate
+    }
+    if (hasEditableCommentChange) {
+        payload.comment_closure_date = editCommentClosureDate
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setFormError('Change at least one deadline before saving.')
+      return
+    }
+
     setIsUpdatingPeriod(true)
     try {
-      const payload: Record<string, string> = {}
-      if (editingPeriod.canExtendIdeaDeadline) {
-        payload.idea_closure_date = editIdeaClosureDate
-      }
-      if (editingPeriod.canExtendCommentDeadline) {
-        payload.comment_closure_date = editCommentClosureDate
-      }
 
       const response = await axios.patch(
         `/api/closure-period/${editingPeriod.id}/update/`,
@@ -500,7 +464,7 @@ const ClosurePeriodPage = () => {
               <button
                 type="button"
                 onClick={handleUpdateClosurePeriod}
-                disabled={isUpdatingPeriod}
+                disabled={isUpdatingPeriod || !hasPendingEditChanges}
                 className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isUpdatingPeriod ? 'Saving...' : 'Save Changes'}

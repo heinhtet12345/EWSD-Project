@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import ViewActivityTable, { type ActivityLog } from "../components/tables/ViewActivityTable";
@@ -32,7 +32,7 @@ export default function AdminAnalyticsPage() {
     (page) => page >= 1 && page < currentPage,
   );
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setError("");
     const cacheKey = JSON.stringify({
       page: currentPage,
@@ -75,14 +75,14 @@ export default function AdminAnalyticsPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [currentPage, effectivePageSize, days, eventType, search]);
 
   useEffect(() => {
     if (logs.length === 0) {
       setIsLoading(true);
     }
     fetchLogs();
-  }, [currentPage, effectivePageSize, days, eventType, search]);
+  }, [fetchLogs, logs.length]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -93,7 +93,7 @@ export default function AdminAnalyticsPage() {
       fetchLogs();
     }, 10000);
     return () => window.clearInterval(interval);
-  }, [currentPage, effectivePageSize, days, eventType, search]);
+  }, [fetchLogs]);
 
   return (
     <section className="space-y-2">

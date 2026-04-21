@@ -50,6 +50,8 @@ const ROLE_ALIAS: Record<string, Role> = {
 };
 
 const API_PATH = "/api/login/";
+const recaptchaSiteKey = (import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined)?.trim() || "";
+const isRecaptchaEnabled = String(import.meta.env.VITE_ENABLE_RECAPTCHA || "false").trim().toLowerCase() === "true";
 
 function normalizeRole(role?: string | null): Role {
   if (!role) return "staff";
@@ -85,7 +87,8 @@ export default function LoginPage() {
   }, []);
 
   const canSubmit = useMemo(() => {
-    return form.username.trim().length > 0 && form.password.length > 0 && !!captchaToken;
+    const hasCaptchaRequirement = isRecaptchaEnabled ? Boolean(captchaToken && recaptchaSiteKey) : true;
+    return form.username.trim().length > 0 && form.password.length > 0 && hasCaptchaRequirement;
   }, [form, captchaToken]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -301,14 +304,21 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="flex justify-center">
-              <ReCAPTCHA
-                ref={recaptchaRef}
-                sitekey="6LfaqrIsAAAAABv2dWWj-hHnap4xcL5W7ZCde6-S"
-                onChange={token => setCaptchaToken(token)}
-                theme={isDarkMode ? "dark" : "light"}
-              />
-            </div>
+            {isRecaptchaEnabled && recaptchaSiteKey && (
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={recaptchaSiteKey}
+                  onChange={token => setCaptchaToken(token)}
+                  theme={isDarkMode ? "dark" : "light"}
+                />
+              </div>
+            )}
+            {isRecaptchaEnabled && !recaptchaSiteKey && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                reCAPTCHA is enabled, but no site key is configured for the frontend.
+              </div>
+            )}
             <button
               type="submit"
               disabled={!canSubmit || isSubmitting}

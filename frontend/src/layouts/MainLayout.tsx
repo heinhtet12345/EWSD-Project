@@ -37,17 +37,19 @@ export default function MainLayout() {
   const location = useLocation();
   const { pathname, state } = location;
   const navigate = useNavigate();
+  const loginNotice = (state as { loginNotice?: LoginNotice } | null)?.loginNotice ?? null;
   const role = getRoleFromPath(pathname);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [mobileSidebarRoute, setMobileSidebarRoute] = useState(pathname);
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
   );
-  const [loginNotice, setLoginNotice] = useState<LoginNotice | null>(
-    () => (state as { loginNotice?: LoginNotice } | null)?.loginNotice ?? null,
-  );
   const lastTrackedPathRef = useRef<string | null>(null);
   const loginNoticeRef = useRef<HTMLDivElement | null>(null);
+
+  const dismissLoginNotice = () => {
+    navigate(pathname, { replace: true, state: null });
+  };
 
   useEffect(() => {
     if (!role) return;
@@ -94,29 +96,18 @@ export default function MainLayout() {
   }, [pathname, role]);
 
   useEffect(() => {
-    const stateNotice = (state as { loginNotice?: LoginNotice } | null)?.loginNotice;
-    if (stateNotice && !loginNotice) {
-      setLoginNotice(stateNotice);
-    }
-
-    if (stateNotice) {
-      navigate(pathname, { replace: true, state: null });
-    }
-  }, [loginNotice, navigate, pathname, state]);
-
-  useEffect(() => {
     if (!loginNotice) return;
 
     const handlePointerDown = (event: MouseEvent) => {
       if (!loginNoticeRef.current) return;
       if (!loginNoticeRef.current.contains(event.target as Node)) {
-        setLoginNotice(null);
+        dismissLoginNotice();
       }
     };
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [loginNotice]);
+  }, [loginNotice, pathname, navigate]);
 
   useEffect(() => {
     if (!loginNotice) return;
@@ -192,7 +183,7 @@ export default function MainLayout() {
               <div className="mt-4 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setLoginNotice(null)}
+                  onClick={dismissLoginNotice}
                   className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
                 >
                   OK

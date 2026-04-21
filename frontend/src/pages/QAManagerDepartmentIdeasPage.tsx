@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { useLocation } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MessageCircle, Paperclip, ShieldCheck, ThumbsDown, ThumbsUp, XCircle } from 'lucide-react'
@@ -53,7 +53,6 @@ export default function QAManagerDepartmentIdeasPage() {
   const [error, setError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(5)
   const [expandedIdeaIds, setExpandedIdeaIds] = useState<Set<number>>(new Set())
   const [openCommentIds, setOpenCommentIds] = useState<Set<number>>(new Set())
   const [commentsByIdea, setCommentsByIdea] = useState<Record<number, Comment[]>>({})
@@ -83,6 +82,7 @@ export default function QAManagerDepartmentIdeasPage() {
     return () => window.clearTimeout(timeoutId)
   }, [highlightIdeaId])
 
+  const itemsPerPage = 5
   const skipSize = 5
 
   const getStoredRole = () => {
@@ -213,41 +213,6 @@ export default function QAManagerDepartmentIdeasPage() {
     })
   }, [currentIdeas, closurePeriods])
 
-  useEffect(() => {
-    fetchCategories()
-    fetchClosurePeriods()
-  }, [])
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, selectedCategory, openFilter, itemsPerPage])
-
-  useEffect(() => {
-    if (!highlightIdeaId || ideas.length === 0) return
-    const highlightIndex = ideas.findIndex((idea) => idea.idea_id === highlightIdeaId)
-    if (highlightIndex < 0) return
-    if (currentPage !== 1) {
-      setCurrentPage(1)
-    }
-  }, [highlightIdeaId, ideas, currentPage])
-
-  useEffect(() => {
-    if (!highlightIdeaId) return
-    const element = highlightRef.current
-    if (!element) return
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [highlightIdeaId, currentPage])
-
-  useEffect(() => {
-    if (!actionMessage) return
-    const timeoutId = window.setTimeout(() => setActionMessage(''), 3500)
-    return () => window.clearTimeout(timeoutId)
-  }, [actionMessage])
-
-  useEffect(() => {
-    fetchIdeas(currentPage)
-  }, [currentPage, searchTerm, selectedCategory, openFilter, itemsPerPage])
-
   const fetchIdeas = async (page = 1) => {
     setLoading(true)
     setError('')
@@ -275,7 +240,7 @@ export default function QAManagerDepartmentIdeasPage() {
     }
   }
 
-  const fetchClosurePeriods = async () => {
+  const fetchClosurePeriods = useCallback(async () => {
     try {
       const response = await axios.get('/api/closure-period/', getAuthConfig())
       const data = Array.isArray(response.data) ? response.data : response.data?.results
@@ -284,9 +249,9 @@ export default function QAManagerDepartmentIdeasPage() {
     } catch {
       // ignore
     }
-  }
+  }, [])
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await axios.get('/api/categories/view/', getAuthConfig())
       const data = Array.isArray(response.data) ? response.data : response.data?.results
@@ -301,7 +266,42 @@ export default function QAManagerDepartmentIdeasPage() {
     } catch {
       // ignore
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchCategories()
+    fetchClosurePeriods()
+  }, [fetchCategories, fetchClosurePeriods])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedCategory, openFilter])
+
+  useEffect(() => {
+    if (!highlightIdeaId || ideas.length === 0) return
+    const highlightIndex = ideas.findIndex((idea) => idea.idea_id === highlightIdeaId)
+    if (highlightIndex < 0) return
+    if (currentPage !== 1) {
+      setCurrentPage(1)
+    }
+  }, [highlightIdeaId, ideas, currentPage])
+
+  useEffect(() => {
+    if (!highlightIdeaId) return
+    const element = highlightRef.current
+    if (!element) return
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightIdeaId, currentPage])
+
+  useEffect(() => {
+    if (!actionMessage) return
+    const timeoutId = window.setTimeout(() => setActionMessage(''), 3500)
+    return () => window.clearTimeout(timeoutId)
+  }, [actionMessage])
+
+  useEffect(() => {
+    fetchIdeas(currentPage)
+  }, [currentPage, searchTerm, selectedCategory, openFilter])
 
   const handleDisableUser = async (userId: number) => {
     const shouldDisable = window.confirm(`Disable account for User #${userId}?`)
@@ -714,16 +714,6 @@ export default function QAManagerDepartmentIdeasPage() {
                 Showing {totalIdeas === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, totalIdeas)} of {totalIdeas} ideas
               </p>
               <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-                <select
-                  value={itemsPerPage}
-                  onChange={(event) => setItemsPerPage(Number(event.target.value))}
-                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-blue-400 sm:px-3 sm:py-1.5 sm:text-sm"
-                >
-                  <option value={5}>5 / page</option>
-                  <option value={10}>10 / page</option>
-                  <option value={20}>20 / page</option>
-                  <option value={50}>50 / page</option>
-                </select>
                 <button
                   type="button"
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - skipSize))}

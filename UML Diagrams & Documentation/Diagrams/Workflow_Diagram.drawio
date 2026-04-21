@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
   <diagram name="Page-1" id="B8ykTzbCxmUCVCUxRxvQ">
-    <mxGraphModel dx="912" dy="597" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="817" dy="535" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -73,7 +73,7 @@
         <mxCell id="4Fl7slS07YLhzo4v9aG8-72" parent="1" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAspect=0;image=https://cdn-icons-png.flaticon.com/512/6827/6827787.png;fontStyle=1;fontSize=6;" value="Check Idea Uploads" vertex="1">
           <mxGeometry height="25" width="25" x="367.19047619047615" y="541.4990476190476" as="geometry" />
         </mxCell>
-        <mxCell id="4Fl7slS07YLhzo4v9aG8-73" parent="1" style="shape=image;verticalLabelPosition=top;labelBackgroundColor=default;verticalAlign=bottom;aspect=fixed;imageAspect=0;image=https://cdn-icons-png.flaticon.com/512/2726/2726544.png;fontStyle=1;fontSize=6;labelPosition=center;align=center;" value="Encourage Staff to Contribute" vertex="1">
+        <mxCell id="4Fl7slS07YLhzo4v9aG8-73" parent="1" style="shape=image;verticalLabelPosition=top;labelBackgroundColor=default;verticalAlign=bottom;aspect=fixed;imageAspect=0;image=https://cdn-icons-png.flaticon.com/512/2726/2726544.png;fontStyle=1;fontSize=6;labelPosition=center;align=center;" value="Make Announcement Posts" vertex="1">
           <mxGeometry height="25" width="25" x="388.997619047619" y="506.49666666666667" as="geometry" />
         </mxCell>
         <mxCell id="4Fl7slS07YLhzo4v9aG8-76" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#393C56;fontSize=6;fontStyle=1" value="belongs to a" vertex="1">
