@@ -895,7 +895,7 @@ export default function UserProfilePage() {
             <div className="mb-4">
               <h2 className="inline-flex items-center gap-2 text-lg font-semibold text-slate-900">
                 <KeyRound className="h-5 w-5" />
-                Reset Password
+                Change Password
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Use 8-12 characters with at least 1 uppercase, 1 lowercase, 1 number, and 1 special character. Spaces are not allowed.
