@@ -1,0 +1,256 @@
+import { useEffect, useState } from "react";
+import type { LucideIcon } from "lucide-react";
+import {
+  BarChart3,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Megaphone,
+  Menu,
+  ShieldAlert,
+  ShieldCheck,
+  User,
+  Users,
+} from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import axios from "axios";
+
+type Role = "admin" | "qa_coordinator" | "qa_manager" | "staff";
+
+type RoleTab = {
+  label: string;
+  to: string;
+  icon: LucideIcon;
+};
+
+const ROLE_TABS: Record<Role, RoleTab[]> = {
+  admin: [
+    { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
+    { label: "Users", to: "/admin/users", icon: User},
+    { label: "Categories", to: "/admin/categories", icon: FileText },
+    { label: "Closure Period", to: "/admin/closure-period", icon: ShieldCheck },
+    { label: "All Ideas", to: "/admin/all-ideas", icon: FileText },
+    { label: "Activities", to: "/admin/analytics", icon: BarChart3 },
+    { label: "Reports", to: "/admin/reports", icon: ShieldAlert },
+  ], 
+  "qa_manager": [
+    { label: "Dashboard", to: "/qa_manager", icon: LayoutDashboard },
+    { label: "Users", to: "/qa_manager/users", icon: User},
+    { label: "All Ideas", to: "/qa_manager/all-ideas", icon: FileText },
+    { label: "Announcement", to: "/qa_manager/announcements", icon: Megaphone },
+    { label: "Closure Period", to: "/qa_manager/closure-period", icon: ShieldCheck },
+    { label: "Categories", to: "/qa_manager/categories", icon: FileText },
+    { label: "Reports", to: "/qa_manager/reports", icon: ShieldAlert },
+  ],
+  "qa_coordinator": [
+    { label: "Dashboard", to: "/qa_coordinator", icon: LayoutDashboard },
+    { label: "Announcement", to: "/qa_coordinator/announcements", icon: Megaphone },
+    { label: "All Ideas", to: "/qa_coordinator/all-ideas", icon: FileText },
+    { label: "My Department", to: "/qa_coordinator/my-department", icon: ShieldCheck },
+    { label: "My Staff", to: "/qa_coordinator/my-staff", icon: Users },
+
+  ],
+  staff: [
+    { label: "Dashboard", to: "/staff", icon: LayoutDashboard },
+    { label: "Announcement", to: "/staff/announcements", icon: Megaphone },
+    { label: "All Ideas", to: "/staff/all-ideas", icon: FileText },
+    { label: "My Ideas", to: "/staff/my-ideas", icon: User },
+  ],
+};
+
+interface SideBarProps {
+  role?: Role;
+  isMobile?: boolean;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
+}
+
+export default function SideBar({
+  role = "staff",
+  isMobile = false,
+  isMobileOpen = false,
+  onCloseMobile,
+}: SideBarProps) {
+  const navigate = useNavigate();
+  const tabs = ROLE_TABS[role] ?? ROLE_TABS.staff;
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const sidebarWidthClass = isCollapsed ? "w-16" : "w-[250px]";
+
+  const handleLogout = async () => {
+    let accessToken: string | undefined;
+    let refreshToken: string | undefined;
+
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { token?: string; refresh?: string };
+        accessToken = parsed?.token;
+        refreshToken = parsed?.refresh;
+      }
+    } catch {
+      // Ignore localStorage parsing errors and proceed with logout cleanup.
+    }
+
+    if (refreshToken) {
+      try {
+        await axios.post(
+          "/api/logout/",
+          { refresh: refreshToken },
+          accessToken
+            ? { headers: { Authorization: `Bearer ${accessToken}` } }
+            : undefined
+        );
+      } catch {
+        // If logout fails, still clear local state to force re-auth.
+      }
+    }
+
+    localStorage.removeItem("authUser");
+    window.dispatchEvent(new Event("auth-changed"));
+    navigate("/", { replace: true });
+  };
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+
+    const applyCollapse = (matches: boolean) => {
+      setIsCollapsed(matches);
+    };
+
+    applyCollapse(mediaQuery.matches);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      applyCollapse(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  return (
+    <>
+      {isMobile && isMobileOpen && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[1px] lg:hidden"
+          onClick={onCloseMobile}
+        />
+      )}
+      <aside
+        className={`shrink-0 ${
+          isMobile
+            ? `fixed inset-y-0 left-0 z-50 transition-transform duration-200 lg:hidden ${
+                isMobileOpen ? "translate-x-0" : "-translate-x-full"
+              }`
+            : `${sidebarWidthClass} sticky top-0 h-screen self-start`
+        }`}
+      >
+      <nav
+        className={`flex h-full flex-col text-white shadow-sm transition-[width,transform] duration-200 ${
+          isMobile
+            ? "w-[272px]"
+            : `${sidebarWidthClass} h-screen`
+        }`}
+        style={{
+          backgroundColor: "var(--sidebar_bg)",
+          borderRight: "1px solid var(--sidebar_border)",
+        }}
+      >
+        <div
+          className={
+            !isMobile && isCollapsed
+              ? "pt-4 pb-2 px-2 flex items-center justify-start overflow-hidden"
+              : "p-4 pb-2 flex items-center justify-between gap-3 overflow-hidden"
+          }
+        >
+          {(isMobile || !isCollapsed) && (
+            <h1 className="text-lg font-semibold whitespace-nowrap -mt-0.5">
+              Quality System
+            </h1>
+          )}
+          <button
+            type="button"
+            aria-label={isMobile ? "Close menu" : "Toggle menu"}
+            aria-pressed={isMobile ? isMobileOpen : isCollapsed}
+            className={`p-2 rounded-md hover:bg-white/10 ${
+              !isMobile && isCollapsed ? "ml-0.5" : ""
+            }`}
+            onClick={() => {
+              if (isMobile) {
+                onCloseMobile?.();
+                return;
+              }
+              setIsCollapsed((value) => !value);
+            }}
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+        </div>
+        <ul className={`mt-4 flex-1 space-y-1 ${!isMobile && isCollapsed ? "px-2" : "px-3"}`}>
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <li key={tab.to}>
+                <NavLink
+                  to={tab.to}
+                  onClick={() => {
+                    if (isMobile) {
+                      onCloseMobile?.();
+                    }
+                  }}
+                  className={({ isActive }) =>
+                    `group relative flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
+                      isActive
+                        ? "text-white"
+                        : "text-white/80 hover:bg-white/10 hover:text-white"
+                    }`
+                  }
+                  style={({ isActive }) => ({
+                    backgroundColor: isActive ? "var(--sidebar-active_tab)" : "transparent",
+                  })}
+                  end
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span
+                    className={`whitespace-nowrap ${!isMobile && isCollapsed ? "hidden" : "inline"}`}
+                  >
+                    {tab.label}
+                  </span>
+                  <span
+                    className={`absolute left-full z-20 ml-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg ring-1 ring-white/10 transition ${
+                      !isMobile && isCollapsed ? "group-hover:opacity-100" : "hidden"
+                    }`}
+                  >
+                    {tab.label}
+                  </span>
+                </NavLink>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="mt-auto p-3">
+          <button
+            type="button"
+            className={`group relative flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white ${
+              !isMobile && isCollapsed ? "justify-center" : ""
+            }`}
+            onClick={handleLogout}
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            <span className={!isMobile && isCollapsed ? "hidden" : "inline"}>Logout</span>
+            <span
+              className={`absolute left-full z-20 ml-2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg ring-1 ring-white/10 transition ${
+                !isMobile && isCollapsed ? "group-hover:opacity-100" : "hidden"
+              }`}
+            >
+              Logout
+            </span>
+          </button>
+        </div>
+      </nav>
+      </aside>
+    </>
+  );
+}
