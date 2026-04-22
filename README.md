@@ -63,12 +63,23 @@ You can also pass custom values:
 batch\restore-db.bat "D:\path\to\dumpfile.dump" my_db_name postgres
 ```
 
-### Option 2: Restore manually
+### Option 2: Restore manually (Windows)
 
 ```powershell
 createdb ewsd_project_db
 pg_restore -U postgres -d ewsd_project_db --clean --if-exists --no-owner --no-privileges backend/sql/ewsd_project_db.dump
 ```
+
+### Option 3: Restore manually (macOS / Linux)
+
+On macOS, PostgreSQL uses your system username by default instead of `postgres`. Run `whoami` if you are unsure of your username.
+
+```bash
+createdb ewsd_project_db
+pg_restore -U YOUR_USERNAME -d ewsd_project_db --clean --if-exists --no-owner --no-privileges backend/sql/ewsd_project_db.dump
+```
+
+> If you get a `role "postgres" does not exist` error, update `DB_user` in your `.env` to match your system username.
 
 ## Environment Setup
 
@@ -102,9 +113,21 @@ Notes:
 
 Open a terminal in `backend/` and run:
 
+**Windows:**
+
 ```powershell
 python -m venv venv
 .\venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+**macOS / Linux:**
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
@@ -120,7 +143,7 @@ http://localhost:8000
 
 Open another terminal in `frontend/` and run:
 
-```powershell
+```bash
 npm install
 npm run dev
 ```
@@ -155,6 +178,13 @@ batch\restore-db.bat
 ```bat
 batch\start-all.bat
 ```
+
+## API Documentation
+
+Once the backend is running, API docs are available at:
+
+- Swagger: `http://localhost:8000/api/docs/swagger/`
+- ReDoc: `http://localhost:8000/api/docs/redoc/`
 
 ## Login / Demo Data
 
@@ -220,3 +250,7 @@ If you enable it, provide valid Google keys in `.env`.
 
 Diploma Group Project  
 EWSD Project Team
+
+## License
+
+Academic use only. Not licensed for commercial distribution.
