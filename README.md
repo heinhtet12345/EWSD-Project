@@ -179,13 +179,6 @@ batch\restore-db.bat
 batch\start-all.bat
 ```
 
-## API Documentation
-
-Once the backend is running, API docs are available at:
-
-- Swagger: `http://localhost:8000/api/docs/swagger/`
-- ReDoc: `http://localhost:8000/api/docs/redoc/`
-
 ## Login / Demo Data
 
 The restored dump contains pre-populated data for demonstration, including:
